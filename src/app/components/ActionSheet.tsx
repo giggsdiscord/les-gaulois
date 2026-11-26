@@ -4,7 +4,7 @@
  * bouton collé en bas et résultat affiché dans la fenêtre (avec « Refaire »).
  */
 import { useMemo, useState } from 'react';
-import { CATALOG, purchaseCost, type ActionDef, type VillageState } from '../engine.ts';
+import { CATALOG, constants, marketQuote, purchaseCost, type ActionDef, type VillageState } from '../engine.ts';
 import type { ActionInput, OpResponse } from '../api/types.ts';
 import { actionBlockReason, lockNotes, situationFor } from '../lib/actionHints.ts';
 import { AMOUNT_ACTIONS, QUANTITY_ACTIONS, STRUCTURE_ACTION_KINDS } from '../lib/game.ts';
@@ -85,6 +85,7 @@ export function ActionSheet({
     preset?.target_structure_id ?? preset?.target_player_id ?? (preset?.target_migrant_id ? `m:${preset.target_migrant_id}` : ''),
   );
   const [catalogId, setCatalogId] = useState(preset?.catalog_item_id ?? CATALOG[0]!.id);
+  const [marketId, setMarketId] = useState(preset?.catalog_item_id && def.target === 'market' ? preset.catalog_item_id : constants.MARKET_ITEMS[0]!.id);
   const [quantity, setQuantity] = useState(1);
   const amountConf = AMOUNT_ACTIONS[def.code];
   const isTransfer = def.code === 'transfer_sovereign_fund';
@@ -109,6 +110,7 @@ export function ActionSheet({
   }, [data.structures, def.code]);
   const item = CATALOG.find((c) => c.id === catalogId);
   const cost = item ? purchaseCost(item, quantity, data.village as unknown as VillageState) : 0;
+  const quote = def.target === 'market' ? marketQuote(data.village as unknown as VillageState, marketId, quantity, now) : null;
 
   function buildInput(): ActionInput | string {
     const input: ActionInput = { action_code: def.code, on_behalf_of_id: holderId };
@@ -138,11 +140,15 @@ export function ActionSheet({
         input.catalog_item_id = catalogId;
         input.quantity = quantity;
         break;
+      case 'market':
+        input.catalog_item_id = marketId;
+        input.quantity = quantity;
+        break;
       case 'none':
         break;
     }
     if (amountConf) input.amount_eur = isTransfer && direction === 'out' ? -amount : amount;
-    if (QUANTITY_ACTIONS[def.code] && def.target !== 'catalog') input.quantity = quantity;
+    if (QUANTITY_ACTIONS[def.code] && def.target !== 'catalog' && def.target !== 'market') input.quantity = quantity;
     if (def.code === 'eco_veto') {
       if (reason.trim().length < 10) return 'Motivez votre veto (10 caractères minimum).';
       input.params = { reason: reason.trim() };
@@ -330,6 +336,28 @@ export function ActionSheet({
               ))}
             </Select>
           </Field>
+        )}
+        {def.target === 'market' && quote && (
+          <>
+            <Field label="Produit">
+              <Select value={marketId} onChange={(e) => setMarketId(e.target.value)}>
+                {constants.MARKET_ITEMS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label} — lot de {m.lot} {m.unit} (réserve : {Math.floor(Number(data.village[m.stock]))})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label={`Nombre de lots de ${quote.item.lot} ${quote.item.unit}`}>
+              <Stepper value={quantity} onChange={setQuantity} min={1} max={20} />
+            </Field>
+            <p className="rounded-xl bg-parchment-100 px-3 py-2 text-sm text-ink-soft">
+              {quote.units} {quote.item.unit} à {eur(quote.unitPrice, true)} : <strong className="text-ink">+{eur(quote.total, true)}</strong> pour la caisse
+              {quote.saturday ? ' — jour de marché, +30 %' : ' — +30 % le samedi, jour de marché'}. Le marché en prendra encore {quote.remaining} {quote.item.unit} cette semaine.
+              {quote.units > quote.available && <span className="block font-semibold text-ember-600">Réserve insuffisante : {quote.available} {quote.item.unit}.</span>}
+              {quote.units > quote.remaining && <span className="block font-semibold text-ember-600">C'est plus que ce que le marché prendra cette semaine.</span>}
+            </p>
+          </>
         )}
         {(QUANTITY_ACTIONS[def.code] || def.target === 'catalog') && (
           <Field label={QUANTITY_ACTIONS[def.code]?.label ?? 'Quantité'}>

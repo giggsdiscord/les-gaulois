@@ -17,13 +17,13 @@ export const ACTION_CATEGORIES: readonly ActionCategory[] = [
     id: 'vivres',
     emoji: '🌾',
     label: 'Vivres & élevage',
-    codes: ['garden_tend', 'expand_garden', 'build_livestock_pen', 'buy_livestock', 'livestock_care', 'butcher_livestock', 'fish_hunt', 'repel_boars'],
+    codes: ['garden_tend', 'expand_garden', 'build_livestock_pen', 'buy_livestock', 'livestock_care', 'butcher_livestock', 'fish_hunt', 'repel_boars', 'make_preserves'],
   },
   {
     id: 'chantiers',
     emoji: '🏗️',
     label: 'Chantiers & bâti',
-    codes: ['renovate_building', 'improve_own_housing', 'clear_rubble', 'demolish_building', 'build_septic', 'track_maintenance', 'plu_inspection', 'eco_veto', 'lift_eco_veto'],
+    codes: ['renovate_building', 'improve_own_housing', 'clear_rubble', 'demolish_building', 'build_septic', 'track_maintenance', 'cut_wood', 'plu_inspection', 'eco_veto', 'lift_eco_veto'],
   },
   {
     id: 'reseaux',
@@ -47,7 +47,7 @@ export const ACTION_CATEGORIES: readonly ActionCategory[] = [
     id: 'argent',
     emoji: '💰',
     label: 'Argent & commerce',
-    codes: ['private_work', 'buy_supplies', 'hire_resident', 'fire_resident', 'financial_audit', 'pay_land_debt', 'transfer_sovereign_fund', 'set_carlage_fee', 'open_gite', 'close_gite', 'family_allowance', 'andorra_fiscal_scheme', 'smuggling_run'],
+    codes: ['private_work', 'market_sale', 'buy_supplies', 'hire_resident', 'fire_resident', 'financial_audit', 'pay_land_debt', 'transfer_sovereign_fund', 'set_carlage_fee', 'open_gite', 'close_gite', 'family_allowance', 'andorra_fiscal_scheme', 'smuggling_run'],
   },
   {
     id: 'village',

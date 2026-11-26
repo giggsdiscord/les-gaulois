@@ -1,5 +1,14 @@
 # Historique des versions du GDD
 
+### V4.8 — 26/11/2026 — Marché, bois de chauffage & conserves
+- **Marché d'Organyà** (§5.4) : tout le monde peut vendre tomates, bois et conserves pour la caisse commune ; +30 % le samedi, prix qui baissent à mesure que la semaine sature, plafond hebdomadaire par produit, meilleurs prix avec l'espagnol.
+- **Couper du bois** dans la forêt communale (≈ 8 stères par séance) ; au-delà de 10 coupes par semaine, la forêt souffre et les agents rurals peuvent verbaliser.
+- **Chauffage** : chaque nuit sous 10 °C (température réelle), les bâtisses habitées brûlent 1 à 3 stères ; sans bois, moral −2 % et santé −1 par fondateur.
+- **Conserves** : 10 kg de tomates → 8 rations pour l'hiver.
+- Réserves du hameau et « À faire en priorité » mis à jour (bois de chauffage, tomates à écouler, marché pour renflouer la caisse).
+- Migration additive `20261201000100_vie_du_village.sql` (à exécuter seule dans le SQL Editor) : prépare aussi les versions suivantes (postes des résidents, ambitions secrètes, nouveaux bâtiments).
+- 8 nouveaux tests Vitest.
+
 ### V4.7 — 26/11/2026 — Carte du hameau illustrée et pratique
 - Plan dessiné (§6.3) : prés et courbes de niveau, forêts plantées, rivière au courant animé, piste colorée selon son état, conduite d'eau et ligne électrique avec poteaux ; bâtisses avec ombre et toits (église et clocher, forge et cheminée…), ruines en pointillés avec gravats, chantiers sous échafaudage avec le toit posé à mesure de l'avancement ; neige ou pluie réelles affichées.
 - Pastilles lisibles sur téléphone pour chaque ouvrage : icône, couleur de l'état, badges ⚡ 🐸 💧, avancement en % ; les ouvrages des priorités du moment pulsent.

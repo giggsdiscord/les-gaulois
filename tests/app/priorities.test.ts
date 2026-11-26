@@ -1,6 +1,6 @@
 /** « À faire en priorité » et réserves expliquées (V4.6) : ce qui fait avancer le hameau, et pourquoi. */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CATALOG, getAction } from '../../src/app/engine.ts';
+import { CATALOG, constants, getAction } from '../../src/app/engine.ts';
 import { DemoApi } from '../../src/app/api/demo.ts';
 import type { GameData } from '../../src/app/api/types.ts';
 import { demoPlayerId } from '../../src/app/demo/seed.ts';
@@ -113,7 +113,11 @@ describe('À faire en priorité', () => {
           expect(getAction(item.actionCode), item.key).toBeDefined();
           expect(categoryOf(item.actionCode), item.key).toBeDefined();
         }
-        if (item.preset?.catalog_item_id) expect(CATALOG.some((c) => c.id === item.preset?.catalog_item_id)).toBe(true);
+        if (item.preset?.catalog_item_id) {
+          // Article du catalogue des fournisseurs, ou produit du marché d'Organyà (V4.8)
+          const known = item.actionCode === 'market_sale' ? constants.MARKET_ITEMS.some((m) => m.id === item.preset?.catalog_item_id) : CATALOG.some((c) => c.id === item.preset?.catalog_item_id);
+          expect(known, item.key).toBe(true);
+        }
       }
     }
   });
@@ -149,7 +153,12 @@ describe('Réserves du hameau', () => {
       }
     }
     const lines = reserveReport(withVillage(data, { wood_stock: 3, tools_stock: 2 }), now);
-    expect(lines.find((l) => l.key === 'wood')).toMatchObject({ low: true, rate: '0 séance' });
+    // Minimale réelle de la démo : 6 °C → 1 stère par bâtisse habitée et par nuit (2 bâtisses)
+    expect(lines.find((l) => l.key === 'wood')).toMatchObject({ low: true, rate: '−2 / nuit (chauffage)', perDay: -2, daysLeft: 1 });
+    const mild = reserveReport(withVillage(data, { wood_stock: 3, real_temp_min_c: 12 }), now).find((l) => l.key === 'wood')!;
+    expect(mild).toMatchObject({ rate: '0 séance', perDay: null, daysLeft: null });
+    expect(lines.find((l) => l.key === 'wood')!.sources.map((x) => x.actionCode)).toContain('cut_wood');
+    expect(lines.find((l) => l.key === 'tomatoes')!.uses.join(' ')).toMatch(/marché d'Organyà/);
     const tools = lines.find((l) => l.key === 'tools')!;
     expect(tools.low).toBe(true);
     expect(tools.sources.find((s) => s.actionCode === 'forge_tools')?.mine).toBe(true);

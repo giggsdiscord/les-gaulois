@@ -143,6 +143,23 @@ export interface VillageState {
   is_defeated: boolean;
   defeat_reason: string | null;
   last_tick_at: ISODate;
+  /** Vie du village (V4.8+, colonne JSONB `life`) : absent tant que la migration n'est pas appliquée. */
+  life?: VillageLife;
+}
+
+/**
+ * État « vie du village » (V4.8+) stocké en JSONB : compteurs hebdomadaires, nouveaux stocks,
+ * chantier collectif, objectifs, relations… Toutes les clés sont facultatives (lecture via lifeOf()).
+ */
+export interface VillageLife {
+  /** Ventes au marché pendant la saison (semaine) en cours, en unités, par produit. */
+  market_sold?: Record<string, number>;
+  /** Coupes de bois pendant la saison en cours. */
+  wood_cuts?: number;
+  /** Nuits de froid d'affilée sans assez de bois pour chauffer. */
+  cold_streak?: number;
+  /** Bois brûlé pour le chauffage la nuit dernière. */
+  heating_last?: number;
 }
 
 export interface Player {
@@ -177,6 +194,8 @@ export interface Player {
   forced_labor_until: ISODate | null;
   delegated_to: string | null;
   delegation_until: ISODate | null;
+  /** Ambition secrète (V5.2, colonne JSONB `ambition`) : visible par son seul titulaire. */
+  ambition?: Record<string, unknown> | null;
 }
 
 export type MigrantStatus =
@@ -241,6 +260,10 @@ export interface Migrant {
   generated_by: 'ai' | 'fallback' | 'manual';
   arrived_at: ISODate;
   decided_at: ISODate | null;
+  /** Poste de travail d'un résident (V4.9) : null = sans affectation. */
+  work_post?: string | null;
+  /** Personnalité et humeur d'un résident (V5.x, JSONB). */
+  traits?: Record<string, unknown>;
 }
 
 export type ChildStatus = 'child' | 'apprentice' | 'law_student' | 'graduated' | 'lawyer' | 'departed';
@@ -290,6 +313,10 @@ export interface MapStructure {
   eco_veto_active: boolean;
   owner_player_id: string | null;
   leak_alert: boolean;
+  /** Type fin d'un nouveau bâtiment (V5.x : four, fromagerie…), null pour les ouvrages d'origine. */
+  variant?: string | null;
+  /** Niveau d'amélioration (1 à 5). */
+  upgrade_level?: number;
 }
 
 export interface Union {

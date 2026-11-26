@@ -334,7 +334,7 @@ export class DemoApi implements GameApi {
     const duelById = new Map(s.state.duels.map((d) => [d.id, d]));
     const recent = (iso: string, days: number) => now.getTime() - new Date(iso).getTime() <= days * 86_400_000;
     const publicPlayer = (p: DemoPlayer): PublicPlayer =>
-      omit(p, ['mental_health_pct', 'morale_pct', 'addiction_level_pct', 'temptation_guilt_pct', 'pending_ap_penalty', 'private_wealth_eur', 'power_kwh_used', 'strapping_until', 'injury_since', 'must_change_pin']) as unknown as PublicPlayer;
+      omit(p, ['mental_health_pct', 'morale_pct', 'addiction_level_pct', 'temptation_guilt_pct', 'pending_ap_penalty', 'private_wealth_eur', 'power_kwh_used', 'strapping_until', 'injury_since', 'must_change_pin', 'ambition']) as unknown as PublicPlayer;
     return clone({
       me: me as unknown as MyPlayer,
       village: omit(snap.village, HIDDEN_VILLAGE_KEYS) as unknown as GameData['village'],

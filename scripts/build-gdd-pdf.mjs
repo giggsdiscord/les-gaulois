@@ -41,7 +41,11 @@ const esc = (v) => String(v).replace(/\|/g, '\\|').replace(/\n/g, ' ');
 const fmtValue = (v) => {
   if (typeof v === 'number') return String(v).replace('.', ',');
   if (typeof v === 'string') return v;
-  if (Array.isArray(v)) return v.join(' / ');
+  if (Array.isArray(v)) {
+    return v
+      .map((x) => (typeof x === 'object' && x !== null ? `(${Object.entries(x).map(([a, b]) => `${a}=${b}`).join(', ')})` : x))
+      .join(' / ');
+  }
   return Object.entries(v)
     .map(([k, x]) => `${k} : ${typeof x === 'object' && x !== null ? Object.entries(x).map(([a, b]) => `${a}=${b}`).join(', ') : x}`)
     .join(' ; ');

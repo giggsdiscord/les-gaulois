@@ -24,5 +24,6 @@ export * from './agora.ts';
 export * from './carlage.ts';
 export * from './targetTrial.ts';
 export * from './temptations.ts';
+export * from './life.ts';
 export * from './aiDeltas.ts';
 export * from './hiddenIndicators.ts';

@@ -346,3 +346,52 @@ export const PORTFOLIO_UNLOCK_ACT: Record<Portfolio, 1 | 2 | 3> = {
 export const PRESIDENT_ROLE: RoleCode = 'mayor_agri';
 export const ACT_THRESHOLDS = { act2: 35, act3: 85 } as const; // [GDD §1.3]
 export const DELEGATION_BUDGET_CAP_EUR = 2000;
+
+// ---------------------------------------------------------------------------
+// Vie du village — marché, bois & chauffage, conserves [GDD §5.5, V4.8]
+// ---------------------------------------------------------------------------
+export interface MarketItem {
+  id: string;
+  label: string;
+  /** Unité vendue et taille d'un lot (quantité choisie = nombre de lots). */
+  unit: string;
+  lot: number;
+  /** Prix de base d'une unité (€). */
+  price_eur: number;
+  /** Unités achetées au plus par le marché sur une saison (semaine) : au-delà, il est saturé. */
+  weekly_cap: number;
+  /** Réserve du village d'où part la marchandise. */
+  stock: 'tomatoes_stock' | 'wood_stock' | 'food_rations';
+}
+export const MARKET_ITEMS: readonly MarketItem[] = [
+  { id: 'tomatoes', label: 'Tomates du potager', unit: 'kg', lot: 10, price_eur: 3, weekly_cap: 150, stock: 'tomatoes_stock' }, // [GDD §5.5]
+  { id: 'wood', label: 'Bois de chauffage', unit: 'stère', lot: 5, price_eur: 7, weekly_cap: 60, stock: 'wood_stock' }, // [GDD §5.5]
+  { id: 'rations', label: 'Conserves & légumes', unit: 'ration', lot: 5, price_eur: 4, weekly_cap: 60, stock: 'food_rations' }, // [GDD §5.5]
+];
+/** Jour de marché à Organyà : le samedi, prix +30 %. */
+export const MARKET_SATURDAY_BONUS = 0.3; // [GDD §5.5]
+/** Les prix baissent à mesure que la semaine sature le marché (jusqu'à −50 %). */
+export const MARKET_SATURATION_DROP = 0.5; // [GDD §5.5]
+/** Effet de la maîtrise de l'espagnol sur les prix : ×0,85 à 0 %, ×1,15 à 100 %. */
+export const MARKET_LANGUAGE_MIN = 0.85;
+export const MARKET_LANGUAGE_MAX = 1.15;
+
+export const WOOD_CUT_BASE = 8; // [GDD §5.5] stères par séance (× productivité)
+/** Coupes soutenables par saison : au-delà, la forêt souffre et les agents rurals s'en mêlent. */
+export const WOOD_CUT_SUSTAINABLE = 10; // [GDD §5.5]
+export const WOOD_OVERCUT_ECOLOGY = 2;
+export const WOOD_OVERCUT_ADMIN = 3;
+export const WOOD_OVERCUT_RISK_PCT = 35;
+
+/** Chauffage : bois brûlé chaque nuit par bâtisse habitée, selon la température minimale réelle. */
+export const HEATING_BANDS: readonly { below_c: number; wood_per_building: number }[] = [
+  { below_c: 0, wood_per_building: 3 },
+  { below_c: 5, wood_per_building: 2 },
+  { below_c: 10, wood_per_building: 1 },
+]; // [GDD §5.5]
+export const HEATING_COLD_MORALE = 2; // [GDD §5.5] moral perdu par nuit sans chauffage
+export const HEATING_COLD_HEALTH = 1; // santé perdue par fondateur par nuit sans chauffage
+
+export const PRESERVES_TOMATOES_KG = 10; // [GDD §5.5]
+export const PRESERVES_RATIONS = 8; // [GDD §5.5]
+export const PRESERVES_JARS_EUR = 12;

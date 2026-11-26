@@ -17,6 +17,7 @@ import {
   dailyFoodConsumption,
   dayKey,
   getAction,
+  heatingNeed,
   type ActionDef,
   type AutonomyBreakdown,
   type GameSnapshot,
@@ -278,10 +279,33 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
       actionCode: 'negotiate_spain_andorra',
       steps: [
         `Négocier en Espagne / Andorre (${P.nameOf('smith_diplo')}, ${P.nameOf('mayor_agri')}) : +300 € si l'affaire se conclut.`,
+        'Tout le monde peut vendre tomates, bois ou conserves au marché d\'Organyà (Argent & commerce), +30 % le samedi.',
         'Proposer à l\'Agora une contribution des habitants (initiative « taxe ») : environ +1 500 €.',
         'À moyen terme : rénover et ouvrir le gîte (800 à 2 500 € par semaine).',
       ],
       gain: '+300 € par négociation réussie',
+    });
+  }
+
+  // Bois de chauffage (V4.8) : une nuit froide sans bois coûte moral et santé
+  const heat = heatingNeed(s);
+  if (heat.wood > 0 && v.wood_stock < heat.wood * 4) {
+    const nights = Math.floor(v.wood_stock / heat.wood);
+    P.add({
+      key: 'heating', short: nights < 2 ? 'Plus assez de bois pour chauffer cette nuit.' : `Bois de chauffage pour ${nights} nuits seulement.`, emoji: '🪵', title: 'Faire des réserves de bois', urgent: nights < 2, score: nights < 2 ? 91 : 72,
+      why: `Il fait ${Math.round(heat.tempMin)} °C au petit matin : ${heat.buildings} ${heat.buildings > 1 ? 'bâtisses habitées brûlent' : 'bâtisse habitée brûle'} ${heat.wood} stères par nuit, et il en reste ${v.wood_stock}. Une nuit sans feu coûte ${C.HEATING_COLD_MORALE} % de moral et 1 point de santé à chaque fondateur.`,
+      actionCode: 'cut_wood',
+      steps: [`Couper du bois : environ ${C.WOOD_CUT_BASE} stères par séance, gratuit — au-delà de ${C.WOOD_CUT_SUSTAINABLE} coupes par semaine, la forêt souffre.`, 'Ou louer une tronçonneuse chez Kiloutou (60 €, +10 bois).'],
+      gain: `+${C.WOOD_CUT_BASE} stères par séance`,
+    });
+  }
+  if (v.tomatoes_stock >= 60) {
+    P.add({
+      key: 'tomatoes', short: 'Des tomates qui dorment : vendez-les ou mettez-les en bocaux.', emoji: '🍅', title: `Écouler ${Math.floor(v.tomatoes_stock)} kg de tomates`, urgent: false, score: v.treasury_eur < 3000 ? 58 : 30,
+      why: 'Les tomates ne se mangent pas toutes seules : au marché d\'Organyà elles rapportent de l\'argent à la caisse (surtout le samedi), en conserve elles deviennent des rations pour l\'hiver.',
+      actionCode: 'market_sale', preset: { catalog_item_id: 'tomatoes' },
+      steps: [`Faire des conserves : ${C.PRESERVES_TOMATOES_KG} kg → ${C.PRESERVES_RATIONS} rations (${C.PRESERVES_JARS_EUR} € de bocaux).`, 'Garder 20 kg pour le lancer sur les BOR (moral +15 %).'],
+      gain: 'Argent pour la caisse ou rations',
     });
   }
 

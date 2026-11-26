@@ -1,12 +1,12 @@
 ---
-version: 4.7
+version: 4.8
 date: 2026-11-26
 title: Les Gaulois — Game Design Document & Architecture Technique
 ---
 
 # LES GAULOIS — Simulation Coopérative de Village & Micro-État
 
-**Game Design Document (GDD) & Spécification Technique Complète — Version 4.7**
+**Game Design Document (GDD) & Spécification Technique Complète — Version 4.8**
 
 Jeu de stratégie, de gestion démographique, économique et politique asynchrone persistant, ancré dans le monde réel (Pyrénées de Lleida), piloté par un moteur déterministe TypeScript et un Maître du Jeu IA.
 
@@ -15,7 +15,9 @@ Jeu de stratégie, de gestion démographique, économique et politique asynchron
 | **Cadre réel :** hameau abandonné des Pyrénées de Lleida (Catalogne, Espagne), domaine de 30 ha situé à 18 km de la frontière d'Andorre. | **Achat & travaux :** 295 000 € (PLU 2013 validé). Rénovation globale estimée entre 600 000 € et 900 000 €. |
 | **Effectif & rythme :** 7 joueurs fondateurs (10 joueurs max) + population résidente dynamique (migrants accueillis, naturalisés, lignées et apprentis). 1 jour réel = 1 jour de jeu (3 PA/jour). | **Enjeux :** autonomie totale puis Micro-État souverain, pérennité démographique, équilibre idéologique (Droite vs Gauche), propriété privée vs collectivisation, contrebande, justice publique et dissuasion. Hébergement 0 € + API IA < 1 $/mois (Claude Haiku 5.5). |
 
-> **Nouveautés V4.7 :** **carte du hameau illustrée et pratique** (§6.3) : plan dessiné (prés, forêts, rivière qui coule, piste, réseaux, bâtisses avec toits, ruines, échafaudages), pastilles lisibles sur téléphone (icône, état, ⚡ 🐸 💧, avancement, priorité du moment qui pulse), calques (À faire, Logements, Chantiers, Énergie, Eau), mode **Explorer** plein écran (glisser, pincer, double-toucher, + / −, boussole, échelle, vue Liste) et fiche d'ouvrage avec la **prochaine étape** et le bouton pour agir.
+> **Nouveautés V4.8 :** **les réserves prennent vie** (§5.4) : vente des tomates, du bois et des conserves au **marché d'Organyà** (prix plus hauts le samedi, marché qui sature dans la semaine), **coupe de bois** dans la forêt communale, **chauffage** des bâtisses habitées chaque nuit froide selon la température réelle (sans bois, moral et santé baissent), **conserves** de tomates pour l'hiver.
+
+> **Rappel V4.7 :** **carte du hameau illustrée et pratique** (§6.3) : plan dessiné (prés, forêts, rivière qui coule, piste, réseaux, bâtisses avec toits, ruines, échafaudages), pastilles lisibles sur téléphone (icône, état, ⚡ 🐸 💧, avancement, priorité du moment qui pulse), calques (À faire, Logements, Chantiers, Énergie, Eau), mode **Explorer** plein écran (glisser, pincer, double-toucher, + / −, boussole, échelle, vue Liste) et fiche d'ouvrage avec la **prochaine étape** et le bouton pour agir.
 
 > **Rappel V4.6 :** **le jeu s'explique** (§6.3) : à l'accueil, la carte **« À faire en priorité »** donne les prochaines étapes qui font avancer le hameau selon son avancement (d'abord le groupe électrogène, puis raccorder les bâtisses, la ligne aérienne, l'eau, le potager, le gîte…), avec le pourquoi, qui peut le faire, les verrous (PLU, budget) et ce que ça rapporte ; une fenêtre « Comprendre la progression » détaille les Actes et les six piliers d'autonomie. Dans l'onglet Trésor, les **Réserves du hameau** montrent le rythme de chaque stock (rations par jour, gasoil, usure des outils…), le nombre de jours restants, à quoi il sert et comment s'en procurer.
 
@@ -245,6 +247,14 @@ Chaque joueur peut soumettre **une initiative par semaine** (table `agora_propos
 - **Minage de cryptomonnaie & R&D de dissuasion (Acte III) :** une fois le micro-barrage hydroélectrique d'Alex opérationnel, le surplus d'électricité alimente une ferme de calcul discrète générant des revenus numériques hors du circuit bancaire espagnol, couplée aux prototypes secrets de Tanguy (brouilleurs radio, chimie défensive et micro-réacteur) pour sanctuariser l'indépendance du Micro-État.
 
 > **Précisions V3.8.** Enclos (Cleda) requis pour le cheptel (40 têtes max, 140 € la tête) ; engrais à partir de 6 têtes ; +8 % de naissances par saison à partir de 4 têtes. Gîte : 800 € de base, +300 / +600 selon l'état de la piste, +700 la saison d'un concert des BOR, ±moral ; contrôle à 15 % + pression / 10 (−7 avec la Chancellerie), amende de 500 à 1 500 €. Minage : 250 kWh/jour pour ≈ 15 €/jour, uniquement si la production couvre la consommation. Dissuasion : chaque cycle complet de R&D (100 %) en Acte III ajoute un niveau (5 max) ; le micro-réacteur (palier 5) exige le palier 4 et une dissuasion ≥ 3.
+
+### 5.4 Vie du village : marché d'Organyà, bois de chauffage & conserves
+
+- **Marché d'Organyà :** tout habitant peut descendre vendre les produits du hameau — tomates, bois, conserves et légumes — au profit de la caisse commune. Le samedi, jour de marché, les prix montent ; au fil de la semaine, le marché sature et les prix baissent, jusqu'au plafond hebdomadaire. Parler espagnol (ou catalan) fait de meilleures affaires.
+- **Bois de chauffage :** la forêt communale fournit du bois gratuitement (« Couper du bois »), à condition de ne pas la saccager ; chaque nuit froide, les bâtisses habitées en brûlent selon la température réelle de Lleida. Sans bois, on grelotte : le moral et la santé s'en ressentent.
+- **Conserves :** les tomates, jusqu'ici réservées au lancer sur les BOR, se mettent en bocaux et deviennent des rations pour l'hiver.
+
+> **Précisions V4.8 — marché, bois & chauffage (demandé par les joueurs : donner un sens aux réserves).** *Nouvelle colonne* `village_state.life` (JSONB, migration additive `20261201000100_vie_du_village.sql`, qui prépare aussi les versions suivantes : postes des résidents, traits, ambitions secrètes, variantes et niveaux de bâtiments) : compteurs de la semaine (`market_sold`, `wood_cuts`), série de nuits froides (`cold_streak`), bois brûlé la nuit dernière (`heating_last`) ; remis à zéro chaque lundi avec la saison. *Marché* (« Vendre au marché d'Organyà », tout le monde, 1 PA, catégorie Argent & commerce) : produits `MARKET_ITEMS` — tomates 3 €/kg par lots de 10 kg (150 kg par semaine au plus), bois 7 €/stère par lots de 5 (60 par semaine), rations 4 € par lots de 5 (60 par semaine) ; prix = base × 1,3 le samedi × (1 − 0,5 × saturation moyenne de la vente) × (0,85 à 1,15 selon la maîtrise de l'espagnol) ; recette versée à la caisse (grand livre, catégorie `market`), espagnol +0,5 %, piste −1 % ; refus si la piste est bloquée, si la réserve manque ou si le marché ne prend plus ce produit cette semaine. *Couper du bois* (tout le monde, 1 PA, effort physique, catégorie Chantiers & bâti) : 8 stères × productivité (pôle forge-subsistance) ; au-delà de 10 coupes dans la semaine, écologie −2 et 35 % de risque de passage des agents rurals (pression administrative +3). *Chauffage* (chaque nuit, avant l'usure des outils) : bâtisses habitées = bâtisses opérationnelles avec des lits + le gîte s'il est ouvert ; minimale réelle < 10 °C → 1 stère par bâtisse, < 5 °C → 2, < 0 °C → 3 ; moitié moins (arrondi au-dessus) à partir du palier 4 ; sans assez de bois : réserve vidée, moral du village −2 %, santé −1 par fondateur, événement « Nuit glaciale sans feu » (1re nuit puis toutes les 3 nuits). *Conserves* (« Faire des conserves », tout le monde, 1 PA, catégorie Vivres & élevage) : 10 kg de tomates + 12 € de bocaux → 8 rations × productivité (pôle agriculture, 1,5 au plus). *Interface :* fenêtre de vente avec produit, nombre de lots, prix du jour, plafond restant et alertes ; Réserves du hameau (Trésor) : le bois affiche sa consommation de chauffage par nuit et sa durée, les coupes de la semaine, la vente et la coupe comme sources ; les tomates et les rations indiquent leur prix du jour au marché et les conserves ; « À faire en priorité » signale le bois qui manque pour l'hiver (moins de 4 nuits ; urgent sous 2) et les tomates à écouler (60 kg et plus), et cite le marché parmi les moyens de renflouer la caisse.
 
 ## 6. Duels (Carlage 2 × 2 & Épreuve de la cible), La Taverne, Tentations & Écrans Mobile-First
 

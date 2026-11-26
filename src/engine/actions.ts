@@ -9,6 +9,7 @@ import * as C from './constants.ts';
 import { emptyEffects, pushEvent, pushLedger, pushTrigger } from './effects.ts';
 import { massMoraleGain, poleFactor, smugglingRiskPct } from './formulas.ts';
 import { applyInjury, healInjury, injuryRiskPct, isDetained } from './health.ts';
+import { applyMarketSale, ensureLife, marketQuote } from './life.ts';
 import { checkLocks, markGroupExecuted } from './locks.ts';
 import { clamp, deepClone, gauge, money, stock } from './math.ts';
 import { adjustLoyalty } from './migrants.ts';
@@ -53,7 +54,7 @@ export interface ActionContext {
   def: ActionDef;
 }
 
-export type TargetKind = 'none' | 'player' | 'migrant' | 'person' | 'child' | 'structure' | 'catalog';
+export type TargetKind = 'none' | 'player' | 'migrant' | 'person' | 'child' | 'structure' | 'catalog' | 'market';
 
 export interface ActionDef {
   code: string;
@@ -299,6 +300,55 @@ export const ACTIONS: readonly ActionDef[] = [
       v.track_condition_pct = gauge(v.track_condition_pct - C.TRACK_WEAR_CONVOY);
       const surcharge = v.track_condition_pct < C.TRACK_SURCHARGE_THRESHOLD ? ' (surcoût piste +40 %)' : '';
       return `${item.supplier} livre : ${item.label} ×${qty} pour ${cost.toFixed(2)} €${surcharge}.`;
+    },
+  },
+  // ======================= Vie du village (V4.8) =======================
+  {
+    code: 'market_sale', label: 'Vendre au marché d\'Organyà', description: 'Tomates, bois ou conserves vendus pour la caisse commune ; le samedi, jour de marché, +30 %. Le marché sature au fil de la semaine.', anyone: true, apCost: 1, target: 'market',
+    run: (ctx) => {
+      const q = marketQuote(ctx.v, ctx.req.catalog_item_id, num(ctx.req.quantity, 1), ctx.now);
+      ensure(q, 'Produit inconnu au marché.');
+      ensure(!isAfter(ctx.v.track_blocked_until, ctx.now), 'Piste bloquée : impossible de descendre au marché.');
+      ensure(q.units <= q.available, `Réserve insuffisante : ${q.available} ${q.item.unit} de ${q.item.label.toLowerCase()} pour ${q.units}.`);
+      ensure(q.remaining > 0, `Marché saturé cette semaine pour ce produit (${q.sold} ${q.item.unit} déjà vendus). Revenez lundi.`);
+      ensure(q.units <= q.remaining, `Le marché n'en prendra plus que ${q.remaining} ${q.item.unit} cette semaine.`);
+      applyMarketSale(ctx.v, q);
+      gainTreasury(ctx, q.total, `Marché d'Organyà : ${q.item.label} ×${q.units} ${q.item.unit}`, 'market');
+      ctx.v.spanish_fluency_pct = gauge(ctx.v.spanish_fluency_pct + 0.5);
+      ctx.v.track_condition_pct = gauge(ctx.v.track_condition_pct - 1);
+      return `Vendu ${q.units} ${q.item.unit} (${q.item.label.toLowerCase()}) à ${q.unitPrice.toFixed(2)} € : +${q.total.toFixed(2)} € pour la caisse${q.saturday ? ' — jour de marché, +30 %' : ''}. Le marché en prendra encore ${q.remaining - q.units} ${q.item.unit} cette semaine.`;
+    },
+  },
+  {
+    code: 'cut_wood', label: 'Couper du bois', description: 'Bois de chauffage et de chantier dans la forêt communale (environ 8 stères). Au-delà de 10 coupes par semaine, la forêt souffre et les agents rurals s\'en mêlent.', anyone: true, apCost: 1, physical: true, ecoSensitive: false, pole: 'smith_diplo', target: 'none',
+    run: (ctx) => {
+      const life = ensureLife(ctx.v);
+      const cuts = (life.wood_cuts ?? 0) + 1;
+      life.wood_cuts = cuts;
+      const wood = Math.max(1, Math.round(C.WOOD_CUT_BASE * factor(ctx)));
+      ctx.v.wood_stock = stock(ctx.v.wood_stock + wood);
+      let note = '';
+      if (cuts > C.WOOD_CUT_SUSTAINABLE) {
+        ctx.v.ecology_index_pct = gauge(ctx.v.ecology_index_pct - C.WOOD_OVERCUT_ECOLOGY);
+        note = ` La forêt s'éclaircit à vue d'œil (${cuts} coupes cette semaine).`;
+        if (ctx.rng.chance(C.WOOD_OVERCUT_RISK_PCT)) {
+          ctx.v.admin_pressure_pct = gauge(ctx.v.admin_pressure_pct + C.WOOD_OVERCUT_ADMIN);
+          pushEvent(ctx.fx, ctx.s, { event_type: 'overcut', title: 'Les agents rurals comptent les souches', body: 'Coupes excessives dans la forêt communale : procès-verbal en vue, pression administrative en hausse.' });
+          note += ' Un agent rural est passé compter les souches.';
+        }
+      }
+      return `+${wood} stères de bois (réserve : ${ctx.v.wood_stock}).${note}${physicalRisk(ctx)}`;
+    },
+  },
+  {
+    code: 'make_preserves', label: 'Faire des conserves', description: '10 kg de tomates + 12 € de bocaux → 8 rations qui se gardent tout l\'hiver.', anyone: true, apCost: 1, pole: 'mayor_agri', target: 'none',
+    run: (ctx) => {
+      ensure(ctx.v.tomatoes_stock >= C.PRESERVES_TOMATOES_KG, `Pas assez de tomates (${ctx.v.tomatoes_stock} kg pour ${C.PRESERVES_TOMATOES_KG}).`);
+      spendTreasury(ctx, C.PRESERVES_JARS_EUR, 'Bocaux & couvercles', 'supplies', 'Gedimat');
+      ctx.v.tomatoes_stock = stock(ctx.v.tomatoes_stock - C.PRESERVES_TOMATOES_KG);
+      const rations = Math.max(1, Math.round(C.PRESERVES_RATIONS * Math.min(1.5, factor(ctx))));
+      ctx.v.food_rations = money(ctx.v.food_rations + rations);
+      return `${C.PRESERVES_TOMATOES_KG} kg de tomates mis en bocaux : +${rations} rations pour l'hiver.`;
     },
   },
   {

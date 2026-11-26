@@ -15,6 +15,9 @@ import {
   countPopulation,
   dailyFoodConsumption,
   dayKey,
+  heatingNeed,
+  lifeOf,
+  marketQuote,
   purchaseCost,
   type CalendarSeason,
   type GameSnapshot,
@@ -100,6 +103,11 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
     return { label: `${item.supplier} : ${item.label}`, detail: `${eur(cost)} → ${gains}${item.customs_sensitive ? ' (passage en douane)' : ''}`, actionCode: 'buy_supplies', preset: { catalog_item_id: item.id }, ...actorsOf('buy_supplies', data) };
   };
   const sources = (...xs: (ReserveSource | null)[]) => xs.filter((x): x is ReserveSource => x !== null);
+  /** Prix du jour au marché d'Organyà pour une unité. */
+  const sale = (id: string) => {
+    const q = marketQuote(v as VillageState, id, 1, now);
+    return q ? `${eur(q.unitPrice, true)} le ${q.item.unit} aujourd'hui${q.saturday ? ' (jour de marché)' : ' (+30 % le samedi)'}, encore ${q.remaining} ${q.item.unit} cette semaine` : 'indisponible';
+  };
   const lines: ReserveLine[] = [];
   const surcharge = v.track_condition_pct < C.TRACK_SURCHARGE_THRESHOLD ? ` Piste abîmée : livraisons +${C.TRACK_SURCHARGE_PCT} %.` : '';
 
@@ -119,12 +127,14 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
     ],
     uses: [
       'Nourrir tous les habitants, chaque jour (voir ci-dessus).',
+      `Vendre le surplus au marché d'Organyà : ${sale('rations')}.`,
       `Lancer de tomates sur les BOR : −${C.TOMATO_THROW_RATIONS} rations. Les sangliers en volent parfois quand le périmètre est mal gardé.`,
     ],
     sources: sources(
       act('fish_hunt', 'Pêche & chasse', 'Environ 6 (hiver) à 14 (automne) rations par séance.'),
       act('garden_tend', 'Entretenir le potager', 'Récolte immédiate de la saison.'),
       act('butcher_livestock', 'Boucherie du cheptel', '1 bête → 25 rations.'),
+      act('make_preserves', 'Faire des conserves', `${C.PRESERVES_TOMATOES_KG} kg de tomates + ${C.PRESERVES_JARS_EUR} € de bocaux → ${C.PRESERVES_RATIONS} rations qui se gardent.`),
       buy('andorre_conserves'),
       act('expand_garden', 'Agrandir le potager', '+100 m² : plus de récolte chaque jour, pour toujours (150 €).'),
     ),
@@ -141,9 +151,13 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
       tomatoShare > 0
         ? `Le potager en produit seul : +${num(round1(harvest.tomatoesKg))} kg par jour (${Math.round(tomatoShare * 100)} % de la récolte en ${SEASON[season]}).`
         : 'Aucune tomate en hiver : la réserve attend le printemps.',
-      'Personne n\'en mange au quotidien : elles ne baissent pas toutes seules.',
+      'Personne n\'en mange au quotidien : elles ne baissent pas toutes seules — vendez-les ou mettez-les en conserve.',
     ],
-    uses: [`Lancer de tomates sur les BOR : −${C.TOMATO_THROW_TOMATOES} kg et −${C.TOMATO_THROW_RATIONS} rations, moral +${C.TOMATO_THROW_MORALE} % (une fois par saison).`],
+    uses: [
+      `Vendre au marché d'Organyà : ${sale('tomatoes')}.`,
+      `Faire des conserves : ${C.PRESERVES_TOMATOES_KG} kg → ${C.PRESERVES_RATIONS} rations pour l'hiver (${C.PRESERVES_JARS_EUR} € de bocaux).`,
+      `Lancer de tomates sur les BOR : −${C.TOMATO_THROW_TOMATOES} kg et −${C.TOMATO_THROW_RATIONS} rations, moral +${C.TOMATO_THROW_MORALE} % (une fois par saison).`,
+    ],
     sources: sources(act('garden_tend', 'Entretenir le potager', 'Récolte immédiate, tomates comprises (printemps à automne ; surtout l\'été).')),
   });
 
@@ -174,12 +188,35 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
     const n = Math.floor(stock / per);
     return `${n} ${what}${n > 1 ? 's' : ''}`;
   };
+  const heat = heatingNeed(s);
+  const woodDays = heat.wood > 0 ? Math.floor(v.wood_stock / heat.wood) : null;
+  const cuts = lifeOf(v).wood_cuts ?? 0;
   lines.push({
     key: 'wood', emoji: '🪵', label: 'Bois', amount: v.wood_stock, display: num(v.wood_stock),
-    perDay: null, rate: sessions(v.wood_stock, 5), daysLeft: null, low: v.wood_stock < 5,
-    daily: ['Rien ne le consomme tout seul : il part uniquement dans les chantiers.'],
-    uses: ['Rénover une bâtisse : 5 par séance.', 'Construire l\'enclos : 8.', 'Poser un mirador ou une herse : 6.'],
-    sources: sources(buy('kiloutou_tronconneuse'), buy('gedimat_charpente'), buy('bigmat_tuiles')),
+    perDay: heat.wood > 0 ? -heat.wood : null,
+    rate: heat.wood > 0 ? `−${heat.wood} / nuit (chauffage)` : sessions(v.wood_stock, 5),
+    daysLeft: woodDays,
+    low: v.wood_stock < 5 || (woodDays !== null && woodDays < 5),
+    daily: [
+      heat.wood > 0
+        ? `Chauffage : ${heat.buildings} ${heat.buildings > 1 ? 'bâtisses habitées' : 'bâtisse habitée'} × ${heat.perBuilding} = −${heat.wood} stères par nuit (minimale réelle ${Math.round(heat.tempMin)} °C${v.energy_tier >= 4 ? ', moitié moins grâce au palier 4' : ''}). Au rythme actuel, la réserve tient environ ${woodDays} nuit${woodDays === 1 ? '' : 's'}.`
+        : `Pas de chauffage cette nuit (minimale réelle ${Math.round(heat.tempMin)} °C) : on chauffe sous 10 °C (1 stère par bâtisse habitée), sous 5 °C (2) et sous 0 °C (3).`,
+      `Sans bois une nuit de froid : moral −${C.HEATING_COLD_MORALE} % et santé −${C.HEATING_COLD_HEALTH} pour chaque fondateur.`,
+      `Coupes cette semaine : ${cuts} / ${C.WOOD_CUT_SUSTAINABLE} soutenables (au-delà, la forêt souffre et les agents rurals peuvent verbaliser).`,
+    ],
+    uses: [
+      'Chauffer les bâtisses habitées les nuits froides.',
+      'Rénover une bâtisse : 5 par séance.',
+      'Construire l\'enclos : 8.',
+      'Poser un mirador ou une herse : 6.',
+      `Vendre au marché d'Organyà : ${sale('wood')}.`,
+    ],
+    sources: sources(
+      act('cut_wood', 'Couper du bois', `Environ ${C.WOOD_CUT_BASE} stères par séance, gratuit (forêt communale).`),
+      buy('kiloutou_tronconneuse'),
+      buy('gedimat_charpente'),
+      buy('bigmat_tuiles'),
+    ),
   });
   lines.push({
     key: 'stone', emoji: '🪨', label: 'Pierre', amount: v.stone_stock, display: num(v.stone_stock),

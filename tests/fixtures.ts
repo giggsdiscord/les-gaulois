@@ -114,6 +114,7 @@ export function defaultVillage(overrides: Partial<VillageState> = {}): VillageSt
     is_defeated: false,
     defeat_reason: null,
     last_tick_at: START,
+    life: {},
     ...overrides,
   };
 }
@@ -165,6 +166,7 @@ export function makePlayer(slot: number, role: RoleCode, name: string, overrides
     forced_labor_until: null,
     delegated_to: null,
     delegation_until: null,
+    ambition: null,
     ...overrides,
   };
 }
@@ -186,6 +188,8 @@ export function makeStructure(code: string, kind: MapStructure['kind'], status: 
     eco_veto_active: false,
     owner_player_id: null,
     leak_alert: false,
+    variant: null,
+    upgrade_level: 1,
     ...extra,
   };
 }
@@ -262,6 +266,8 @@ export function makeMigrant(id: string, overrides: Partial<Migrant> = {}): Migra
     generated_by: 'manual',
     arrived_at: START,
     decided_at: START,
+    work_post: null,
+    traits: {},
     ...overrides,
   };
 }

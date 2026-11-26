@@ -36,6 +36,7 @@ import {
   septicSaturationPct,
 } from './formulas.ts';
 import { addictionDrift, applyInjury, computeDailyAp, isInWithdrawal } from './health.ts';
+import { processHeating, resetSeasonLife } from './life.ts';
 import { clamp, deepClone, gauge, money, stepToward, stock } from './math.ts';
 import { activePlayers, computeHousingCapacity, countPopulation, residents, structureByCode } from './population.ts';
 import { createRng, type Rng } from './rng.ts';
@@ -61,6 +62,7 @@ function closeDay(s: GameSnapshot, fx: EngineEffects, endedKey: string, midnight
   updateWaterAndSanitation(s, fx, rng, season, midnight);
   updateEnergy(s, fx);
   updateFood(s, fx, rng, season);
+  processHeating(s, fx);
   updateToolsAndTrack(s, rng);
   updateIdeologyAndFriction(s, fx, rng.fork('society'), midnight);
   updateSubstancesAndBlackMarket(s, fx, rng.fork('substances'));
@@ -418,6 +420,7 @@ function closeSeason(s: GameSnapshot, fx: EngineEffects, midnight: Date): void {
   v.births_this_season = 0;
   v.children_welcomed_this_season = 0;
   v.new_adults_this_season = 0;
+  resetSeasonLife(v);
   v.season_number += 1;
 }
 
