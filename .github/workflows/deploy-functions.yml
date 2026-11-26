@@ -48,6 +48,6 @@ jobs:
           version: latest
       - name: Clés des notifications push (secrets Supabase)
         if: ${{ env.VAPID_PRIVATE_KEY != '' && env.VAPID_PUBLIC_KEY != '' }}
-        run: supabase secrets set --project-ref "$PROJECT_REF" VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY"
+        run: supabase secrets set --remote="$PROJECT_REF" --yes VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY"
       - name: Déployer game-engine, gm-ai-action, daily-world-sync
         run: supabase functions deploy --remote="$PROJECT_REF" --yes
