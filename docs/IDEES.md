@@ -84,7 +84,7 @@ L'utilisateur a demandé de **bien noter toutes ces idées** : rien ne doit êtr
 2. Travailler dans `C:\dev\les-gaulois` (dépôt Git, branche `main`), jamais dans l'ancien dossier OneDrive.
 3. Données nouvelles : d'abord la colonne JSONB `village_state.life` (clés facultatives, `lifeOf()` / `ensureLife()` dans `src/engine/life.ts`), puis les colonnes déjà préparées par la migration `20261201000100_vie_du_village.sql` (`village_migrants.work_post` et `traits`, `players.ambition`, `map_structures.variant` et `upgrade_level`). Une **nouvelle migration seulement si c'est indispensable** (l'utilisateur doit la coller à la main dans Supabase).
 4. Moteur + tests Vitest + interface téléphone (mode démo) ; `npm run check`, `npm run functions:check` si les fonctions changent, `npm run sql:bundle`, `npm run gdd:pdf` (ancien PDF dans `docs/archive/`) ; GDD (+0,1, encadré « Précisions Vx.y »), `docs/CHANGELOG.md`, `CLAUDE.md`.
-5. Cocher la ligne ici (« ✅ » + hash du commit), **commit local, sans pousser** (l'utilisateur décide de pousser ; la migration de la V4.8 doit être collée dans le SQL Editor avant).
+5. Cocher la ligne ici (« ✅ » + hash du commit), **commit local, sans pousser** (l'utilisateur décide de pousser). La migration de la V4.8 est déjà appliquée en production ; une éventuelle nouvelle migration devra l'être avant de pousser (l'utilisateur peut demander de l'appliquer via le connecteur Supabase).
 6. Lancer la session suivante avec la même consigne, jusqu'à la fin de la liste. En cas d'échec bloquant, s'arrêter et le dire.
 
 ## Économiser les jetons
