@@ -5,8 +5,9 @@ Lu automatiquement au début de chaque session. À tenir à jour à chaque étap
 ## Contexte
 - Jeu web mobile-first asynchrone pour 7 amis (10 max), en **français**. L'utilisateur écrit en français : répondre en français.
 - Spécification de référence : `docs/GDD.md` (version dans l'en-tête YAML, actuellement 4.1). Les PDF précédents (dont la V3.7 d'origine) sont dans `docs/archive/`.
-- Mission découpée en 5 étapes (voir README « État d'avancement ») : 1 SQL ✅, 2 moteur ✅, 3 Edge Functions ✅ (non déployées), 4 React ✅ (testé en mode démo), 5 guide de déploiement ✅ (`docs/DEPLOIEMENT.md`). Tout est livré ; reste le déploiement réel par l'utilisateur.
-- Rien n'est déployé ; pas encore de dépôt Git (le guide fait copier le projet hors de OneDrive vers `C:\dev\les-gaulois` avant `git init`). L'utilisateur veut un coût limité à l'API de l'IA (infra gratuite : GitHub Pages + Supabase Free).
+- Mission découpée en 5 étapes (voir README « État d'avancement ») : 1 SQL ✅, 2 moteur ✅, 3 Edge Functions ✅, 4 React ✅, 5 guide de déploiement ✅ (`docs/DEPLOIEMENT.md`).
+- **Déployé le 2026-11-26** : dépôt public `giggsdiscord/les-gaulois`, site `https://giggsdiscord.github.io/les-gaulois/`, projet Supabase `fojkfobtzuihxpgndshl` (setup_complete.sql, secrets `CRON_SECRET` + `ALLOWED_ORIGIN`, 3 Edge Functions, cron `gaulois-nightly` + `gaulois-maintenance`). `npm run deploy:check` vert (valeurs dans `.env.local`, secret cron dans `.env.cron`, tous deux ignorés). Pas encore de `ANTHROPIC_API_KEY` (dictionnaire de secours).
+- **Copie de travail = `C:\dev\les-gaulois`** (dépôt Git) ; le dossier OneDrive d'origine n'est plus suivi. Désormais, une nouvelle migration = l'exécuter seule dans le SQL Editor, jamais `setup_complete.sql`. L'utilisateur veut un coût limité à l'API de l'IA (infra gratuite : GitHub Pages + Supabase Free).
 
 ## Règle permanente demandée par l'utilisateur : documentation continue
 À **chaque** nouvelle idée / fonctionnalité / règle donnée par l'utilisateur :
@@ -61,7 +62,7 @@ Lu automatiquement au début de chaque session. À tenir à jour à chaque étap
 - PGlite (check-sql) ne sait pas revenir d'un `SET SESSION AUTHORIZATION` : les tests « appel non fiable » restent en fin de script.
 
 ## Reste à faire (prochaines étapes)
-- Accompagner le déploiement réel (suivre `docs/DEPLOIEMENT.md`) ; à la première mise en ligne, faire tourner `npm run deploy:check` et corriger ce qui ne passe pas contre un vrai projet (`SupabaseApi`, Realtime, CLI v3 dans le workflow n'ont jamais tourné en réel).
+- Déploiement fait et `deploy:check` vert ; workflow CLI v3 validé en réel. Reste à observer en jeu réel : `SupabaseApi` (connexion, PIN, actions), Realtime, première Gazette de nuit (`net._http_response` doit répondre 200). Facultatif : ajouter `ANTHROPIC_API_KEY`.
 - Ensuite : nouvelles idées de l'utilisateur selon le protocole de documentation continue.
 
 ## Commandes utiles
