@@ -1,5 +1,13 @@
 # Historique des versions du GDD
 
+### V4.7 — 26/11/2026 — Carte du hameau illustrée et pratique
+- Plan dessiné (§6.3) : prés et courbes de niveau, forêts plantées, rivière au courant animé, piste colorée selon son état, conduite d'eau et ligne électrique avec poteaux ; bâtisses avec ombre et toits (église et clocher, forge et cheminée…), ruines en pointillés avec gravats, chantiers sous échafaudage avec le toit posé à mesure de l'avancement ; neige ou pluie réelles affichées.
+- Pastilles lisibles sur téléphone pour chaque ouvrage : icône, couleur de l'état, badges ⚡ 🐸 💧, avancement en % ; les ouvrages des priorités du moment pulsent.
+- Calques avec compteurs : À faire, Logements, Chantiers, Énergie, Eau.
+- Mode **Explorer** plein écran : glisser, pincer ou double-toucher pour zoomer, boutons + / − / vue d'ensemble, boussole, échelle, noms des lieux, vue **Liste** classée (à traiter, chantiers, ruines, projets…) ; le bouton retour du téléphone le ferme.
+- Fiche d'ouvrage repensée : **prochaine étape** expliquée (séances restantes, raccordement, gîte à ouvrir, ce qui attend un Acte suivant), qui peut le faire, bouton pour agir sur le bon ouvrage, chiffres clés.
+- 11 nouveaux tests Vitest (cadrage et zoom, calques, liste, prochaine étape pour tous les ouvrages et fondateurs, ouvrage visé).
+
 ### V4.6 — 26/11/2026 — Le jeu s'explique : priorités et réserves
 - Accueil : carte **« À faire en priorité »** (§6.3) — barre d'autonomie jusqu'au prochain Acte et les 3 prochaines étapes selon l'avancement du hameau (groupe électrogène d'abord, puis raccordements, ligne aérienne, eau, potager, gîte…), urgences en tête (vivres, outils, échéances impayées, courant, fuites, pression administrative, gasoil).
 - Chaque priorité explique **pourquoi maintenant**, ce que ça rapporte, **qui peut le faire** (« vous » si c'est votre métier), les verrous (validation du trésorier au-delà de 500 €, accord PLU, caisse insuffisante, veto, matériaux) et propose **« Faire maintenant »** avec la fenêtre d'action pré-remplie.
