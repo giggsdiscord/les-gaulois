@@ -1,44 +1,105 @@
-/** Formulaire d'exécution d'une action métier (cibles, montants, verrous, Action Libre IA). */
+/**
+ * Fenêtre d'une action métier (cibles, montants, verrous, Action Libre IA). V4.4 : raison de blocage
+ * affichée avant de jouer, explications des verrous en clair, choix au pouce (joueurs, quantités),
+ * bouton collé en bas et résultat affiché dans la fenêtre (avec « Refaire »).
+ */
 import { useMemo, useState } from 'react';
 import { CATALOG, purchaseCost, type ActionDef, type VillageState } from '../engine.ts';
 import type { ActionInput, OpResponse } from '../api/types.ts';
+import { actionBlockReason, lockNotes, situationFor } from '../lib/actionHints.ts';
 import { AMOUNT_ACTIONS, QUANTITY_ACTIONS, STRUCTURE_ACTION_KINDS } from '../lib/game.ts';
 import { eur } from '../lib/format.ts';
 import { MIGRANT_STATUS, STRUCTURE_STATUS } from '../lib/labels.ts';
-import { useData, useGame } from '../state/GameContext.tsx';
-import { Badge, Button, Field, Input, Select, Sheet, TextArea } from './ui.tsx';
+import { useData, useGame, useNow } from '../state/GameContext.tsx';
+import { Avatar, Badge, Button, Field, Input, Segmented, Select, Sheet, Stepper, TextArea, cx } from './ui.tsx';
 
 const LANDSCAPE = ['forest', 'river', 'square', 'track'];
 
-export function LockBadges({ def }: { def: ActionDef }) {
+/** Pastilles des verrous ; `ap` ajoute le coût en PA. */
+export function LockBadges({ def, ap = true }: { def: ActionDef; ap?: boolean }) {
   return (
     <span className="flex flex-wrap gap-1">
-      <Badge tone="wood">{def.apCost} PA</Badge>
+      {ap && <Badge tone="wood">{def.apCost === 0 ? 'Gratuit' : `${def.apCost} PA`}</Badge>}
       {def.requiresPlu && <Badge tone="river">Accord PLU</Badge>}
-      {def.cost && <Badge tone="gold">Dépense caisse</Badge>}
-      {def.ecoSensitive && <Badge tone="moss">Veto éco.</Badge>}
+      {def.cost && <Badge tone="gold">Caisse</Badge>}
+      {def.ecoSensitive && <Badge tone="moss">🐸 Veto éco.</Badge>}
       {def.sundayOnly && <Badge>Dimanche</Badge>}
-      {def.physical && <Badge tone="ember">Effort physique</Badge>}
-      {def.minAct && def.minAct > 1 && <Badge>Acte {def.minAct}</Badge>}
+      {def.physical && <Badge tone="ember">Physique</Badge>}
     </span>
   );
 }
 
-export function ActionSheet({ def, holderId, preset, onClose }: { def: ActionDef; holderId: string | null; preset?: Partial<ActionInput>; onClose: () => void }) {
+/** Pastille de coût en PA (droite des lignes d'action). */
+export function ApPill({ cost, dim }: { cost: number; dim?: boolean }) {
+  return (
+    <span className={cx('shrink-0 rounded-full px-2.5 py-1 text-xs font-bold tabular-nums', dim ? 'bg-parchment-200 text-ink-soft' : cost === 0 ? 'bg-moss-100 text-moss-700' : 'bg-gold-100 text-wood-700')}>
+      {cost === 0 ? 'Gratuit' : `${cost} PA`}
+    </span>
+  );
+}
+
+/** Ligne d'action touchable (menu Métier, recherche, carte). */
+export function ActionRow({ def, reason, onClick }: { def: ActionDef; reason: string | null; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-parchment-100">
+      <span className={cx('min-w-0 flex-1', reason && 'opacity-60')}>
+        <span className="block font-semibold leading-snug text-ink">{def.label}</span>
+        <span className="mt-0.5 line-clamp-2 block text-sm leading-snug text-ink-soft">{def.description}</span>
+        {reason ? (
+          <span className="mt-1 block text-xs font-semibold text-ember-600">⛔ {reason}</span>
+        ) : (
+          <span className="mt-1.5 block">
+            <LockBadges def={def} ap={false} />
+          </span>
+        )}
+      </span>
+      <ApPill cost={def.apCost} dim={reason !== null} />
+    </button>
+  );
+}
+
+interface Outcome {
+  pending: boolean;
+  headline: string | null;
+  text: string;
+}
+
+export function ActionSheet({
+  def,
+  holderId,
+  preset,
+  onClose,
+  onSuccess,
+}: {
+  def: ActionDef;
+  holderId: string | null;
+  preset?: Partial<ActionInput>;
+  onClose: () => void;
+  /** Appelé après une action réussie (actions récentes). */
+  onSuccess?: (code: string) => void;
+}) {
   const data = useData();
   const { api, perform, toast } = useGame();
+  const now = useNow(30_000);
   const [target, setTarget] = useState<string>(
     preset?.target_structure_id ?? preset?.target_player_id ?? (preset?.target_migrant_id ? `m:${preset.target_migrant_id}` : ''),
   );
   const [catalogId, setCatalogId] = useState(preset?.catalog_item_id ?? CATALOG[0]!.id);
   const [quantity, setQuantity] = useState(1);
-  const [amount, setAmount] = useState(AMOUNT_ACTIONS[def.code]?.initial ?? 0);
+  const amountConf = AMOUNT_ACTIONS[def.code];
+  const isTransfer = def.code === 'transfer_sovereign_fund';
+  const [amount, setAmount] = useState(amountConf?.initial ?? 0);
+  const [direction, setDirection] = useState<'in' | 'out'>('in');
   const [reason, setReason] = useState('');
   const [freeText, setFreeText] = useState('');
   const [partnerA, setPartnerA] = useState('');
   const [partnerB, setPartnerB] = useState('');
   const [busy, setBusy] = useState(false);
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
 
+  const situation = situationFor(data, holderId, now);
+  const blocked = actionBlockReason(def, situation);
+  const notes = lockNotes(def, situation.holder.role_code);
   const players = data.players.filter((p) => p.is_active_slot && (p.status === 'active' || p.status === 'forced_labor'));
   const residents = data.migrants.filter((m) => m.status === 'accepted' || m.status === 'forced_labor');
   const candidates = data.migrants.filter((m) => m.status === 'candidate');
@@ -80,7 +141,7 @@ export function ActionSheet({ def, holderId, preset, onClose }: { def: ActionDef
       case 'none':
         break;
     }
-    if (AMOUNT_ACTIONS[def.code]) input.amount_eur = amount;
+    if (amountConf) input.amount_eur = isTransfer && direction === 'out' ? -amount : amount;
     if (QUANTITY_ACTIONS[def.code] && def.target !== 'catalog') input.quantity = quantity;
     if (def.code === 'eco_veto') {
       if (reason.trim().length < 10) return 'Motivez votre veto (10 caractères minimum).';
@@ -95,26 +156,59 @@ export function ActionSheet({ def, holderId, preset, onClose }: { def: ActionDef
   }
 
   async function submit() {
+    let r: OpResponse | undefined;
     if (def.code === 'free_ai_action') {
       if (freeText.trim().length < 10) return toast('error', 'Décrivez votre action (10 caractères minimum).');
       setBusy(true);
-      const r = await perform(() => api.freeAction(freeText.trim(), holderId), (res: OpResponse) => res.headline ?? 'Le Maître du Jeu a tranché.');
-      setBusy(false);
-      if (r) {
-        toast('info', String(r.narrative ?? ''));
-        onClose();
-      }
-      return;
+      r = await perform(() => api.freeAction(freeText.trim(), holderId));
+    } else {
+      const input = buildInput();
+      if (typeof input === 'string') return toast('error', input);
+      setBusy(true);
+      r = await perform(() => api.action(input));
     }
-    const input = buildInput();
-    if (typeof input === 'string') return toast('error', input);
-    setBusy(true);
-    const r = await perform(() => api.action(input), (res: OpResponse) => (res.status === 'pending_approval' ? undefined : String(res.narrative ?? 'Action effectuée.')));
     setBusy(false);
-    if (r) {
-      if (r.status === 'pending_approval') toast('info', String(r.narrative ?? 'Validation demandée.'));
-      onClose();
-    }
+    if (!r) return;
+    onSuccess?.(def.code);
+    const pending = r.status === 'pending_approval';
+    setOutcome({ pending, headline: r.headline ?? null, text: String(r.narrative ?? (pending ? 'Validation demandée.' : 'Action effectuée.')) });
+  }
+
+  const again = () => {
+    setOutcome(null);
+    setFreeText('');
+  };
+
+  if (outcome) {
+    const canAgain = !outcome.pending && actionBlockReason(def, situation) === null;
+    return (
+      <Sheet
+        open
+        onClose={onClose}
+        title={def.label}
+        footer={
+          <div className={cx('grid gap-2', canAgain && 'grid-cols-2')}>
+            {canAgain && (
+              <Button variant="secondary" onClick={again}>
+                Refaire ({def.apCost === 0 ? 'gratuit' : `${def.apCost} PA`})
+              </Button>
+            )}
+            <Button onClick={onClose}>Fermer</Button>
+          </div>
+        }
+      >
+        <div className="pb-4 text-center">
+          <p className="text-4xl" aria-hidden="true">
+            {outcome.pending ? '⏳' : '✅'}
+          </p>
+          <p className="mt-1 font-serif text-lg">{outcome.headline ?? (outcome.pending ? 'En attente de validation' : 'Action réussie')}</p>
+          <p className="mt-3 whitespace-pre-line text-left text-[15px] leading-relaxed text-ink">{outcome.text}</p>
+          <p className="mt-4 rounded-xl bg-parchment-100 px-3 py-2 text-sm font-semibold tabular-nums">
+            ⚡ {situation.viaDelegation ? `Il reste ${situation.holder.action_points} PA au poste de ${situation.holder.display_name}` : `Il vous reste ${situation.holder.action_points} PA aujourd'hui`}
+          </p>
+        </div>
+      </Sheet>
+    );
   }
 
   const personOptions = (
@@ -138,23 +232,46 @@ export function ActionSheet({ def, holderId, preset, onClose }: { def: ActionDef
     </>
   );
 
+  const submitLabel = busy ? 'En cours…' : blocked ? blocked : `Agir (${def.apCost === 0 ? 'gratuit' : `${def.apCost} PA`})`;
+
   return (
-    <Sheet open onClose={onClose} title={def.label}>
+    <Sheet
+      open
+      onClose={onClose}
+      title={def.label}
+      footer={
+        <Button className="w-full" size="lg" disabled={busy || blocked !== null} onClick={() => void submit()}>
+          {submitLabel}
+        </Button>
+      }
+    >
       <p className="mb-2 text-sm text-ink-soft">{def.description}</p>
-      <div className="mb-4">
+      <div className="mb-3">
         <LockBadges def={def} />
       </div>
-      <div className="space-y-3">
+      {blocked && <p className="mb-3 rounded-xl bg-ember-100 px-3 py-2 text-sm font-semibold text-ember-600">⛔ {blocked}</p>}
+      {situation.viaDelegation && (
+        <p className="mb-3 rounded-xl bg-gold-100 px-3 py-2 text-sm">
+          Vous agissez pour le poste de <strong>{situation.holder.display_name}</strong> (ses PA).
+        </p>
+      )}
+      <div className="space-y-4 pb-4">
         {def.target === 'player' && (
           <Field label="Joueur ciblé">
-            <Select value={target} onChange={(e) => setTarget(e.target.value)}>
-              <option value="">— Choisir —</option>
+            <div className="grid grid-cols-2 gap-2">
               {players.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.display_name} ({p.character_name})
-                </option>
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setTarget(p.id)}
+                  aria-pressed={target === p.id}
+                  className={cx('flex min-h-12 items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-sm', target === p.id ? 'border-wood-600 bg-wood-600/10 font-semibold' : 'border-parchment-300 bg-white')}
+                >
+                  <Avatar emoji={p.avatar_emoji} color={p.avatar_color} size="sm" />
+                  <span className="min-w-0 truncate">{p.display_name}</span>
+                </button>
               ))}
-            </Select>
+            </div>
           </Field>
         )}
         {def.target === 'migrant' && (
@@ -162,7 +279,7 @@ export function ActionSheet({ def, holderId, preset, onClose }: { def: ActionDef
             <Select value={target} onChange={(e) => setTarget(e.target.value)}>
               <option value="">— Choisir —</option>
               {[...candidates, ...residents].map((m) => (
-                <option key={m.id} value={m.id}>
+                <option key={m.id} value={`m:${m.id}`}>
                   {m.full_name} — {MIGRANT_STATUS[m.status]}
                 </option>
               ))}
@@ -197,37 +314,56 @@ export function ActionSheet({ def, holderId, preset, onClose }: { def: ActionDef
                 <option key={s.id} value={s.id}>
                   {s.name} — {STRUCTURE_STATUS[s.status]}
                   {s.progress_pct > 0 && s.progress_pct < 100 ? ` (${s.progress_pct} %)` : ''}
+                  {s.eco_veto_active ? ' 🐸' : ''}
                 </option>
               ))}
             </Select>
           </Field>
         )}
         {def.target === 'catalog' && (
-          <>
-            <Field label="Article">
-              <Select value={catalogId} onChange={(e) => setCatalogId(e.target.value)}>
-                {CATALOG.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.supplier} — {c.label} ({eur(c.price_eur)})
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <p className="text-sm text-ink-soft">
-              Total : <strong className="text-ink">{eur(cost, true)}</strong>
-              {cost > 500 && ' — validation de M. Lerme requise au-delà de 500 €'}
-              {data.village.track_condition_pct < 40 && ' — surcoût de 40 % (piste dégradée)'}
-            </p>
-          </>
+          <Field label="Article">
+            <Select value={catalogId} onChange={(e) => setCatalogId(e.target.value)}>
+              {CATALOG.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.supplier} — {c.label} ({eur(c.price_eur)})
+                </option>
+              ))}
+            </Select>
+          </Field>
         )}
         {(QUANTITY_ACTIONS[def.code] || def.target === 'catalog') && (
           <Field label={QUANTITY_ACTIONS[def.code]?.label ?? 'Quantité'}>
-            <Input type="number" min={1} max={QUANTITY_ACTIONS[def.code]?.max ?? 20} value={quantity} onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))} />
+            <Stepper value={quantity} onChange={setQuantity} min={1} max={QUANTITY_ACTIONS[def.code]?.max ?? 20} />
           </Field>
         )}
-        {AMOUNT_ACTIONS[def.code] && (
-          <Field label={AMOUNT_ACTIONS[def.code]!.label}>
-            <Input type="number" min={AMOUNT_ACTIONS[def.code]!.min} max={AMOUNT_ACTIONS[def.code]!.max} step={AMOUNT_ACTIONS[def.code]!.step} value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
+        {def.target === 'catalog' && (
+          <p className="rounded-xl bg-parchment-100 px-3 py-2 text-sm text-ink-soft">
+            Total : <strong className="text-ink">{eur(cost, true)}</strong>
+            {cost > 500 && ' — validation de M. Lerme requise au-delà de 500 €'}
+            {data.village.track_condition_pct < 40 && ' — surcoût de 40 % (piste dégradée)'}
+          </p>
+        )}
+        {isTransfer && (
+          <Segmented<'in' | 'out'>
+            value={direction}
+            onChange={setDirection}
+            options={[
+              { id: 'in', label: 'Caisse → fonds' },
+              { id: 'out', label: 'Fonds → caisse' },
+            ]}
+          />
+        )}
+        {amountConf && (
+          <Field label={isTransfer ? 'Montant (€)' : amountConf.label}>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={isTransfer ? amountConf.step : amountConf.min}
+              max={amountConf.max}
+              step={amountConf.step}
+              value={amount}
+              onChange={(e) => setAmount(Math.abs(Number(e.target.value)) || 0)}
+            />
           </Field>
         )}
         {def.code === 'eco_veto' && (
@@ -252,13 +388,20 @@ export function ActionSheet({ def, holderId, preset, onClose }: { def: ActionDef
           </>
         )}
         {def.code === 'free_ai_action' && (
-          <Field label="Décrivez votre action" hint="Le Maître du Jeu arbitre dans les bornes du moteur (réalisme strict, verrous respectés).">
+          <Field label="Décrivez votre action" hint={`${freeText.trim().length}/1000 — le Maître du Jeu arbitre dans les bornes du moteur (réalisme strict, verrous respectés).`}>
             <TextArea maxLength={1000} value={freeText} onChange={(e) => setFreeText(e.target.value)} placeholder="Ex. : je descends à Organyà négocier un tarif de groupe sur le ciment avec le dépôt BigMat." />
           </Field>
         )}
-        <Button className="w-full" size="lg" disabled={busy} onClick={() => void submit()}>
-          {busy ? 'En cours…' : `Agir (${def.apCost} PA)`}
-        </Button>
+        {notes.length > 0 && (
+          <div className="rounded-xl border border-parchment-200 bg-white/70 px-3 py-2">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-soft">Bon à savoir</p>
+            <ul className="space-y-1 text-sm text-ink-soft">
+              {notes.map((n) => (
+                <li key={n}>• {n}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </Sheet>
   );

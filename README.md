@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-Ouvrir l'adresse affichée (http://localhost:5173). Sans configuration Supabase, le jeu démarre une **partie locale au navigateur** : PIN `0000` pour tous, même moteur et mêmes règles que le serveur, et une « machine à remonter le temps » dans l'onglet Admin (connecté en Guillem).
+Ouvrir l'adresse affichée (http://localhost:5173). Sans configuration Supabase, le jeu démarre une **partie locale au navigateur** : PIN `0000` pour tous, même moteur et mêmes règles que le serveur, et une « machine à remonter le temps » dans l'Administration (menu du compte sous l'avatar, connecté en Guillem).
 
 ## Coûts
 

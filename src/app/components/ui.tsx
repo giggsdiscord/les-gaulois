@@ -1,6 +1,7 @@
 /** Composants d'interface : boutons, cartes, jauges, fenêtres, onglets, champs. */
-import { useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes, type TouchEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { useBackToClose } from '../lib/backClose.ts';
 import { useGame, type Toast } from '../state/GameContext.tsx';
 import { CloseIcon } from './icons.tsx';
 
@@ -31,7 +32,8 @@ export function Button({ variant = 'primary', size = 'md', className, ...props }
   );
 }
 
-export function Card({ title, subtitle, actions, children, className, tone = 'default' }: { title?: ReactNode; subtitle?: ReactNode; actions?: ReactNode; children?: ReactNode; className?: string; tone?: 'default' | 'warning' | 'danger' | 'moss' | 'river' }) {
+/** Carte ; `flush` retire la marge intérieure (listes bord à bord). */
+export function Card({ title, subtitle, actions, children, className, tone = 'default', flush }: { title?: ReactNode; subtitle?: ReactNode; actions?: ReactNode; children?: ReactNode; className?: string; tone?: 'default' | 'warning' | 'danger' | 'moss' | 'river'; flush?: boolean }) {
   const tones = {
     default: 'bg-white/80 border-parchment-200',
     warning: 'bg-gold-100 border-gold-500/40',
@@ -40,9 +42,9 @@ export function Card({ title, subtitle, actions, children, className, tone = 'de
     river: 'bg-river-100 border-river-600/25',
   };
   return (
-    <section className={cx('rounded-2xl border p-4 shadow-[0_1px_0_rgba(59,42,28,0.06)]', tones[tone], className)}>
+    <section className={cx('rounded-2xl border shadow-[0_1px_0_rgba(59,42,28,0.06)]', flush ? 'overflow-hidden' : 'p-4', tones[tone], className)}>
       {(title || actions) && (
-        <header className="mb-3 flex items-start justify-between gap-3">
+        <header className={cx('mb-3 flex items-start justify-between gap-3', flush && 'px-4 pt-4')}>
           <div className="min-w-0">
             {title && <h2 className="font-serif text-lg leading-snug text-ink">{title}</h2>}
             {subtitle && <p className="mt-0.5 text-sm text-ink-soft">{subtitle}</p>}
@@ -100,33 +102,142 @@ export function Stat({ label, value, sub, tone }: { label: string; value: ReactN
   );
 }
 
-export function Sheet({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; wide?: boolean }) {
+/**
+ * Fenêtre du bas (téléphone) : se ferme par la croix, en touchant le fond, en glissant la poignée
+ * vers le bas ou avec le bouton retour du téléphone (V4.4). `persistent` = fenêtre imposée.
+ * `footer` reste collé en bas, à portée du pouce, même quand le contenu défile.
+ */
+export function Sheet({ open, onClose, title, children, footer, persistent }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; footer?: ReactNode; persistent?: boolean }) {
+  const [drag, setDrag] = useState(0);
+  const startY = useRef<number | null>(null);
+  useBackToClose(open, onClose, !persistent);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Le fond ne défile pas sous la fenêtre
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = overflow;
+    };
   }, [open, onClose]);
   if (!open) return null;
+  const grab = {
+    onTouchStart: (e: TouchEvent) => (startY.current = e.touches[0]!.clientY),
+    onTouchMove: (e: TouchEvent) => startY.current !== null && setDrag(Math.max(0, e.touches[0]!.clientY - startY.current)),
+    onTouchEnd: () => {
+      if (drag > 90 && !persistent) onClose();
+      startY.current = null;
+      setDrag(0);
+    },
+  };
   // Rendue au niveau de <body> : une fenêtre ouverte depuis l'en-tête passe ainsi au-dessus de la navigation basse
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-wood-900/50 backdrop-blur-[2px] md:items-center" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-wood-900/50 backdrop-blur-[2px]" onClick={() => !persistent && onClose()} role="presentation">
       <div
         role="dialog"
         aria-modal="true"
-        className={cx('parchment max-h-[88vh] w-full overflow-y-auto rounded-t-3xl p-5 shadow-2xl md:rounded-3xl', wide ? 'md:max-w-3xl' : 'md:max-w-lg')}
+        className={cx('parchment flex max-h-[90dvh] w-full max-w-lg flex-col rounded-t-3xl shadow-2xl', drag === 0 && 'transition-transform duration-150')}
+        style={drag ? { transform: `translateY(${drag}px)` } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <h2 className="font-serif text-xl text-ink">{title}</h2>
-          <button onClick={onClose} className="-m-1 rounded-full p-2 text-ink-soft hover:bg-parchment-200" aria-label="Fermer">
-            <CloseIcon />
-          </button>
+        <div className="shrink-0 touch-none px-5 pt-2" {...grab}>
+          <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-parchment-300" aria-hidden="true" />
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <h2 className="font-serif text-xl leading-snug text-ink">{title}</h2>
+            {!persistent && (
+              <button onClick={onClose} className="-m-1 rounded-full p-2 text-ink-soft hover:bg-parchment-200" aria-label="Fermer">
+                <CloseIcon />
+              </button>
+            )}
+          </div>
         </div>
-        {children}
+        <div className={cx('min-h-0 flex-1 overflow-y-auto overscroll-contain px-5', !footer && 'safe-sheet-bottom')}>{children}</div>
+        {footer && <div className="safe-sheet-bottom shrink-0 border-t border-parchment-200 bg-parchment-50/95 px-5 pt-3">{footer}</div>}
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** Choix exclusif compact (2 à 4 options), pleine largeur. */
+export function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (id: T) => void; options: { id: T; label: ReactNode }[] }) {
+  return (
+    <div className="mb-3 grid gap-1 rounded-xl bg-parchment-200/70 p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }} role="tablist">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          role="tab"
+          aria-selected={value === o.id}
+          onClick={() => onChange(o.id)}
+          className={cx('min-h-9 truncate rounded-lg px-2 text-sm font-semibold transition-colors', value === o.id ? 'bg-white text-ink shadow-sm' : 'text-ink-soft')}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Bouton à double appui pour les gestes lourds (restaurer, lancer la nuit, se déconnecter…) :
+ * le premier appui demande confirmation sur place, le second exécute ; retour à l'état initial après 4 s.
+ */
+export function ConfirmButton({ onConfirm, confirmLabel, children, variant = 'danger', ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> & { onConfirm: () => void; confirmLabel: ReactNode; variant?: ButtonVariant; size?: 'sm' | 'md' | 'lg' }) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const t = window.setTimeout(() => setArmed(false), 4000);
+    return () => window.clearTimeout(t);
+  }, [armed]);
+  return (
+    <Button
+      {...props}
+      variant={armed ? 'danger' : variant}
+      className={cx(props.className, armed && 'animate-pulse')}
+      onClick={() => {
+        if (!armed) return setArmed(true);
+        setArmed(false);
+        onConfirm();
+      }}
+    >
+      {armed ? confirmLabel : children}
+    </Button>
+  );
+}
+
+/** Compteur − / + (quantités) : plus simple qu'un clavier numérique au pouce. */
+export function Stepper({ value, onChange, min = 1, max = 99, step = 1, format }: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; format?: (v: number) => ReactNode }) {
+  const set = (v: number) => onChange(Math.min(max, Math.max(min, v)));
+  const btn = 'flex h-11 w-11 items-center justify-center rounded-xl border border-parchment-300 bg-white text-xl font-bold text-wood-700 disabled:opacity-40';
+  return (
+    <div className="flex items-center gap-3">
+      <button type="button" className={btn} onClick={() => set(value - step)} disabled={value <= min} aria-label="Moins">
+        −
+      </button>
+      <span className="min-w-16 flex-1 text-center text-lg font-semibold tabular-nums">{format ? format(value) : value}</span>
+      <button type="button" className={btn} onClick={() => set(value + step)} disabled={value >= max} aria-label="Plus">
+        +
+      </button>
+    </div>
+  );
+}
+
+/** Ligne touchable d'une liste (menu, joueurs, sauvegardes…). */
+export function ListRow({ icon, title, subtitle, aside, onClick, tone, className }: { icon?: ReactNode; title: ReactNode; subtitle?: ReactNode; aside?: ReactNode; onClick?: () => void; tone?: 'danger'; className?: string }) {
+  const Tag = onClick ? 'button' : 'div';
+  return (
+    <Tag onClick={onClick} className={cx('flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left', onClick && 'active:bg-parchment-100', className)}>
+      {icon && <span className="flex w-8 shrink-0 justify-center text-xl">{icon}</span>}
+      <span className="min-w-0 flex-1">
+        <span className={cx('block font-semibold leading-snug', tone === 'danger' ? 'text-ember-600' : 'text-ink')}>{title}</span>
+        {subtitle && <span className="block text-sm leading-snug text-ink-soft">{subtitle}</span>}
+      </span>
+      {aside}
+      {onClick && <span className="shrink-0 text-lg text-wood-500" aria-hidden="true">›</span>}
+    </Tag>
   );
 }
 

@@ -1,5 +1,14 @@
 # Historique des versions du GDD
 
+### V4.4 — 26/11/2026 — Ergonomie téléphone
+- L'application est pensée pour le seul téléphone (§6.3) : 5 onglets pour tous (Hameau, Métier, Agora, Trésor, Gazette) ; l'administration passe dans le **menu du compte** (avatar) avec Ma fiche, Notifications, Installer l'appli, PIN et déconnexion ; toucher les PA de l'en-tête ouvre le Métier.
+- Fenêtres : le **bouton retour du téléphone** les ferme (au lieu de quitter l'écran), comme la croix, le fond ou un glissé vers le bas ; bouton principal collé en bas ; sous-onglets dans l'adresse (`#/metier/fiche`, `#/agora/duels`…).
+- Accueil : carte **« Aujourd'hui »** (proposition discrète en suspens, validations, scrutins non votés, PA restants, non-lus, candidats, compte à rebours de l'Agora), un appui pour y aller.
+- Métier : fiche compacte, sous-onglets Agir / Ma fiche / Journal ; **menu d'actions classées par type** (10 catégories en tuiles, métier en tête) au lieu d'une longue liste, recherche, actions récentes, raison affichée quand une action n'est pas jouable ; fenêtre d'action avec verrous expliqués, joueurs en boutons, quantités − / +, résultat affiché dans la fenêtre et « Refaire ».
+- Administration en 4 sous-onglets : Partie (état, points à surveiller, activité des joueurs), Joueurs (liste → fiche), Sauvegardes (restauration expliquée), MJ (IA) ; gestes lourds confirmés par double appui.
+- Gazette : **duels à part** dans le fil des événements (Faits de jeu / Duels), faits majeurs mis en relief.
+- Correctifs : statut et action des validations affichés en français ; candidat présélectionné depuis l'Immigration ; 156 tests Vitest (dont menu d'actions, raisons de blocage, « À faire », fil des événements).
+
 ### V4.3 — 26/11/2026 — Pastilles rouges & notifications
 - Pastilles de non-lus sur les onglets (Taverne, chuchotements, Gazette, votes, validations, duels) et sur l'icône de l'appli installée ; lecture marquée à l'ouverture d'un salon ou de la Gazette (§7.6).
 - Notifications push sur téléphone et ordinateur, même appli fermée : Taverne, chuchotement, duel, Agora (proposition, motion visant le joueur, résultat), validation, Gazette, proposition discrète ; réglage par catégorie (icône de cloche) ; regroupement des messages d'une même catégorie.

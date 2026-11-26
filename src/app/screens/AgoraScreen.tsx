@@ -8,7 +8,7 @@ import { Badge, Button, Card, Empty, Field, Gauge, Input, SectionTitle, Select, 
 import { availableActions, canFight, nextAgoraWeek, playerName, population } from '../lib/game.ts';
 import { countdown, dateTime } from '../lib/format.ts';
 import { CATEGORY_LABEL, DUEL_CONTEXT, DUEL_MODE, MIGRANT_STATUS, PORTFOLIO_LABEL, SENTENCE_LABEL, SPECIALTY_LABEL } from '../lib/labels.ts';
-import { navigate } from '../lib/router.ts';
+import { navigate, useRoute } from '../lib/router.ts';
 import { useData, useGame, useNow } from '../state/GameContext.tsx';
 
 type Tab = 'initiatives' | 'immigration' | 'tribunal' | 'constitution' | 'duels';
@@ -569,9 +569,14 @@ function Duels() {
   );
 }
 
+const TABS: readonly Tab[] = ['initiatives', 'immigration', 'tribunal', 'constitution', 'duels'];
+
 export function AgoraScreen() {
   const data = useData();
-  const [tab, setTab] = useState<Tab>('initiatives');
+  const route = useRoute();
+  // Sous-onglet dans l'adresse (#/agora/duels) : liens de l'accueil et des notifications (V4.4)
+  const tab: Tab = TABS.includes(route.param as Tab) ? (route.param as Tab) : 'initiatives';
+  const setTab = (t: Tab) => navigate('agora', t === 'initiatives' ? null : t, { replace: true });
   const openCount = (kinds: string[] | null) => data.proposals.filter((p) => p.status === 'open' && (kinds ? kinds.includes(p.kind) : !['tribunal', 'migrant_admission', 'constitution_article'].includes(p.kind))).length;
   return (
     <div>

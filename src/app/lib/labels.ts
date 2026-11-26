@@ -174,3 +174,24 @@ export const ACT_LABEL: Record<number, string> = {
   2: "Acte II — L'Autarcie Pyrénéenne",
   3: 'Acte III — La Principauté des Gaulois',
 };
+
+export const APPROVAL_KIND: Record<string, string> = {
+  plu: 'Accord PLU',
+  budget: 'Validation budgétaire',
+  eco_veto: 'Veto écologique',
+};
+
+export const APPROVAL_STATUS: Record<string, string> = {
+  pending: 'En attente',
+  approved: 'Accordée',
+  rejected: 'Refusée',
+  expired: 'Expirée',
+  executed: 'Exécutée',
+};
+
+export const PLAYER_STATUS: Record<string, string> = {
+  active: 'Actif',
+  forced_labor: 'Travaux forcés',
+  banished: 'Banni',
+  executed: 'Exécuté',
+};

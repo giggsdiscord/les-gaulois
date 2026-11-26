@@ -4,7 +4,6 @@ import { NOTIFICATION_CATEGORIES, type NotificationCategory, type NotificationSe
 import { detectPushState, disablePush, enablePush } from '../lib/push.ts';
 import type { PushState } from '../lib/pushState.ts';
 import { useGame } from '../state/GameContext.tsx';
-import { BellIcon } from './icons.tsx';
 import { Button, Sheet, Spinner, cx } from './ui.tsx';
 
 const LABELS: Record<NotificationCategory, { emoji: string; label: string; hint: string }> = {
@@ -26,20 +25,7 @@ const STATE_TEXT: Record<PushState, string> = {
   on: '✅ Activées sur cet appareil.',
 };
 
-export function NotificationsButton() {
-  const [open, setOpen] = useState(false);
-  const close = useCallback(() => setOpen(false), []);
-  return (
-    <>
-      <button onClick={() => setOpen(true)} className="rounded-full p-1.5 text-parchment-100 hover:bg-black/20" aria-label="Notifications" title="Notifications">
-        <BellIcon className="h-5 w-5" />
-      </button>
-      {open && <NotificationsSheet onClose={close} />}
-    </>
-  );
-}
-
-function NotificationsSheet({ onClose }: { onClose: () => void }) {
+export function NotificationsSheet({ onClose }: { onClose: () => void }) {
   const { api, toast } = useGame();
   const [state, setState] = useState<PushState | null>(null);
   const [settings, setSettings] = useState<NotificationSettings | null>(null);

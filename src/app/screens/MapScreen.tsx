@@ -1,12 +1,63 @@
-/** Écran 1 — Carte interactive du hameau (SVG 2D, viewBox 1000 × 700). */
+/**
+ * Écran 1 — Le hameau : « Aujourd'hui » (ce qui vous attend, V4.4) puis carte interactive
+ * (SVG 2D, viewBox 1000 × 700).
+ */
 import { useMemo, useState } from 'react';
 import type { ActionDef } from '../engine.ts';
 import type { Structure } from '../api/types.ts';
-import { ActionSheet, LockBadges } from '../components/ActionSheet.tsx';
-import { Badge, Button, Card, Gauge, Sheet, Stat, cx } from '../components/ui.tsx';
+import { ActionRow, ActionSheet } from '../components/ActionSheet.tsx';
+import { TEMPTATION_REOPEN_EVENT } from '../components/Modals.tsx';
+import { Badge, Card, Gauge, Sheet, Stat, cx } from '../components/ui.tsx';
+import { actionBlockReason, situationFor } from '../lib/actionHints.ts';
+import { countdown } from '../lib/format.ts';
 import { availableActions, population, STRUCTURE_ACTION_KINDS } from '../lib/game.ts';
-import { ENERGY_LABEL, STRUCTURE_STATUS } from '../lib/labels.ts';
-import { useData } from '../state/GameContext.tsx';
+import { ACT_LABEL, ENERGY_LABEL, STRUCTURE_STATUS } from '../lib/labels.ts';
+import { navigate } from '../lib/router.ts';
+import { nextAgora, todoItems, type TodoItem } from '../lib/todo.ts';
+import { useData, useNow } from '../state/GameContext.tsx';
+import { useUnread } from '../state/UnreadContext.tsx';
+
+/** Carte « Aujourd'hui » : tout ce qui attend le joueur, un appui pour y aller. */
+function TodayCard() {
+  const data = useData();
+  const now = useNow(30_000);
+  const { counts } = useUnread();
+  const items = todoItems(data, now, counts);
+  const v = data.village;
+  const open = (item: TodoItem) => (item.route === 'tentation' ? window.dispatchEvent(new Event(TEMPTATION_REOPEN_EVENT)) : navigate(item.route, item.param));
+  const agora = nextAgora(now);
+  return (
+    <Card flush>
+      <div className="flex items-baseline justify-between gap-2 px-4 pt-3">
+        <h2 className="font-serif text-lg text-ink">Aujourd'hui</h2>
+        <span className="text-xs text-ink-soft">Autonomie {Math.round(v.autonomy_pct)} %</span>
+      </div>
+      <p className="px-4 text-xs text-ink-soft">
+        {ACT_LABEL[v.act_number] ?? `Acte ${v.act_number}`} · Agora dans {countdown(agora.toISOString(), now)}
+      </p>
+      {items.length === 0 ? (
+        <p className="px-4 py-3 text-sm text-ink-soft">Rien ne vous attend : profitez du calme du hameau. 🌿</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-parchment-200 border-t border-parchment-200">
+          {items.map((item) => (
+            <li key={item.key}>
+              <button onClick={() => open(item)} className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left active:bg-parchment-100">
+                <span className="w-7 shrink-0 text-center text-xl" aria-hidden="true">
+                  {item.emoji}
+                </span>
+                <span className={cx('min-w-0 flex-1 text-sm', item.tone === 'urgent' ? 'font-semibold text-ink' : item.tone === 'info' ? 'text-ink-soft' : 'text-ink')}>{item.text}</span>
+                {item.tone === 'urgent' && <span className="h-2 w-2 shrink-0 rounded-full bg-ember-600" aria-hidden="true" />}
+                <span className="shrink-0 text-lg text-wood-500" aria-hidden="true">
+                  ›
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
 
 const LANDSCAPE = ['forest', 'river', 'track', 'pipe', 'power_line'];
 
@@ -44,6 +95,7 @@ function trackColor(condition: number): string {
 
 export function MapScreen() {
   const data = useData();
+  const now = useNow(60_000);
   const [selected, setSelected] = useState<Structure | null>(null);
   const [action, setAction] = useState<ActionDef | null>(null);
   const v = data.village;
@@ -65,7 +117,8 @@ export function MapScreen() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <TodayCard />
+      <div className="grid grid-cols-2 gap-2">
         <Stat label="Habitants" value={pop.total} sub={`${v.housing_capacity} lits PLU`} tone={pop.total > v.housing_capacity ? 'ember' : undefined} />
         <Stat label="Eau" value={`${v.water_capacity_l_day} L/j`} sub={`besoin ≈ ${pop.total * 150} L + potager`} tone={v.water_capacity_l_day < pop.total * 150 ? 'ember' : undefined} />
         <Stat label="Énergie" value={ENERGY_LABEL[v.energy_tier]} sub={`palier ${v.energy_tier}/5`} />
@@ -230,24 +283,17 @@ export function MapScreen() {
             {selected.status !== 'operational' && selected.status !== 'planned' && <Gauge label="Avancement du chantier" value={selected.progress_pct} />}
           </div>
           {myStructureActions.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-ink">Vos actions sur cet ouvrage</p>
-              {myStructureActions.map((a) => (
-                <button key={a.code} onClick={() => setAction(a)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-parchment-200 bg-white px-3 py-2.5 text-left">
-                  <span>
-                    <span className="block text-sm font-semibold">{a.label}</span>
-                    <LockBadges def={a} />
-                  </span>
-                  <span className="text-wood-600">→</span>
-                </button>
-              ))}
+            <div>
+              <p className="mb-2 text-sm font-semibold text-ink">Vos actions sur cet ouvrage</p>
+              <Card flush className="divide-y divide-parchment-200">
+                {myStructureActions.map((a) => (
+                  <ActionRow key={a.code} def={a} reason={actionBlockReason(a, situationFor(data, null, now))} onClick={() => setAction(a)} />
+                ))}
+              </Card>
             </div>
           ) : (
             <p className="text-sm text-ink-soft">Aucune de vos actions ne porte sur cet ouvrage.</p>
           )}
-          <Button variant="secondary" className="mt-4 w-full" onClick={() => setSelected(null)}>
-            Fermer
-          </Button>
         </Sheet>
       )}
       {selected && action && (

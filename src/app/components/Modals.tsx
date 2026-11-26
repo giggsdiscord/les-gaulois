@@ -1,5 +1,5 @@
 /** Fenêtres imposées : changement du PIN initial, Tentations & Dérives. */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TEMPTATION_CATEGORY } from '../lib/labels.ts';
 import { countdown } from '../lib/format.ts';
 import { useData, useGame, useNow } from '../state/GameContext.tsx';
@@ -12,7 +12,7 @@ export function ChangePinModal({ forced, onClose }: { forced?: boolean; onClose?
   const [confirm, setConfirm] = useState('');
   const valid = /^\d{4}$/.test(pin) && pin === confirm && pin !== '0000';
   return (
-    <Sheet open onClose={() => !forced && onClose?.()} title={forced ? 'Choisissez votre code PIN' : 'Changer mon code PIN'}>
+    <Sheet open persistent={forced} onClose={() => !forced && onClose?.()} title={forced ? 'Choisissez votre code PIN' : 'Changer mon code PIN'}>
       {forced && <p className="mb-4 text-sm text-ink-soft">Première connexion : remplacez le code « 0000 » par un code personnel à 4 chiffres.</p>}
       <div className="space-y-3">
         {!forced && (
@@ -34,11 +34,19 @@ export function ChangePinModal({ forced, onClose }: { forced?: boolean; onClose?
   );
 }
 
+export const TEMPTATION_REOPEN_EVENT = 'gaulois:temptation';
+
 export function TemptationModal() {
   const data = useData();
   const { api, perform, toast } = useGame();
   const now = useNow(1000);
   const [dismissed, setDismissed] = useState<string | null>(null);
+  // « Décider plus tard » : la liste « À faire » de l'accueil rouvre la fenêtre (V4.4)
+  useEffect(() => {
+    const reopen = () => setDismissed(null);
+    window.addEventListener(TEMPTATION_REOPEN_EVENT, reopen);
+    return () => window.removeEventListener(TEMPTATION_REOPEN_EVENT, reopen);
+  }, []);
   const pending = data.temptations.find((t) => t.choice === 'pending' && new Date(t.expires_at).getTime() > now.getTime() && t.id !== dismissed);
   if (!pending) return null;
   const answer = async (yieldToIt: boolean) => {

@@ -3,7 +3,8 @@ import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } fr
 import type { GazetteEdition, TavernMessage } from '../api/types.ts';
 import { navigate, useRoute } from '../lib/router.ts';
 import { useUnread } from '../state/UnreadContext.tsx';
-import { Avatar, Badge, Button, Card, Empty, SectionTitle, Tabs, TextArea, cx } from '../components/ui.tsx';
+import { Avatar, Badge, Button, Card, Empty, SectionTitle, Segmented, Tabs, TextArea, cx } from '../components/ui.tsx';
+import { isMajorEvent, splitPublicEvents } from '../lib/events.ts';
 import { dateLong, relative, timeShort } from '../lib/format.ts';
 import { CHANNEL_LABEL } from '../lib/labels.ts';
 import { useData, useGame, useNow } from '../state/GameContext.tsx';
@@ -102,7 +103,9 @@ function Gazette() {
   }, [visible, counts?.gazette, markSeen]);
   const [archive, setArchive] = useState(false);
   const [latest, ...older] = data.gazette;
-  const events = data.events.filter((e) => e.visibility === 'public').slice(0, 30);
+  const [feed, setFeed] = useState<'facts' | 'duels'>('facts');
+  const { facts, duels } = splitPublicEvents(data.events);
+  const events = feed === 'facts' ? facts : duels;
   const v = data.village;
   return (
     <div className="space-y-4">
@@ -115,19 +118,37 @@ function Gazette() {
         {v.real_news_headline && <p className="mt-1 text-sm text-ink-soft">📰 {v.real_news_headline}</p>}
       </Card>
       <SectionTitle>Fil des événements</SectionTitle>
+      <Segmented<'facts' | 'duels'>
+        value={feed}
+        onChange={setFeed}
+        options={[
+          { id: 'facts', label: 'Faits de jeu' },
+          { id: 'duels', label: `⚔️ Duels${duels.length ? ` (${duels.length})` : ''}` },
+        ]}
+      />
       {events.length === 0 ? (
-        <Empty>Rien à signaler.</Empty>
+        <Empty>{feed === 'facts' ? 'Rien à signaler.' : 'Aucun duel récent.'}</Empty>
       ) : (
-        <Card>
+        <Card flush>
           <ul className="divide-y divide-parchment-200">
-            {events.map((e) => (
-              <li key={e.id} className="py-2">
-                <p className="text-sm font-semibold leading-snug">{e.title}</p>
-                {e.body && <p className="text-sm text-ink-soft">{e.body}</p>}
-                <p className="text-xs text-ink-soft">{relative(e.created_at, now)}</p>
-              </li>
-            ))}
+            {events.map((e) => {
+              const major = feed === 'facts' && isMajorEvent(e);
+              return (
+                <li key={e.id} className={cx('px-4 py-2.5', major && 'border-l-4 border-l-ember-600 bg-ember-100/40 pl-3')}>
+                  <p className={cx('text-sm font-semibold leading-snug', major && 'text-ember-600')}>{e.title}</p>
+                  {e.body && <p className="text-sm text-ink-soft">{e.body}</p>}
+                  <p className="text-xs text-ink-soft">{relative(e.created_at, now)}</p>
+                </li>
+              );
+            })}
           </ul>
+          {feed === 'duels' && (
+            <div className="border-t border-parchment-200 px-4 py-2">
+              <Button size="sm" variant="ghost" className="w-full" onClick={() => navigate('agora', 'duels')}>
+                Duels en cours et défis → Agora
+              </Button>
+            </div>
+          )}
         </Card>
       )}
       {older.length > 0 && (
@@ -151,7 +172,7 @@ function Tavern({ initialChannel }: { initialChannel: TavernMessage['channel'] }
   const [channel, setChannelState] = useState<TavernMessage['channel']>(initialChannel);
   const setChannel = (c: TavernMessage['channel']) => {
     setChannelState(c);
-    navigate('gazette', PARAM_OF_CHANNEL[c]);
+    navigate('gazette', PARAM_OF_CHANNEL[c], { replace: true });
   };
   useEffect(() => setChannelState(initialChannel), [initialChannel]);
   const [messages, setMessages] = useState<TavernMessage[]>([]);
@@ -310,7 +331,7 @@ export function GazetteScreen() {
         value={tab}
         onChange={(t) => {
           setTab(t);
-          navigate('gazette', t === 'taverne' ? PARAM_OF_CHANNEL[linked ?? 'village_square'] : null);
+          navigate('gazette', t === 'taverne' ? PARAM_OF_CHANNEL[linked ?? 'village_square'] : null, { replace: true });
         }}
         tabs={[
           { id: 'gazette', label: 'La Gazette', badge: tab === 'gazette' ? 0 : counts?.gazette ?? 0 },

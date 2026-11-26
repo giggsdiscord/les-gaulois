@@ -38,7 +38,7 @@ function Steps({ mode }: { mode: InstallMode }) {
   );
 }
 
-function useInstallAction() {
+export function useInstallAction() {
   const mode = useInstallMode();
   const [help, setHelp] = useState(false);
   const close = useCallback(() => setHelp(false), []);
@@ -79,16 +79,3 @@ export function InstallCard() {
   );
 }
 
-/** Bouton discret de l'en-tête, seulement quand l'installation est réellement possible. */
-export function InstallHeaderButton() {
-  const { mode, start, sheet } = useInstallAction();
-  if (mode !== 'prompt' && mode !== 'ios') return null;
-  return (
-    <>
-      <button onClick={start} className="rounded-full p-1.5 text-parchment-100 hover:bg-black/20" aria-label="Installer l'appli" title="Installer l'appli">
-        <InstallIcon className="h-5 w-5" />
-      </button>
-      {sheet}
-    </>
-  );
-}
