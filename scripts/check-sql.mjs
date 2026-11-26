@@ -60,6 +60,24 @@ await db.exec(readFileSync(join(root, 'supabase', 'seed.sql'), 'utf8'));
 const counts = (await db.query(`SELECT (SELECT count(*) FROM players)::int AS players, (SELECT count(*) FROM map_structures)::int AS structures, (SELECT count(*) FROM player_pins)::int AS pins`)).rows[0];
 check('10 joueurs, 10 PIN, carte du hameau', counts.players === 10 && counts.pins === 10 && counts.structures >= 25, JSON.stringify(counts));
 
+// Supabase active pg_safeupdate pour les appels de l'API : tout UPDATE / DELETE sans WHERE
+// échoue (« UPDATE requires a WHERE clause »), même dans une fonction. PGlite ne l'a pas :
+// on contrôle donc le corps des fonctions réellement installées (dernière définition).
+console.log('• pg_safeupdate (UPDATE / DELETE avec WHERE)');
+{
+  const procs = (await db.query(`SELECT p.proname, p.prosrc FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public'`)).rows;
+  const offenders = [];
+  for (const { proname, prosrc } of procs) {
+    const src = prosrc.replace(/--[^\n]*/g, '').replace(/'(?:[^']|'')*'/g, "''");
+    for (const m of src.matchAll(/\b(?:UPDATE\s+(?:ONLY\s+)?[a-z_.]+\s+(?:[a-z_]+\s+)?SET|DELETE\s+FROM)\b[^;]*/gi)) {
+      const before = src.slice(Math.max(0, m.index - 12), m.index);
+      if (/DO\s+$/i.test(before)) continue; // ON CONFLICT … DO UPDATE SET
+      if (!/\bWHERE\b/i.test(m[0])) offenders.push(`${proname} : ${m[0].replace(/\s+/g, ' ').slice(0, 80)}`);
+    }
+  }
+  check(`aucune requête refusée par pg_safeupdate (${procs.length} fonctions)`, offenders.length === 0, offenders.join(' | '));
+}
+
 const one = async (sql, params = []) => (await db.query(sql, params)).rows[0];
 const setToken = (token) => db.query(`SELECT set_config('request.headers', $1, false)`, [JSON.stringify(token ? { 'x-player-token': token } : {})]);
 

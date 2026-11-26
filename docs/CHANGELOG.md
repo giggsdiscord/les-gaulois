@@ -3,6 +3,7 @@
 ### V4.2 — 26/11/2026 — Application installable
 - Le jeu s'installe comme une application depuis le navigateur (§7.6) : manifeste `public/manifest.webmanifest`, icônes (192, 512, maskable, iOS ; `npm run icons`), service worker `public/sw.js` (fichiers du site uniquement, jamais les appels Supabase ; page réseau d'abord).
 - Bouton « Installer l'appli » : encart sur l'écran de connexion, icône dans l'en-tête quand c'est possible ; invite native sur Chrome / Edge / Android, consignes Safari sur iPhone / iPad, consignes du menu ailleurs.
+- Correctif : toute action jouée en ligne échouait (« Erreur interne du moteur ») car Supabase (pg_safeupdate) refuse un `UPDATE` sans `WHERE`, même dans une fonction ; migration `20261129000100_safeupdate_where.sql` (`engine_commit`, `restore_daily_snapshot`). `sql:check` contrôle désormais toutes les fonctions installées, et un test rejoue une action réelle jusqu'à `engine_commit`.
 - `deploy:check` lit `.env.deploy` (et le secret dans `.env.cron`) : un `.env.local` rempli faisait passer `npm run dev` sur la vraie partie au lieu du mode démo.
 
 ### V4.1 — 26/11/2026 — Déploiement express
