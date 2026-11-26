@@ -15,7 +15,7 @@ Liste demandée par l'utilisateur le 26/11/2026 : **toutes ces idées sont à r�
 | Version | Contenu | État |
 |---|---|---|
 | V4.8 | **Marché d'Organyà** (vendre tomates, bois, conserves ; +30 % le samedi ; saturation hebdomadaire), **couper du bois**, **chauffage** des bâtisses chaque nuit froide, **conserves** de tomates | ✅ `0b2d35e` |
-| V4.9 | **Travail des résidents** : affecter chaque résident à un poste (potager, forêt, chantier, forge, pâturage, réseau d'eau, piste…) ; production chaque nuit selon sa spécialité et son niveau ; interface dans Agora → Immigration (liste des résidents) ; Réserves et « À faire en priorité » à jour (résidents sans poste) | À faire |
+| V4.9 | **Travail des résidents** : affecter chaque résident à un poste (potager, forêt, chantier, forge, pâturage, réseau d'eau, piste…) ; production chaque nuit selon sa spécialité et son niveau ; interface dans Agora → Immigration (liste des résidents) ; Réserves et « À faire en priorité » à jour (résidents sans poste). **Complément V4.8** : droit de regard d'Ely sur les coupes de bois (elle peut interdire les coupes pour la semaine, comme son veto écologique) | À faire |
 | V5.0 | **Chantier collectif de la semaine** : un projet choisi à l'Agora (ou proposé), tout le monde peut y mettre des PA, barre de progression commune, bonus si fini avant dimanche | À faire |
 | V5.1 | **Objectifs d'Acte en liste à cocher** (ex. Acte I : électricité, 20 lits, 300 m² de potager, gîte ouvert) avec une récompense à chaque étape | À faire |
 | V5.2 | **Ambitions secrètes** : chaque joueur reçoit un objectif caché (devenir le plus riche, faire voter 3 lois…), révélé en fin de saison | À faire |
@@ -23,7 +23,7 @@ Liste demandée par l'utilisateur le 26/11/2026 : **toutes ces idées sont à r�
 | V5.4 | **Élections vivantes** pour les places 8 à 10 à l'Acte II : candidats, programme, débat à la Taverne, vote | À faire |
 | V5.5 | **Nouveaux bâtiments** : four à pain, fromagerie, chambre froide, scierie, moulin sur la rivière, lavoir (moins d'épidémies), infirmerie, poulailler, ruches, serre (légumes d'hiver), bar du hameau, hangar ; **choix d'une parcelle libre** sur la carte | À faire |
 | V5.6 | **Améliorations par niveaux** (ex. Casa Gran niveau 2 : +2 lits, isolation → moins de bois) et **usure** des bâtiments (entretien régulier, plus rapide l'hiver) | À faire |
-| V5.7 | **Filières** (lait → fromage, prunes → ratafia légal), **péremption** des vivres frais l'été sans chambre froide, **limites de stockage** (le hangar les relève) | À faire |
+| V5.7 | **Filières** (lait → fromage, prunes → ratafia légal) avec **fromage vendu au marché d'Organyà**, **péremption** des vivres frais l'été sans chambre froide, **limites de stockage** (le hangar les relève) | À faire |
 | V5.8 | **Calendrier catalan réel** : Sant Joan, Diada (11 septembre), Castanyada, Nadal et Caga Tió, Carnaval — chaque fête devient un événement avec une décision collective | À faire |
 | V5.9 | **Résidents avec une personnalité** : prénom, humeur, relations, petites histoires dans la Gazette | À faire |
 | V6.0 | **Relations avec les voisins** : jauges Organyà, mairie (Ayuntamiento), Mossos ; petites missions (« le maire d'Organyà demande de déneiger la route ») | À faire |
@@ -31,6 +31,53 @@ Liste demandée par l'utilisateur le 26/11/2026 : **toutes ces idées sont à r�
 | V6.2 | **Bilan de la semaine** dans la Gazette du dimanche (qui a fait quoi, records, « habitant de la semaine ») et **frise datée** des grandes étapes du hameau | À faire |
 
 Les versions suivent le protocole de `CLAUDE.md` (+0,1 à chaque fois ; après V4.9 vient V5.0).
+
+## Liste complète des idées (texte proposé le 26/11/2026, à conserver tel quel)
+
+L'utilisateur a demandé de **bien noter toutes ces idées** : rien ne doit être oublié. Entre crochets, la version qui s'en charge.
+
+**Constats sur le moteur**
+- Tomates : elles ne servent qu'au lancer sur les BOR. [✅ V4.8 : marché, conserves]
+- Bois, pierre, fer : ces réserves ne baissent jamais toutes seules, et rien ne produit du bois : on ne peut que l'acheter. [✅ V4.8 pour le bois : coupe et chauffage ; pierre et fer : V5.6 usure et entretien]
+- Dette : ce pilier (20 points d'autonomie) bouge à peine. Rembourser 295 000 € à 360 € par semaine prend des années. [à traiter au fil des versions : plus de revenus (marché, gîte, filières) et récompenses d'objectifs d'Acte V5.1]
+- Argent : avant le gîte, presque rien ne rapporte. Une négociation donne 300 €, et l'autre source est une taxe votée à l'Agora. [✅ V4.8 marché ; V5.7 filières]
+- Résidents : les migrants comptent surtout comme population, on ne peut pas leur donner de travail. [V4.9]
+- Pas de collectif : chacun joue ses 3 PA dans son coin, sans objectif commun du jour. [V5.0]
+
+**Progression**
+- Objectifs d'Acte en liste à cocher : pour l'Acte I par exemple, électricité, 20 lits, 300 m² de potager, gîte ouvert. Chaque étape cochée donne une récompense, et c'est plus parlant qu'un pourcentage d'autonomie. [V5.1]
+- Chantier collectif de la semaine, voté à l'Agora : chacun peut y mettre des PA, une barre de progression est commune à tous, et un bonus tombe s'il est fini avant dimanche. [V5.0]
+- Niveaux de métier visibles : le moteur compte déjà l'expérience. Les niveaux 2, 3 ou 4 débloqueraient des bonus, par exemple +20 % sur les chantiers de Tiphaine ou une fournée double à la forge de Julio. [V5.3]
+- Frise du hameau : l'historique daté des grandes étapes, comme « groupe électrogène installé le… ». [V6.2]
+
+**Ressources et économie**
+- Marché du samedi à Organyà : vendre tomates, conserves, bois et fromage. L'argent viendrait alors du travail, pas seulement de la chance. [✅ V4.8 ; fromage en V5.7]
+- Bois : une nouvelle action « Couper du bois » en forêt, avec un droit de regard d'Ely contre les coupes excessives. S'y ajoute le chauffage en hiver selon la température réelle : le bois devient vital quand il fait froid. [✅ V4.8 coupe et chauffage ; droit de regard d'Ely en V4.9]
+- Filières de transformation : le lait devient du fromage, les tomates des conserves pour l'hiver, les prunes un ratafia légal. [✅ V4.8 conserves ; V5.7 fromage et ratafia]
+- Péremption : les vivres frais se gâtent l'été sans chambre froide, ce qui donne une raison concrète de vouloir l'électricité. [V5.7]
+- Stockage limité : un hangar augmente la quantité qu'on peut garder de chaque réserve. [V5.7]
+
+**Rôles**
+- Travail des résidents : affecter chaque migrant au potager, à la forêt, à un chantier ou à la forge, et il produit chaque nuit. Les migrants deviennent une vraie main-d'œuvre à gérer. [V4.9]
+- Ambitions secrètes : chaque joueur reçoit un objectif caché (devenir le plus riche, faire voter 3 lois…), révélé en fin de saison. Ça colle bien aux chuchotements, aux tentations et aux putschs. [V5.2]
+- Bonus d'action à deux : quand deux joueurs agissent ensemble le même jour (Tanguy et Brunel sur une cure, Ely et Julio en négociation), ils gagnent un bonus. [V5.3]
+- Mission du jour par métier : une action conseillée chaque jour, avec une petite récompense si elle est faite. [V5.3]
+- Élections vivantes pour les places 8 à 10 à l'Acte II : candidats, programme, débat à la Taverne. [V5.4]
+
+**Constructions**
+- Nouveaux bâtiments utiles : four à pain, fromagerie, chambre froide, scierie ; moulin sur la rivière, lavoir (moins d'épidémies), infirmerie ; poulailler et ruches, serre pour les légumes d'hiver, bar du hameau. [V5.5, avec le hangar]
+- Améliorations par niveaux : par exemple Casa Gran niveau 2, avec 2 lits de plus et une meilleure isolation, donc moins de bois brûlé. [V5.6]
+- Usure : les bâtiments s'abîment doucement (plus vite l'hiver), et l'entretien devient une tâche régulière. [V5.6]
+- Choix d'une parcelle libre sur la carte pour un nouveau bâtiment. [V5.5]
+
+**Vie du village**
+- Calendrier catalan réel : Sant Joan, la Diada du 11 septembre, la Castanyada, Nadal et le Caga Tió, le Carnaval. Chaque fête devient un événement avec une décision collective. [V5.8]
+- Résidents avec une personnalité : prénom, humeur, relations, petites histoires dans la Gazette. [V5.9]
+- Relations avec les voisins : une jauge pour Organyà, une pour la mairie, une pour les Mossos, et de petites missions comme « le maire d'Organyà demande de déneiger la route ». [V6.0]
+- Visiteurs imprévus à qui répondre vite : randonneur perdu, journaliste, inspecteur, vendeur ambulant. [V6.1]
+- Bilan de la semaine dans la Gazette du dimanche : qui a fait quoi, les records, l'« habitant de la semaine ». [V6.2]
+
+**Top 5 retenu en premier** (meilleur plaisir pour un effort raisonnable) : 1. marché du samedi avec de vrais usages pour les tomates et le bois [✅ V4.8] ; 2. travail des résidents [V4.9] ; 3. chantier collectif de la semaine [V5.0] ; 4. objectifs d'Acte à cocher avec récompenses [V5.1] ; 5. ambitions secrètes [V5.2]. Le chauffage au bois en hiver, plus petit, a accompagné le premier [✅ V4.8].
 
 ## Méthode pour chaque session
 1. Lire `CLAUDE.md` (protocole de documentation continue, conventions, section « Série vie du village ») puis ce fichier ; prendre la **première ligne « À faire »**.
