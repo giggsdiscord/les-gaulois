@@ -5,6 +5,7 @@
 - Aucune CLI requise sur le PC : nouveau workflow `.github/workflows/deploy-functions.yml` (déploiement des Edge Functions par GitHub Actions, `supabase/setup-cli@v3`).
 - `npm run deploy:check` : vérification en lecture seule d'un déploiement réel (base, droits de la clé publique, fonctions, CORS, site branché sur Supabase, maintenance).
 - `supabase/cron.sql` rejouable et protégé (valeurs à remplacer, secret ≥ 24 caractères) ; Edge Functions compatibles avec les nouvelles clés Supabase (`SUPABASE_SECRET_KEYS`, clé publique `sb_publishable_…`).
+- Correctif (premier déploiement réel) : les commandes de copie des scripts SQL utilisent `-Encoding UTF8` (sinon Windows PowerShell 5.1 abîme accents et emojis) ; `deploy:check` détecte désormais un texte mal encodé en base.
 - `npm run sql:check` vérifie désormais le contrat complet entre l'interface et la base (RPC, colonnes, droits, opérations, Realtime) et simule la planification ; 129 tests Vitest.
 
 ### V4.0 — 26/11/2026 — Interface mobile, épreuve de la cible & mode démo

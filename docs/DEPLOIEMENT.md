@@ -67,8 +67,10 @@ node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"
 1. Copiez le script complet dans le presse-papiers :
 
 ```powershell
-Get-Content supabase\setup_complete.sql -Raw | Set-Clipboard
+Get-Content supabase\setup_complete.sql -Raw -Encoding UTF8 | Set-Clipboard
 ```
+
+> **`-Encoding UTF8` est indispensable** : sans lui, Windows PowerShell 5.1 lit le fichier en ANSI et tous les accents et emojis arrivent abîmés dans la base (`TrÃ©sorier` au lieu de `Trésorier`).
 
 2. Supabase > **SQL Editor** > **New query** → collez → **Run**. Résultat attendu : *Success. No rows returned*.
 3. Contrôle (nouvelle requête) :
@@ -148,7 +150,7 @@ Une fois les Edge Functions déployées :
 1. Copiez le script :
 
 ```powershell
-Get-Content supabase\cron.sql -Raw | Set-Clipboard
+Get-Content supabase\cron.sql -Raw -Encoding UTF8 | Set-Clipboard
 ```
 
 2. SQL Editor > New query → collez → remplacez **`<PROJECT_REF>`** par votre `<ref>` et **`<CRON_SECRET>`** par votre secret (le même qu'à l'étape 3) → **Run**. Le script refuse de s'exécuter si un chevron reste, et peut être relancé sans risque (il met à jour au lieu de dupliquer).
@@ -209,6 +211,7 @@ Le script contrôle, **sans rien modifier** : la base installée, les tables sec
 
 | Symptôme | Cause probable | Solution |
 |---|---|---|
+| Accents et emojis illisibles (`TrÃ©sorier`, `ðŸŒ¿`) | Script SQL copié sans `-Encoding UTF8` | Partie encore vierge uniquement : effacer le schéma `public`, puis recoller `setup_complete.sql` (avec `-Encoding UTF8`) et `cron.sql`. Demandez de l'aide avant si des joueurs ont déjà joué. |
 | Le site affiche « Mode démo » | Variables `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` absentes au moment du build | Posez-les (étape 4.2), puis Actions > *Déploiement GitHub Pages* > Run workflow. |
 | Workflow Pages en échec à l'étape *deploy* | Pages pas encore réglé sur « GitHub Actions » | Settings > Pages > Source : GitHub Actions, puis *Re-run all jobs*. |
 | Workflow Edge Functions « skipped » | Variable `SUPABASE_PROJECT_REF` absente | Ajoutez-la, puis Run workflow. |

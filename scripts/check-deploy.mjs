@@ -80,7 +80,7 @@ const short = (r) => `HTTP ${r.status} ${(r.json?.message ?? r.json?.error ?? r.
 console.log(`Projet : ${new URL(url).host}${site ? ` · site : ${site}` : ''}\n`);
 
 console.log('• Base de données (setup_complete.sql)');
-const players = await http('/rest/v1/players_public?select=display_name,slot_number,is_active_slot&order=slot_number');
+const players = await http('/rest/v1/players_public?select=display_name,role_title,slot_number,is_active_slot&order=slot_number');
 if (players.status === 0) {
   console.log(`  ✗ projet injoignable — ${players.text}. Vérifiez l'URL (Settings > API Keys / Data API) et la connexion.`);
   process.exit(1);
@@ -88,6 +88,8 @@ if (players.status === 0) {
 check('vue players_public lisible avec la clé publique', players.status === 200 && Array.isArray(players.json), short(players));
 if (Array.isArray(players.json)) {
   check('10 places, 7 fondateurs actifs', players.json.length === 10 && players.json.filter((p) => p.is_active_slot).length >= 7, `${players.json.length} place(s)`);
+  const garbled = players.json.find((p) => /[ÃÂð][\u0080-ÿŒ-™]/.test(`${p.display_name} ${p.role_title ?? ''}`));
+  check('accents et emojis encodés en UTF-8', !garbled, garbled ? `« ${garbled.role_title} » : script SQL copié sans -Encoding UTF8 (voir Dépannage)` : '');
 }
 const village = await http('/rest/v1/village_public_state?select=act_number,treasury_eur,last_tick_at');
 check('état public du village', village.status === 200 && Array.isArray(village.json) && village.json.length === 1, short(village));
