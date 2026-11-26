@@ -1,5 +1,12 @@
 # Historique des versions du GDD
 
+### V4.6 — 26/11/2026 — Le jeu s'explique : priorités et réserves
+- Accueil : carte **« À faire en priorité »** (§6.3) — barre d'autonomie jusqu'au prochain Acte et les 3 prochaines étapes selon l'avancement du hameau (groupe électrogène d'abord, puis raccordements, ligne aérienne, eau, potager, gîte…), urgences en tête (vivres, outils, échéances impayées, courant, fuites, pression administrative, gasoil).
+- Chaque priorité explique **pourquoi maintenant**, ce que ça rapporte, **qui peut le faire** (« vous » si c'est votre métier), les verrous (validation du trésorier au-delà de 500 €, accord PLU, caisse insuffisante, veto, matériaux) et propose **« Faire maintenant »** avec la fenêtre d'action pré-remplie.
+- Fenêtre **« Comprendre la progression »** : le but, les deux verrous, l'Acte et les six piliers de l'autonomie (énergie, eau, nourriture, dette, logement, souveraineté) avec la façon de les faire monter.
+- Trésor : les **Réserves du hameau** affichent le rythme de chaque stock et la durée restante ; un appui détaille ce qui le remplit et le vide chaque jour, à quoi il sert et comment s'en procurer (actions des métiers, catalogue au prix du jour, boutons « Faire » / « Commander »).
+- 7 nouveaux tests Vitest (priorités selon l'avancement, urgences, « vous », réserves calculées comme le moteur).
+
 ### V4.5 — 26/11/2026 — Propositions discrètes plus variées
 - Banque de **94 situations en 15 thèmes** pour les Tentations & Dérives (§6.2) : tournées, fêtes de village (Festa Major, calçotada, matança, correfoc), contrebande andorrane, jeux d'argent, stupéfiants et alambics, escapades (Caldea, Port Ainé, Salou), romances, affaires de cœur, pots-de-vin, combines sur la caisse, militantisme, rivalités entre fondateurs, ressources du village, médias, et tentations propres au métier de chaque fondateur.
 - **Plus de répétition rapprochée** : un joueur ne reçoit pas deux fois la même situation à moins de 24 dilemmes d'écart, change de thème à chaque fois (3 derniers thèmes évités) et alterne les catégories ; la météo réelle écarte les situations hors saison.

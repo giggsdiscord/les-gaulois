@@ -2,11 +2,12 @@
 import { useMemo, useState } from 'react';
 import { CATALOG, constants, getAction, purchaseCost, type CatalogItem, type VillageState } from '../engine.ts';
 import { ActionSheet } from '../components/ActionSheet.tsx';
-import { Badge, Button, Card, Empty, Gauge, SectionTitle, Stat, Tabs, cx } from '../components/ui.tsx';
+import { Badge, Button, Card, Empty, Gauge, SectionTitle, Sheet, Stat, Tabs, cx } from '../components/ui.tsx';
 import { eur, num, dateTime } from '../lib/format.ts';
 import { ACCOUNT_LABEL, ACT_LABEL, ENERGY_LABEL } from '../lib/labels.ts';
 import { playerName } from '../lib/game.ts';
-import { useData } from '../state/GameContext.tsx';
+import { reserveReport, type ReserveLine, type ReserveSource } from '../lib/reserves.ts';
+import { useData, useNow } from '../state/GameContext.tsx';
 
 type Tab = 'finances' | 'fournisseurs' | 'registre';
 
@@ -34,20 +35,97 @@ function AutonomyCard() {
   );
 }
 
+/** Détail d'une réserve : d'où elle vient, où elle part, combien de temps elle tient, comment en avoir. */
+function ReserveSheet({ line, onClose, onAct }: { line: ReserveLine; onClose: () => void; onAct: (source: ReserveSource) => void }) {
+  return (
+    <Sheet open onClose={onClose} title={`${line.emoji} ${line.label} : ${line.display}`}>
+      <div className="space-y-4 pb-4 text-sm leading-relaxed text-ink">
+        <div>
+          <h3 className="font-semibold">Chaque jour</h3>
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-ink-soft">
+            {line.daily.map((d) => (
+              <li key={d}>{d}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3 className="font-semibold">À quoi ça sert</h3>
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-ink-soft">
+            {line.uses.map((d) => (
+              <li key={d}>{d}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3 className="font-semibold">Comment s'en procurer</h3>
+          <ul className="mt-1 space-y-2">
+            {line.sources.map((src) => (
+              <li key={src.label} className="rounded-xl bg-parchment-100 px-3 py-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold leading-snug">{src.label}</p>
+                    <p className="text-ink-soft">{src.detail}</p>
+                    <p className="text-xs text-ink-soft">{src.mine ? 'Vous pouvez le faire' : `Qui : ${src.who}`}</p>
+                  </div>
+                  {src.actionCode && src.mine && (
+                    <Button size="sm" className="shrink-0" onClick={() => onAct(src)}>
+                      {src.actionCode === 'buy_supplies' ? 'Commander' : 'Faire'}
+                    </Button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </Sheet>
+  );
+}
+
+/** « Réserves du hameau » : quantité, rythme de consommation, et le détail en un appui (V4.6). */
+function ReservesCard() {
+  const data = useData();
+  const now = useNow(60_000);
+  const lines = useMemo(() => reserveReport(data, now), [data, now]);
+  const [open, setOpen] = useState<ReserveLine | null>(null);
+  const [action, setAction] = useState<ReserveSource | null>(null);
+  const def = action?.actionCode ? getAction(action.actionCode) : undefined;
+  return (
+    <Card title="Réserves du hameau" subtitle="Touchez une réserve : rythme, durée, comment en avoir.">
+      <div className="grid grid-cols-3 gap-2">
+        {lines.map((l) => (
+          <button
+            key={l.key}
+            onClick={() => setOpen(l)}
+            className={cx('rounded-xl px-1.5 py-2 text-center active:brightness-95', l.low ? 'bg-ember-100' : 'bg-parchment-100')}
+          >
+            <p className="text-lg leading-none">{l.emoji}</p>
+            <p className="mt-1 font-semibold tabular-nums">{l.display}</p>
+            <p className="text-[11px] text-ink-soft">{l.label}</p>
+            <p className={cx('mt-0.5 text-[10px] leading-tight', l.perDay !== null && l.perDay < 0 ? 'text-ember-700' : 'text-ink-soft')}>{l.rate}</p>
+            {l.daysLeft !== null && l.key !== 'tools' && <p className="text-[10px] font-semibold leading-tight text-ink">≈ {l.daysLeft} j</p>}
+          </button>
+        ))}
+      </div>
+      {open && !action && <ReserveSheet line={open} onClose={() => setOpen(null)} onAct={(src) => setAction(src)} />}
+      {action && def && (
+        <ActionSheet
+          def={def}
+          holderId={null}
+          preset={action.preset}
+          onClose={() => {
+            setAction(null);
+            setOpen(null);
+          }}
+        />
+      )}
+    </Card>
+  );
+}
+
 function Finances() {
   const data = useData();
   const v = data.village;
-  const stocks: [string, string, number | string, boolean?][] = [
-    ['🥖', 'Rations', num(v.food_rations), v.food_rations < 20],
-    ['🍅', 'Tomates', num(v.tomatoes_stock)],
-    ['🐐', 'Bétail', num(v.livestock_count)],
-    ['🪵', 'Bois', num(v.wood_stock)],
-    ['🪨', 'Pierre', num(v.stone_stock)],
-    ['⛓️', 'Fer', num(v.iron_stock)],
-    ['🛠️', 'Outils', num(v.tools_stock), v.tools_stock < 2],
-    ['💊', 'Médicaments', num(v.medicine_stock), v.medicine_stock < 2],
-    ['⛽', 'Gasoil', `${num(v.fuel_stock_l)} L`, v.fuel_stock_l < 40],
-  ];
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -58,17 +136,7 @@ function Finances() {
       </div>
       {v.collectivization_active && <Card tone="danger">Collectivisation en vigueur : les comptes privés sont réquisitionnés au profit de la caisse commune.</Card>}
       <AutonomyCard />
-      <Card title="Réserves du hameau">
-        <div className="grid grid-cols-3 gap-2">
-          {stocks.map(([icon, label, value, low]) => (
-            <div key={label} className={cx('rounded-xl px-2 py-2 text-center', low ? 'bg-ember-100' : 'bg-parchment-100')}>
-              <p className="text-lg leading-none">{icon}</p>
-              <p className="mt-1 font-semibold tabular-nums">{value}</p>
-              <p className="text-[11px] text-ink-soft">{label}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <ReservesCard />
       <Card title="Indicateurs économiques">
         <div className="grid gap-3 sm:grid-cols-2">
           <Gauge label="Productivité" value={Math.round(v.productivity_modifier_pct)} good="neutral" max={150} />

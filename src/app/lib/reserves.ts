@@ -1,0 +1,251 @@
+/**
+ * Réserves du hameau expliquées (V4.6) : pour chaque stock, ce qui le remplit et le vide chaque
+ * jour (mêmes formules que le moteur : potager, cheptel, rations par habitant, gasoil du groupe,
+ * usure des outils), combien de jours il tient, ce qui le consomme ponctuellement et comment
+ * s'en procurer (actions des métiers, catalogue des fournisseurs).
+ * Pur (aucun DOM) : testé dans tests/app/priorities.test.ts.
+ */
+import {
+  calendarSeasonOfKey,
+  CATALOG,
+  computeEnergyBalance,
+  computeGardenHarvest,
+  computeWaterBalance,
+  constants as C,
+  countPopulation,
+  dailyFoodConsumption,
+  dayKey,
+  purchaseCost,
+  type CalendarSeason,
+  type GameSnapshot,
+  type VillageState,
+} from '../engine.ts';
+import type { ActionInput, GameData } from '../api/types.ts';
+import { eur, num } from './format.ts';
+import { actorsOf } from './priorities.ts';
+
+export interface ReserveSource {
+  label: string;
+  detail: string;
+  /** Action à lancer pour s'en procurer (null : se fait tout seul). */
+  actionCode: string | null;
+  preset?: Partial<ActionInput>;
+  who: string;
+  mine: boolean;
+}
+
+export interface ReserveLine {
+  key: string;
+  emoji: string;
+  label: string;
+  amount: number;
+  /** Quantité affichée (avec unité). */
+  display: string;
+  /** Variation automatique par jour (production − consommation), null s'il n'y a pas de flux quotidien. */
+  perDay: number | null;
+  /** Rythme résumé pour la tuile (« −6,3 / jour », « 2 séances »…). */
+  rate: string;
+  /** Jours avant épuisement au rythme actuel (null : ne baisse pas tout seul). */
+  daysLeft: number | null;
+  low: boolean;
+  /** Ce qui remplit et vide la réserve chaque jour. */
+  daily: string[];
+  /** Ce qui la consomme ponctuellement, et à quoi elle sert. */
+  uses: string[];
+  /** Comment s'en procurer. */
+  sources: ReserveSource[];
+}
+
+const SEASON: Record<CalendarSeason, string> = { winter: 'hiver', spring: 'printemps', summer: 'été', autumn: 'automne' };
+
+export type ReserveData = Pick<GameData, 'me' | 'village' | 'players' | 'migrants' | 'children' | 'structures' | 'constitution'>;
+
+function snapshotOf(data: ReserveData): GameSnapshot {
+  return {
+    village: data.village,
+    players: data.players,
+    migrants: data.migrants,
+    children: data.children,
+    structures: data.structures,
+    unions: [],
+    approvals: [],
+    temptations: [],
+    constitution: data.constitution,
+  } as unknown as GameSnapshot;
+}
+
+const round1 = (x: number) => Math.round(x * 10) / 10;
+const signed = (x: number) => `${x > 0 ? '+' : x < 0 ? '−' : ''}${num(Math.abs(round1(x)))}`;
+
+export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
+  const v = data.village;
+  const s = snapshotOf(data);
+  const season = calendarSeasonOfKey(dayKey(now));
+  const pop = countPopulation(s);
+  const water = computeWaterBalance(s, season);
+  const harvest = computeGardenHarvest(s, season, water.gardenSupplyRatio);
+  const energy = computeEnergyBalance(s);
+  const pen = data.structures.find((st) => st.code === 'cleda');
+  const penReady = pen?.status === 'operational';
+
+  const act = (code: string, label: string, detail: string, preset?: Partial<ActionInput>): ReserveSource => ({ label, detail, actionCode: code, preset, ...actorsOf(code, data) });
+  const buy = (id: string): ReserveSource | null => {
+    const item = CATALOG.find((c) => c.id === id);
+    if (!item) return null;
+    const gains = Object.entries(item.effects)
+      .map(([k, x]) => (k === 'food_rations' ? `+${x} rations` : k === 'wood_stock' ? `+${x} bois` : k === 'stone_stock' ? `+${x} pierres` : k === 'iron_stock' ? `+${x} fers` : k === 'tools_stock' ? `+${x} outils` : k === 'medicine_stock' ? `+${x} remèdes` : k === 'fuel_stock_l' ? `+${x} L` : null))
+      .filter(Boolean)
+      .join(', ');
+    const cost = purchaseCost(item, 1, v as VillageState);
+    return { label: `${item.supplier} : ${item.label}`, detail: `${eur(cost)} → ${gains}${item.customs_sensitive ? ' (passage en douane)' : ''}`, actionCode: 'buy_supplies', preset: { catalog_item_id: item.id }, ...actorsOf('buy_supplies', data) };
+  };
+  const sources = (...xs: (ReserveSource | null)[]) => xs.filter((x): x is ReserveSource => x !== null);
+  const lines: ReserveLine[] = [];
+  const surcharge = v.track_condition_pct < C.TRACK_SURCHARGE_THRESHOLD ? ` Piste abîmée : livraisons +${C.TRACK_SURCHARGE_PCT} %.` : '';
+
+  // --- Rations ---------------------------------------------------------------
+  const consumption = dailyFoodConsumption(s);
+  const herd = v.livestock_count * C.LIVESTOCK_RATIONS_PER_HEAD_DAY;
+  const foodNet = harvest.rations + herd - consumption;
+  const foodDays = foodNet < 0 ? Math.floor(v.food_rations / -foodNet) : null;
+  lines.push({
+    key: 'food', emoji: '🥖', label: 'Rations', amount: v.food_rations, display: num(Math.floor(v.food_rations)),
+    perDay: round1(foodNet), rate: `${signed(foodNet)} / jour`, daysLeft: foodDays, low: foodDays !== null && foodDays < 5,
+    daily: [
+      `Consommation : ${pop.adults} ${pop.adults > 1 ? 'adultes' : 'adulte'} × ${C.RATIONS_ADULT_DAY}${pop.children > 0 ? ` + ${pop.children} enfant(s) × ${C.RATIONS_CHILD_DAY}` : ''} = −${num(round1(consumption))} par jour${v.rationing_active ? ` (rationnement : ×${C.RATIONING_FACTOR})` : ''}.`,
+      `Potager : +${num(round1(harvest.rations))} par jour (${SEASON[season]}${water.gardenSupplyRatio < 1 ? `, arrosé à ${Math.round(water.gardenSupplyRatio * 100)} % faute d'eau` : ''}).`,
+      `Cheptel : +${num(round1(herd))} par jour (${v.livestock_count} ${v.livestock_count > 1 ? 'bêtes' : 'bête'} × ${num(C.LIVESTOCK_RATIONS_PER_HEAD_DAY)}).`,
+      foodDays !== null ? `Au rythme actuel, la réserve tient environ ${foodDays} ${foodDays > 1 ? 'jours' : 'jour'}. À zéro : faim, santé et moral en chute.` : 'La production couvre la consommation : la réserve ne baisse pas.',
+    ],
+    uses: [
+      'Nourrir tous les habitants, chaque jour (voir ci-dessus).',
+      `Lancer de tomates sur les BOR : −${C.TOMATO_THROW_RATIONS} rations. Les sangliers en volent parfois quand le périmètre est mal gardé.`,
+    ],
+    sources: sources(
+      act('fish_hunt', 'Pêche & chasse', 'Environ 6 (hiver) à 14 (automne) rations par séance.'),
+      act('garden_tend', 'Entretenir le potager', 'Récolte immédiate de la saison.'),
+      act('butcher_livestock', 'Boucherie du cheptel', '1 bête → 25 rations.'),
+      buy('andorre_conserves'),
+      act('expand_garden', 'Agrandir le potager', '+100 m² : plus de récolte chaque jour, pour toujours (150 €).'),
+    ),
+  });
+
+  // --- Tomates ---------------------------------------------------------------
+  const tomatoShare = C.TOMATO_SHARE[season];
+  lines.push({
+    key: 'tomatoes', emoji: '🍅', label: 'Tomates', amount: v.tomatoes_stock, display: `${num(Math.floor(v.tomatoes_stock))} kg`,
+    perDay: harvest.tomatoesKg > 0 ? round1(harvest.tomatoesKg) : null,
+    rate: harvest.tomatoesKg > 0 ? `${signed(harvest.tomatoesKg)} kg / jour` : 'pas de récolte',
+    daysLeft: null, low: v.tomatoes_stock < C.TOMATO_THROW_TOMATOES,
+    daily: [
+      tomatoShare > 0
+        ? `Le potager en produit seul : +${num(round1(harvest.tomatoesKg))} kg par jour (${Math.round(tomatoShare * 100)} % de la récolte en ${SEASON[season]}).`
+        : 'Aucune tomate en hiver : la réserve attend le printemps.',
+      'Personne n\'en mange au quotidien : elles ne baissent pas toutes seules.',
+    ],
+    uses: [`Lancer de tomates sur les BOR : −${C.TOMATO_THROW_TOMATOES} kg et −${C.TOMATO_THROW_RATIONS} rations, moral +${C.TOMATO_THROW_MORALE} % (une fois par saison).`],
+    sources: sources(act('garden_tend', 'Entretenir le potager', 'Récolte immédiate, tomates comprises (printemps à automne ; surtout l\'été).')),
+  });
+
+  // --- Bétail ----------------------------------------------------------------
+  lines.push({
+    key: 'livestock', emoji: '🐐', label: 'Bétail', amount: v.livestock_count, display: `${v.livestock_count} / ${C.LIVESTOCK_PEN_CAPACITY}`,
+    perDay: null,
+    rate: penReady && v.livestock_count >= 4 ? '+8 % / saison' : penReady ? 'trop peu pour naître' : 'enclos à bâtir',
+    daysLeft: null, low: false,
+    daily: [
+      `Chaque bête donne ${C.LIVESTOCK_RATIONS_PER_HEAD_DAY} ration par jour et boit ${C.WATER_L_PER_LIVESTOCK} L d'eau.`,
+      penReady
+        ? v.livestock_count >= 4
+          ? `Naissances : +8 % du cheptel (au moins 1 bête) à chaque fin de saison, jusqu'à ${C.LIVESTOCK_PEN_CAPACITY} places.`
+          : 'Il faut au moins 4 bêtes pour qu\'elles se reproduisent.'
+        : 'Pas d\'élevage possible tant que l\'enclos (Cleda) n\'est pas construit.',
+      `À partir de ${C.LIVESTOCK_FERTILIZER_THRESHOLD} bêtes, le fumier ajoute ${Math.round(C.LIVESTOCK_FERTILIZER_BONUS * 100)} % à la récolte du potager.`,
+    ],
+    uses: ['Boucherie : 1 bête → 25 rations (en cas de disette).'],
+    sources: sources(
+      penReady ? null : act('build_livestock_pen', 'Construire l\'enclos (Cleda)', '350 € par séance de chantier, 8 bois.', pen ? { target_structure_id: pen.id } : undefined),
+      act('buy_livestock', 'Acheter du bétail (foire de Lleida)', `${eur(C.LIVESTOCK_PRICE_EUR)} par tête, enclos requis.`),
+    ),
+  });
+
+  // --- Bois, pierre, fer : uniquement les chantiers -------------------------
+  const sessions = (stock: number, per: number, what = 'séance') => {
+    const n = Math.floor(stock / per);
+    return `${n} ${what}${n > 1 ? 's' : ''}`;
+  };
+  lines.push({
+    key: 'wood', emoji: '🪵', label: 'Bois', amount: v.wood_stock, display: num(v.wood_stock),
+    perDay: null, rate: sessions(v.wood_stock, 5), daysLeft: null, low: v.wood_stock < 5,
+    daily: ['Rien ne le consomme tout seul : il part uniquement dans les chantiers.'],
+    uses: ['Rénover une bâtisse : 5 par séance.', 'Construire l\'enclos : 8.', 'Poser un mirador ou une herse : 6.'],
+    sources: sources(buy('kiloutou_tronconneuse'), buy('gedimat_charpente'), buy('bigmat_tuiles')),
+  });
+  lines.push({
+    key: 'stone', emoji: '🪨', label: 'Pierre', amount: v.stone_stock, display: num(v.stone_stock),
+    perDay: null, rate: sessions(v.stone_stock, 5), daysLeft: null, low: v.stone_stock < 5,
+    daily: ['Rien ne la consomme toute seule : elle part uniquement dans les chantiers.'],
+    uses: ['Rénover une bâtisse : 5 par séance.', 'Empierrer la piste : 5.', 'Micro-barrage : 10 par séance.'],
+    sources: sources(
+      act('clear_rubble', 'Déblayer les gravats d\'une ruine', 'Environ 6 pierres, gratuit.'),
+      act('demolish_building', 'Démolir une bâtisse', '+10 pierres (accord PLU).'),
+      buy('bigmat_chaux'), buy('bigmat_parpaings'), buy('sograma_grave'),
+    ),
+  });
+  lines.push({
+    key: 'iron', emoji: '⛓️', label: 'Fer', amount: v.iron_stock, display: num(v.iron_stock),
+    perDay: null, rate: sessions(v.iron_stock, C.IRON_PER_TOOL, 'fournée'), daysLeft: null, low: v.iron_stock < C.IRON_PER_TOOL,
+    daily: ['Rien ne le consomme tout seul : il part à la forge et dans les gros ouvrages.'],
+    uses: [`Forger des outils : ${C.IRON_PER_TOOL} par fournée.`, 'Herses & équipements de garde : 5.', 'Micro-barrage : 5 par séance.'],
+    sources: sources(act('recycle_scrap', 'Recycler la ferraille', '4 ferrailles → 2 fers (les outils cassés deviennent de la ferraille).'), buy('gedimat_quincaillerie')),
+  });
+
+  // --- Outils ----------------------------------------------------------------
+  const wearPerDay = (pop.workers * C.TOOLS_WEAR_PER_WORKER_DAY) / 100;
+  const daysPerTool = wearPerDay > 0 ? Math.round(1 / wearPerDay) : null;
+  lines.push({
+    key: 'tools', emoji: '🛠️', label: 'Outils', amount: v.tools_stock, display: `${v.tools_stock} / ${pop.workers}`,
+    perDay: wearPerDay > 0 ? -Math.round(wearPerDay * 100) / 100 : null,
+    rate: daysPerTool ? `−1 tous les ${daysPerTool} j` : 'pas d\'usure',
+    daysLeft: daysPerTool ? Math.max(0, v.tools_stock - pop.workers + 1) * daysPerTool : null,
+    low: v.tools_stock < pop.workers,
+    daily: [
+      `Il en faut un par travailleur (${pop.workers}) : en dessous, tout le village perd ${C.TOOLS_MALUS} % de rendement.`,
+      daysPerTool ? `Usure : ${pop.workers} travailleurs × ${C.TOOLS_WEAR_PER_WORKER_DAY} % par jour → un outil cassé environ tous les ${daysPerTool} jours (plus vite quand l'alcool circule).` : 'Personne ne travaille : pas d\'usure.',
+      'Quand l\'insécurité dépasse 30 %, des outils disparaissent.',
+    ],
+    uses: ['Chaque outil cassé devient de la ferraille (recyclable en fer).'],
+    sources: sources(act('forge_tools', 'Forger des outils', `${C.IRON_PER_TOOL} fers par fournée, rendement selon la productivité.`), buy('bigmat_outillage')),
+  });
+
+  // --- Remèdes ---------------------------------------------------------------
+  lines.push({
+    key: 'medicine', emoji: '💊', label: 'Remèdes', amount: v.medicine_stock, display: num(v.medicine_stock),
+    perDay: null, rate: `${v.medicine_stock} soin${v.medicine_stock > 1 ? 's' : ''}`, daysLeft: null, low: v.medicine_stock < 2,
+    daily: ['Rien ne les consomme tout seul : ils servent aux soins.'],
+    uses: ['Soigner une maladie infectieuse : 1.', 'Cure de sevrage : 1.', 'En cas d\'épidémie, il en faut vite plusieurs.'],
+    sources: sources(act('brew_remedies', 'Préparer remèdes & décoctions', 'Environ +3 par séance (selon la productivité).'), buy('gedimat_pharmacie')),
+  });
+
+  // --- Gasoil ----------------------------------------------------------------
+  const litres = v.energy_tier === 2 ? Math.ceil(energy.consumptionKwh * (C.ENERGY_TIERS[2]?.fuelLitresPerKwh ?? 0)) : 0;
+  const fuelDays = litres > 0 ? Math.floor(v.fuel_stock_l / litres) : null;
+  lines.push({
+    key: 'fuel', emoji: '⛽', label: 'Gasoil', amount: v.fuel_stock_l, display: `${num(Math.floor(v.fuel_stock_l))} L`,
+    perDay: litres > 0 ? -litres : null,
+    rate: litres > 0 ? `−${litres} L / jour` : v.energy_tier === 1 ? 'pas encore utile' : 'plus utile',
+    daysLeft: fuelDays, low: fuelDays !== null && fuelDays < 5,
+    daily: [
+      v.energy_tier === 1
+        ? 'Pas encore utile : le groupe électrogène n\'est pas installé (il arrive avec 100 L).'
+        : v.energy_tier === 2
+          ? `Le groupe électrogène brûle ${C.ENERGY_TIERS[2]?.fuelLitresPerKwh} L par kWh : ${num(round1(energy.consumptionKwh))} kWh par jour → ${litres} L par jour, soit environ ${fuelDays} jour(s) de réserve. À sec : retour aux bougies et moral en baisse.`
+          : 'Plus nécessaire : le hameau est passé au réseau électrique.',
+    ],
+    uses: ['Uniquement le groupe électrogène (palier 2).'],
+    sources: sources(buy('andorre_gasoil')),
+  });
+
+  if (surcharge) for (const l of lines) if (l.sources.some((x) => x.actionCode === 'buy_supplies')) l.uses.push(surcharge.trim());
+  return lines;
+}

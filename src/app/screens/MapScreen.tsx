@@ -1,5 +1,6 @@
 /**
- * Écran 1 — Le hameau : « Aujourd'hui » (ce qui vous attend, V4.4) puis carte interactive
+ * Écran 1 — Le hameau : « Aujourd'hui » (ce qui vous attend, V4.4), « À faire en priorité »
+ * (ce qui fait avancer le village et pourquoi, V4.6) puis carte interactive
  * (SVG 2D, viewBox 1000 × 700).
  */
 import { useMemo, useState } from 'react';
@@ -7,6 +8,7 @@ import type { ActionDef } from '../engine.ts';
 import type { Structure } from '../api/types.ts';
 import { ActionRow, ActionSheet } from '../components/ActionSheet.tsx';
 import { TEMPTATION_REOPEN_EVENT } from '../components/Modals.tsx';
+import { PriorityCard } from '../components/PriorityCard.tsx';
 import { Badge, Card, Gauge, Sheet, Stat, cx } from '../components/ui.tsx';
 import { actionBlockReason, situationFor } from '../lib/actionHints.ts';
 import { countdown } from '../lib/format.ts';
@@ -118,6 +120,7 @@ export function MapScreen() {
   return (
     <div className="space-y-4">
       <TodayCard />
+      <PriorityCard />
       <div className="grid grid-cols-2 gap-2">
         <Stat label="Habitants" value={pop.total} sub={`${v.housing_capacity} lits PLU`} tone={pop.total > v.housing_capacity ? 'ember' : undefined} />
         <Stat label="Eau" value={`${v.water_capacity_l_day} L/j`} sub={`besoin ≈ ${pop.total * 150} L + potager`} tone={v.water_capacity_l_day < pop.total * 150 ? 'ember' : undefined} />
