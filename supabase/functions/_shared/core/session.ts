@@ -69,8 +69,9 @@ import {
   pickChampion,
   rowToDuelState,
 } from './duel.ts';
-import type { GmContext, PlayerBrief } from './gm/prompt.ts';
+import type { GmContext, PlayerBrief, RecentTemptation } from './gm/prompt.ts';
 import type { GmPort } from './gm/runner.ts';
+import { pickTemptationTheme, temptationConditions } from './gm/temptationBank.ts';
 import type {
   AiCallDraft,
   CarlageDuelRow,
@@ -712,7 +713,9 @@ export class GameSession {
     const p = this.player(playerId);
     if (!p || !isFree(p, this.now)) return null;
     const brief = this.brief(p.id);
-    const g = await this.gm.run({ kind: 'temptation', player: brief }, this.gmContext(brief), p.id);
+    const recent = this.temptationHistory(p.id);
+    const theme = pickTemptationTheme(this.rng(`temptation-theme:${p.id}`), brief, recent, temptationConditions(this.snapshot.village));
+    const g = await this.gm.run({ kind: 'temptation', player: brief, recent, theme }, this.gmContext(brief), p.id);
     this.aiCalls.push(g.aiCall);
     const t = g.response.private_temptation;
     if (!t) return null;
@@ -735,6 +738,21 @@ export class GameSession {
     return temptation.id;
   }
 
+  /**
+   * Dilemmes déjà reçus par un joueur, du plus récent au plus ancien : historique chargé par
+   * runtime/ (tous statuts) + dilemmes de l'instantané (dont ceux créés pendant cette session).
+   */
+  temptationHistory(playerId: string): RecentTemptation[] {
+    const rows = new Map<string, { title: string; category: string; prompt_text: string | null; created_at: string }>();
+    for (const t of [...(this.state.recentTemptations ?? []), ...this.snapshot.temptations]) {
+      if (t.player_id === playerId && !rows.has(t.id)) rows.set(t.id, t);
+    }
+    return [...rows.values()]
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+      .slice(0, constants.TEMPTATION_NO_REPEAT_WINDOW)
+      .map((t) => ({ title: t.title, category: t.category, prompt_text: t.prompt_text, created_at: t.created_at }));
+  }
+
   // -------------------------------------------------------------------------
   // Contexte IA, indicateurs cachés, écriture
   // -------------------------------------------------------------------------
@@ -745,6 +763,7 @@ export class GameSession {
       id: p.id,
       display_name: p.display_name,
       character_name: p.character_name,
+      role_code: p.role_code,
       role_title: p.role_title,
       ministerial_portfolios: p.ministerial_portfolios,
       action_points: p.action_points,

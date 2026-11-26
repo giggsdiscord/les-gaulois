@@ -16,7 +16,8 @@ import type {
   Union,
   VillageState,
 } from '../engine/index.ts';
-import type { CarlageDuelRow, CarlageMoveRow, CommitPayload, GameState, RecentEvent, TargetResultRow } from '../core/types.ts';
+import { constants } from '../engine/index.ts';
+import type { CarlageDuelRow, CarlageMoveRow, CommitPayload, GameState, RecentEvent, TargetResultRow, TemptationHistoryRow } from '../core/types.ts';
 import type { FunctionEnv } from './env.ts';
 
 export type Db = SupabaseClient;
@@ -47,7 +48,24 @@ function must<T>(result: QueryResult<T>, label: string): T {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function loadGameState(db: Db, now: Date): Promise<GameState> {
+export interface LoadOptions {
+  /** Relit aussi l'historique des dilemmes (nuit, envoi par l'administrateur) : évite les répétitions. */
+  temptationHistory?: boolean;
+}
+
+/** Dilemmes des TEMPTATION_HISTORY_DAYS derniers jours, tous statuts, du plus récent au plus ancien. */
+async function loadTemptationHistory(db: Db, now: Date): Promise<TemptationHistoryRow[]> {
+  const since = new Date(now.getTime() - constants.TEMPTATION_HISTORY_DAYS * 86_400_000).toISOString();
+  const res = await db
+    .from('temptations')
+    .select('id, player_id, category, title, prompt_text, created_at')
+    .gt('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(500);
+  return must(res, 'temptations (historique)') as TemptationHistoryRow[];
+}
+
+export async function loadGameState(db: Db, now: Date, options: LoadOptions = {}): Promise<GameState> {
   const iso = (msAgo: number) => `"${new Date(now.getTime() - msAgo).toISOString()}"`;
   const day = 86_400_000;
   const [village, players, migrants, children, structures, unions, approvals, temptations, constitution, proposals, duels, chat, events] =
@@ -104,6 +122,7 @@ export async function loadGameState(db: Db, now: Date): Promise<GameState> {
       .reverse()
       .map((m) => ({ sender: m.sender_id ? names.get(m.sender_id) ?? 'Inconnu' : 'Système', content: m.content, created_at: m.created_at })),
     recentEvents: must(events, 'game_events') as RecentEvent[],
+    ...(options.temptationHistory ? { recentTemptations: await loadTemptationHistory(db, now) } : {}),
   };
 }
 

@@ -4,9 +4,16 @@
  * Produit une réponse au même format JSON que l'IA (elle passe ensuite par le même bornage).
  * Tous les tirages sont déterministes (graine fournie par l'appelant).
  */
-import { createRng, type Rng } from '../../engine/index.ts';
-import type { GmContext, GmTask, PlayerBrief } from './prompt.ts';
-import { DELTA_KEYS } from './schema.ts';
+import { createRng, type Rng, type TemptationEffects } from '../../engine/index.ts';
+import type { GmContext, GmTask } from './prompt.ts';
+import { DELTA_KEYS, TEMPTATION_EFFECT_KEYS } from './schema.ts';
+import {
+  draftTemptationFromBank,
+  isTemptationTheme,
+  pickTemptationTheme,
+  TEMPTATION_AMBIANCE,
+  temptationConditions,
+} from './temptationBank.ts';
 
 type Deltas = Partial<Record<(typeof DELTA_KEYS)[number], number>>;
 
@@ -306,42 +313,23 @@ function migrantFallback(rng: Rng): RawGmResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Tentations & Dérives
+// Tentations & Dérives : banque de situations (temptationBank.ts, V4.5)
 // ---------------------------------------------------------------------------
-interface TemptationTemplate {
-  category: 'festive' | 'sentimental' | 'ideological_financial';
-  title: string;
-  prompt: (p: PlayerBrief) => string;
-  yield_effects: Record<string, number>;
-  resist_effects: Record<string, number>;
+function effectsObject(e: TemptationEffects): Record<string, number> {
+  return Object.fromEntries(TEMPTATION_EFFECT_KEYS.map((k) => [k, e[k] ?? 0]));
 }
 
-const TEMPTATIONS: TemptationTemplate[] = [
-  { category: 'festive', title: 'Tournée générale au bar du col', prompt: (p) => `${p.character_name}, le patron du bar du col vous reconnaît : « La primera ronda la paga la casa ! » Il est 23 h, demain le chantier commence à 7 h. Vous restez ?`, yield_effects: { morale_pct: 10, alcohol_consumption_pct: 2, addiction_level_pct: 6 }, resist_effects: { morale_pct: -2 } },
-  { category: 'festive', title: 'Jerricans détaxés d\'Andorre', prompt: () => 'Un cousin d\'un ami propose de rapporter « quelques » bouteilles détaxées du Pas de la Casa dans votre coffre. Personne ne contrôle jamais le mardi, paraît-il.', yield_effects: { alcohol_consumption_pct: 3, admin_pressure_pct: 2, morale_pct: 6 }, resist_effects: {} },
-  { category: 'festive', title: 'After des BOR', prompt: () => 'Après le concert, un roadie des BOR vous tend un petit sachet : « Pour tenir jusqu\'à l\'aube. » Les autres sont déjà partis danser dans la grange.', yield_effects: { drug_prevalence_pct: 2, addiction_level_pct: 8, morale_pct: 8 }, resist_effects: { morale_pct: -1 } },
-  { category: 'festive', title: 'Concours de ratafia', prompt: () => 'Le village voisin organise un concours de ratafia maison et vous êtes désigné juré. Le règlement impose de goûter les 14 bouteilles.', yield_effects: { alcohol_consumption_pct: 2, addiction_level_pct: 4, morale_pct: 6 }, resist_effects: { morale_pct: -2 } },
-  { category: 'sentimental', title: 'Idylle avec une garde forestière', prompt: () => 'La garde forestière qui contrôle les coupes de bois prolonge chaque inspection d\'un café. Elle vous propose un dîner à Sort, « sans parler de permis ».', yield_effects: { morale_pct: 8, admin_pressure_pct: -2 }, resist_effects: { admin_pressure_pct: 1 } },
-  { category: 'sentimental', title: 'Complicité troublante sur le chantier', prompt: () => 'Une complicité de plus en plus troublante s\'installe avec un compagnon de chantier. Ce soir, il vous propose de monter voir les étoiles au mirador.', yield_effects: { morale_pct: 8, homosexuality_rate_pct: 0.5 }, resist_effects: { morale_pct: -1 } },
-  { category: 'sentimental', title: 'Rendez-vous galant à la Seu d\'Urgell', prompt: () => 'Une rencontre au marché de la Seu d\'Urgell vous invite au restaurant samedi. C\'est le jour de la corvée de bois.', yield_effects: { morale_pct: 6 }, resist_effects: {} },
-  { category: 'ideological_financial', title: 'Enveloppe discrète', prompt: () => 'Un entrepreneur de Lleida vous glisse une enveloppe : « Pour faciliter le dossier de la grange. » Personne n\'en saura rien. En théorie.', yield_effects: { treasury_eur: -300, private_wealth_eur: 300, admin_pressure_pct: 3 }, resist_effects: { morale_pct: 1 } },
-  { category: 'ideological_financial', title: 'Facture gonflée', prompt: () => 'Le fournisseur propose de majorer la facture de 200 € « pour votre peine ». M. Lerme ne vérifie que les totaux, non ?', yield_effects: { treasury_eur: -200, private_wealth_eur: 200 }, resist_effects: {} },
-  { category: 'ideological_financial', title: 'Tracts collectivistes', prompt: () => 'Un résident militant vous demande de distribuer ses tracts « pour l\'égalité des rations ». Ça ne coûte rien, dit-il.', yield_effects: { left_wing_ideology_pct: 2, morale_pct: 4 }, resist_effects: { left_wing_ideology_pct: -1 } },
-];
-
-function effectsObject(e: Record<string, number>): Record<string, number> {
-  const keys = ['morale_pct', 'alcohol_consumption_pct', 'drug_prevalence_pct', 'homosexuality_rate_pct', 'treasury_eur', 'private_wealth_eur', 'addiction_level_pct', 'left_wing_ideology_pct', 'admin_pressure_pct', 'international_notoriety_pct'];
-  return Object.fromEntries(keys.map((k) => [k, e[k] ?? 0]));
-}
-
-function temptationFallback(task: Extract<GmTask, { kind: 'temptation' }>, rng: Rng): RawGmResponse {
-  const t = rng.pick(TEMPTATIONS);
-  const response = empty(t.title, 'Une rumeur circule à La Taverne, sans que personne ne sache d\'où elle vient.');
+function temptationFallback(task: Extract<GmTask, { kind: 'temptation' }>, ctx: GmContext, rng: Rng): RawGmResponse {
+  const recent = task.recent ?? [];
+  const conditions = temptationConditions(ctx.village);
+  const theme = isTemptationTheme(task.theme) ? task.theme : pickTemptationTheme(rng, task.player, recent, conditions);
+  const t = draftTemptationFromBank(rng, task.player, recent, theme, conditions);
+  const response = empty(t.title, rng.pick(TEMPTATION_AMBIANCE));
   response.private_temptation = {
     target_player_id: task.player.id,
     category: t.category,
     title: t.title,
-    prompt_text: t.prompt(task.player),
+    prompt_text: t.prompt_text,
     yield_effects: effectsObject(t.yield_effects),
     resist_effects: effectsObject(t.resist_effects),
   };
@@ -384,7 +372,7 @@ export function fallbackResponse(task: GmTask, ctx: GmContext, seed: string): Ra
     case 'migrant':
       return migrantFallback(rng);
     case 'temptation':
-      return temptationFallback(task, rng);
+      return temptationFallback(task, ctx, rng);
     case 'gazette':
       return gazetteFallback(task, ctx);
   }

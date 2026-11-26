@@ -140,7 +140,7 @@ export function gmAiActionHandler(env: FunctionEnv): (req: Request) => Promise<R
         const out = await runGame(deps, async (s): Promise<OpResult> => {
           const id = await s.offerTemptation(target);
           return id ? { ok: true, temptation_id: id } : { ok: false, error: 'Joueur indisponible.' };
-        });
+        }, { temptationHistory: true });
         return finish(out, adminId);
       }
       default:
@@ -204,7 +204,7 @@ export function dailyWorldSyncHandler(env: FunctionEnv): (req: Request) => Promi
         migrants: migrants.length,
         temptations: temptations.length,
       };
-    });
+    }, { temptationHistory: true });
     return { ...out.result, mode, snapshot_id: snapshotId, pruned_snapshots: pruned, revision: out.revision };
   });
 }

@@ -18,6 +18,8 @@ export interface RunOptions {
   /** N'écrit rien si seules les grandeurs dérivées ont changé (tick, maintenance). */
   skipIfTrivial?: boolean;
   attempts?: number;
+  /** Charge l'historique des dilemmes (opérations qui proposent des tentations). */
+  temptationHistory?: boolean;
 }
 
 export interface RunOutcome<T extends OpResult> {
@@ -35,7 +37,7 @@ export async function runGame<T extends OpResult>(
   const attempts = options.attempts ?? 3;
   for (let attempt = 1; ; attempt++) {
     const now = deps.clock();
-    const state = await loadGameState(deps.db, now);
+    const state = await loadGameState(deps.db, now, { temptationHistory: options.temptationHistory });
     const session = new GameSession(state, { now, gm: deps.gm });
     session.tick();
     await session.maintainAgora();

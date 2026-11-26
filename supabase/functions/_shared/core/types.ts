@@ -90,6 +90,20 @@ export interface GameState {
   chat: ChatLine[];
   /** Événements publics des dernières 26 heures (pour La Gazette). */
   recentEvents: RecentEvent[];
+  /**
+   * Dilemmes des derniers mois, tous statuts (V4.5) : chargés seulement pour proposer de
+   * nouvelles tentations sans répéter les situations déjà reçues par un joueur.
+   */
+  recentTemptations?: TemptationHistoryRow[];
+}
+
+export interface TemptationHistoryRow {
+  id: string;
+  player_id: string;
+  category: string;
+  title: string;
+  prompt_text: string | null;
+  created_at: string;
 }
 
 export interface TavernDraft {

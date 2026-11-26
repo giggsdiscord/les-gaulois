@@ -21,6 +21,12 @@ export const ADDICTION_WITHDRAWAL_THRESHOLD = 50; // [GDD §3.3]
 export const WITHDRAWAL_MENTAL_LOSS = 10; // [GDD §3.3]
 export const TEMPTATION_AP_PENALTY = 2; // [GDD §6.2]
 export const TEMPTATION_MORALE_BONUS = 20; // [GDD §6.2]
+/** Derniers dilemmes d'un joueur dont la situation n'est pas reproposée (V4.5). */
+export const TEMPTATION_NO_REPEAT_WINDOW = 24; // [GDD §6.2]
+/** Les thèmes des N derniers dilemmes d'un joueur sont évités au tirage suivant (V4.5). */
+export const TEMPTATION_THEME_COOLDOWN = 3; // [GDD §6.2]
+/** Profondeur de l'historique relu pour éviter les répétitions (jours, V4.5). */
+export const TEMPTATION_HISTORY_DAYS = 120; // [GDD §6.2]
 export const NIGHT_FATIGUE_RECOVERY = 35;
 export const FORCED_LABOR_DAILY_FATIGUE = 20;
 export const STRAPPING_DAYS = 3;

@@ -7,11 +7,14 @@
  */
 import { AI_DELTA_BOUNDS, AI_CONTEXT_MULTIPLIER, type AiContext } from '../../engine/index.ts';
 import { INCIDENT_TYPES } from './schema.ts';
+import { isTemptationTheme, TEMPTATION_THEMES } from './temptationBank.ts';
 
 export interface PlayerBrief {
   id: string;
   display_name: string;
   character_name: string;
+  /** Code du rôle (mayor_agri, treasurer_physio…) : personnalise les tentations. */
+  role_code?: string;
   role_title: string;
   ministerial_portfolios: string[];
   action_points: number;
@@ -25,8 +28,19 @@ export type GmTask =
   | { kind: 'free_action'; player: PlayerBrief; text: string }
   | { kind: 'initiative'; proposal: { id: string; title: string; detailed_explanation: string; category: string; yes: number; no: number } }
   | { kind: 'migrant'; index: number }
-  | { kind: 'temptation'; player: PlayerBrief }
+  | { kind: 'temptation'; player: PlayerBrief; recent?: RecentTemptation[]; theme?: string | null }
   | { kind: 'gazette'; date: string; events: { title: string; body: string }[]; scandals: string[] };
+
+/** Dilemme déjà reçu par un joueur (du plus récent au plus ancien) : évite les répétitions. */
+export interface RecentTemptation {
+  title: string;
+  category: string;
+  prompt_text?: string | null;
+  created_at?: string;
+}
+
+/** Nombre de dilemmes passés cités à l'IA (coût en jetons limité). */
+export const TEMPTATION_RECENT_IN_PROMPT = 8;
 
 export interface GmContext {
   village: Record<string, unknown>;
@@ -81,14 +95,14 @@ RÈGLES DE SIMULATION IMPÉRATIVES :
    Lorsqu'une proposition hebdomadaire soumise par un joueur (ex. création d'un fonds souverain à la norvégienne, taxe, loi constitutionnelle) est adoptée par vote OUI/NON à l'Agora, traduis fidèlement son détail explicatif en effets économiques, fiscaux, idéologiques et narratifs concrets.
 
 7. TENTATIONS & HUMOUR DU GROUPE :
-   Génère régulièrement des dilemmes privés d'alcool ou de séduction. Si le joueur cède et ne se confesse pas à Brunel, publie une anecdote pince-sans-rire dans La Gazette. Intègre les discussions réelles du chat, les fournisseurs locaux (BigMat, Gedimat, Loxam, Thomas Sograma), les tomates lancées sur les BOR, les séances de kiné de M. Lerme, les thérapies de Brunel et les duels au Carlage 2x2.
+   Génère régulièrement des dilemmes privés, très variés d'une fois sur l'autre : tournées et fêtes de village, contrebande andorrane, jeux d'argent, stupéfiants, escapades, romances et secrets de cœur, pots-de-vin, combines sur la caisse, militantisme, rivalités entre fondateurs, ressources du village, tentations médiatiques ou propres au métier du joueur. Si le joueur cède et ne se confesse pas à Brunel, publie une anecdote pince-sans-rire dans La Gazette. Intègre les discussions réelles du chat, les fournisseurs locaux (BigMat, Gedimat, Loxam, Thomas Sograma), les tomates lancées sur les BOR, les séances de kiné de M. Lerme, les thérapies de Brunel et les duels au Carlage 2x2.
 
 CONTRAT AVEC LE MOTEUR DÉTERMINISTE :
 - Le moteur TypeScript reste l'unique source de vérité : tes deltas sont des variations (positives ou négatives), jamais des valeurs absolues, et le moteur les plafonne. Plafonds par appel d'action libre : ${boundsTable()}. Multiplicateurs selon la tâche : initiative adoptée ×${AI_CONTEXT_MULTIPLIER.initiative}, événement du monde ×${AI_CONTEXT_MULTIPLIER.world_event}, Gazette et tentation ×${AI_CONTEXT_MULTIPLIER.gazette}. Mets 0 pour toute jauge non concernée ; préfère des effets modestes et justifiés par le récit.
 - Le fonds souverain (sovereign_fund_eur) ne s'abonde qu'en débitant la caisse commune (treasury_eur). Les montants sont en euros.
 - triggered_incident : null, ou un incident {type, severity 1-3, description, target_player_id (identifiant d'un joueur ou null)} parmi : ${INCIDENT_TYPES.join(', ')}. N'en déclenche que si le récit le justifie.
 - Champs absents du format de réponse demandé : ne pas les produire. new_migrant_candidate : null, sauf si la TÂCHE demande un dossier. Âge 18-65, force 1-100, niveau de spécialité 1-5, enfants 0-5, left_wing_score 0-100 (sensibilité réelle, qui peut différer de la sensibilité déclarée), addiction_level_pct 0-100, specialty_code parmi mason, carpenter, welder, farmer, mechanic, electrician, shepherd, unskilled, faction_type parmi loyalist, union_agitator, black_market, devout. Varie les origines, religions, sensibilités et profils d'un dossier à l'autre ; chaque dossier a des qualités et des défauts crédibles. hidden_risk_note et pathology_note : chaîne vide s’il n’y a rien à signaler.
-- private_temptation : null, sauf si la TÂCHE demande un dilemme. category parmi festive, sentimental, ideological_financial ; prompt_text s'adresse directement au joueur, au présent ; yield_effects et resist_effects sont des variations modestes (0 si sans objet).
+- private_temptation : null, sauf si la TÂCHE demande un dilemme. category parmi festive, sentimental, ideological_financial ; title court (moins de 60 caractères) et inédit ; prompt_text de 2 à 4 phrases qui s'adressent directement au joueur, au présent, décrivent une situation concrète (personnages du hameau, voisins d'Organyà, de la Seu d'Urgell, de Sort ou de Tremp, Andorre, fournisseurs) et se terminent sur le choix à faire ; yield_effects et resist_effects sont des variations modestes (0 si sans objet). Ne reprends jamais la situation, le ressort ni le titre d'un dilemme que le joueur a déjà reçu.
 - gazette_headline : titre façon presse locale pyrénéenne. narrative_text : 4 à 6 phrases, en français, avec éventuellement des répliques en espagnol ou catalan, et des conséquences concrètes.
 
 RÉPONDS UNIQUEMENT AVEC CE JSON VALIDE (SANS MARKDOWN AUTOUR) :
@@ -133,6 +147,22 @@ function compactVillage(v: Record<string, unknown>): Record<string, unknown> {
   return rest;
 }
 
+/** Thème imposé à l'IA pour varier les dilemmes (choisi par la session, comme pour le dictionnaire de secours). */
+function temptationThemeLine(theme: string | null | undefined): string | null {
+  if (!isTemptationTheme(theme)) return null;
+  const def = TEMPTATION_THEMES[theme];
+  return `Thème imposé pour varier : « ${def.label} » (pistes, à réinventer librement : ${def.hint}). Catégorie attendue : ${def.category}.`;
+}
+
+function temptationHistoryLine(recent: RecentTemptation[]): string {
+  if (recent.length === 0) return 'Dilemmes déjà reçus par ce joueur : aucun.';
+  const list = recent
+    .slice(0, TEMPTATION_RECENT_IN_PROMPT)
+    .map((r) => `« ${r.title.replace(/[«»"]/g, '').replace(/\s+/g, ' ').trim()} » (${r.category})`)
+    .join(' ; ');
+  return `Dilemmes déjà reçus par ce joueur, du plus récent au plus ancien (n'en reprends ni la situation, ni le ressort, ni le titre) : ${list}.`;
+}
+
 function taskInstruction(task: GmTask): string {
   switch (task.kind) {
     case 'free_action':
@@ -142,7 +172,11 @@ function taskInstruction(task: GmTask): string {
     case 'migrant':
       return `TÂCHE : Un candidat ou un foyer migrant se présente sur la piste forestière (dossier n°${task.index + 1} de la journée). Remplis new_migrant_candidate avec un dossier complet et différent des résidents déjà présents ; le récit décrit son arrivée. Deltas à 0 sauf effet évident ; private_temptation reste null.`;
     case 'temptation':
-      return `TÂCHE : Soumets un dilemme privé à ${task.player.display_name} (${task.player.character_name}, ${task.player.role_title}, identifiant ${task.player.id}) dans private_temptation (target_player_id = cet identifiant). Céder procure +20 % de moral mais −2 PA le lendemain et un scandale dans La Gazette s'il ne se confesse pas à Brunel. Le récit (narrative_text) reste discret : une phrase d'ambiance. Deltas à 0 ; new_migrant_candidate reste null.`;
+      return [
+        `TÂCHE : Soumets un dilemme privé à ${task.player.display_name} (${task.player.character_name}, ${task.player.role_title}, identifiant ${task.player.id}) dans private_temptation (target_player_id = cet identifiant). Céder procure +20 % de moral mais −2 PA le lendemain et un scandale dans La Gazette s'il ne se confesse pas à Brunel. Le récit (narrative_text) reste discret : une phrase d'ambiance. Deltas à 0 ; new_migrant_candidate reste null.`,
+        temptationThemeLine(task.theme),
+        temptationHistoryLine(task.recent ?? []),
+      ].filter(Boolean).join('\n');
     case 'gazette': {
       const events = task.events.length > 0 ? task.events.map((e) => `- ${e.title} : ${e.body}`).join('\n') : '- (journée calme)';
       const scandals = task.scandals.length > 0 ? task.scandals.map((s) => `- ${s}`).join('\n') : '- aucun';

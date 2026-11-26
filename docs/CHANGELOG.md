@@ -1,5 +1,12 @@
 # Historique des versions du GDD
 
+### V4.5 — 26/11/2026 — Propositions discrètes plus variées
+- Banque de **94 situations en 15 thèmes** pour les Tentations & Dérives (§6.2) : tournées, fêtes de village (Festa Major, calçotada, matança, correfoc), contrebande andorrane, jeux d'argent, stupéfiants et alambics, escapades (Caldea, Port Ainé, Salou), romances, affaires de cœur, pots-de-vin, combines sur la caisse, militantisme, rivalités entre fondateurs, ressources du village, médias, et tentations propres au métier de chaque fondateur.
+- **Plus de répétition rapprochée** : un joueur ne reçoit pas deux fois la même situation à moins de 24 dilemmes d'écart, change de thème à chaque fois (3 derniers thèmes évités) et alterne les catégories ; la météo réelle écarte les situations hors saison.
+- Le **Maître du Jeu IA** reçoit le thème imposé et les titres des 8 derniers dilemmes du joueur, avec consigne de ne rien reprendre ; system prompt élargi à des dilemmes variés et concrets.
+- Les Edge Functions relisent l'historique des dilemmes (120 jours) la nuit et lors d'un envoi par l'administrateur ; le mode démo profite des mêmes règles. Aucune migration SQL (les trois catégories restent celles de la base).
+- 16 nouveaux tests Vitest (variété, déterminisme, rôles, météo, effets bornés, historique, message à l'IA).
+
 ### V4.4 — 26/11/2026 — Ergonomie téléphone
 - L'application est pensée pour le seul téléphone (§6.3) : 5 onglets pour tous (Hameau, Métier, Agora, Trésor, Gazette) ; l'administration passe dans le **menu du compte** (avatar) avec Ma fiche, Notifications, Installer l'appli, PIN et déconnexion ; toucher les PA de l'en-tête ouvre le Métier.
 - Fenêtres : le **bouton retour du téléphone** les ferme (au lieu de quitter l'écran), comme la croix, le fond ou un glissé vers le bas ; bouton principal collé en bas ; sous-onglets dans l'adresse (`#/metier/fiche`, `#/agora/duels`…).
