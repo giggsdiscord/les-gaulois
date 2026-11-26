@@ -273,6 +273,49 @@ console.log('• Planification (supabase/cron.sql, extensions simulées)');
   await execError(fill('court'), /trop court/, 'secret trop court refusé');
 }
 
+// V4.3 : pastilles (non-lus) et notifications push. Après cron.sql : gaulois_call_world_sync existe.
+console.log('• Notifications (non-lus, abonnements, file d\'envoi)');
+{
+  const sub = (n) => [`https://push.example.net/send/${n}`, 'B'.repeat(87), 'a'.repeat(22)];
+  await db.exec(`DELETE FROM net.calls WHERE TRUE`);
+  for (const [token, n] of [[elyToken, 'ely'], [tiphToken, 'tiph'], [lermeToken, 'lerme']]) {
+    await setToken(token);
+    await db.query(`SELECT save_push_subscription($1, $2, $3, 'test')`, sub(n));
+  }
+  await setToken(tiphToken);
+  const prefs = (await one(`SELECT set_notification_categories(ARRAY['chuchotement','duel','inconnue']) AS r`)).r;
+  check('catégories filtrées et enregistrées', JSON.stringify(prefs.categories) === '["chuchotement","duel"]' && prefs.devices === 1, JSON.stringify(prefs));
+  await expectError(db, `SELECT save_push_subscription('http://insecure', 'x', 'y')`, [], /invalide/, 'abonnement non https refusé');
+
+  await setToken(lermeToken);
+  await db.query(`SELECT post_tavern_message('village_square', 'Tournée générale à la Taverne !')`);
+  const square = (await db.query(`SELECT q.category, p.display_name FROM notification_queue q JOIN players p ON p.id = q.player_id WHERE q.sent_at IS NULL ORDER BY p.display_name`)).rows;
+  check('message public → les abonnés, sauf l\'auteur et les catégories coupées', square.length === 1 && square[0].display_name === 'Ely' && square[0].category === 'taverne', JSON.stringify(square));
+  const kicks = (await db.query(`SELECT body->>'mode' AS mode FROM net.calls`)).rows;
+  check('envoi réveillé une seule fois (mode push)', kicks.length === 1 && kicks[0].mode === 'push', JSON.stringify(kicks));
+  await db.query(`SELECT post_tavern_message('whisper', 'Rendez-vous au moulin.', ARRAY[$1]::uuid[])`, [TIPH]);
+  check('chuchotement → le seul destinataire', (await one(`SELECT count(*)::int AS n FROM notification_queue WHERE player_id = $1 AND category = 'chuchotement'`, [TIPH])).n === 1);
+  await db.query(`INSERT INTO tavern_messages(channel, sender_id, content, created_at) VALUES ('village_square', $1, 'Vieux message restauré', now() - interval '2 days')`, [LERME]);
+  check('ligne ancienne (restauration) : pas de notification', (await one(`SELECT count(*)::int AS n FROM notification_queue WHERE body = 'Vieux message restauré'`)).n === 0);
+
+  await setToken(elyToken);
+  const unread = (await one(`SELECT my_unread_counts() AS r`)).r;
+  check('non-lus de la Taverne comptés', unread.village_square >= 2 && unread.whisper === 0 && unread.total >= 2, JSON.stringify(unread));
+  const afterSeen = (await one(`SELECT mark_seen('village_square') AS r`)).r;
+  check('marquer comme lu remet le compteur à zéro', afterSeen.village_square === 0, JSON.stringify(afterSeen));
+  await setToken(tiphToken);
+  check('chuchotement non lu pour sa destinataire', (await one(`SELECT my_unread_counts() AS r`)).r.whisper === 1);
+  await expectError(db, `SELECT mark_seen('cave')`, [], /Zone inconnue/, 'zone inconnue refusée');
+
+  await setToken(null);
+  const claimed = (await db.query(`SELECT * FROM claim_notifications(50)`)).rows;
+  check('le serveur réserve les notifications en attente', claimed.length === 2 && claimed.every((r) => r.sent_at !== null), String(claimed.length));
+  check('pas de double envoi', (await db.query(`SELECT * FROM claim_notifications(50)`)).rows.length === 0);
+  await setToken(tiphToken);
+  check('désabonnement de l\'appareil', (await one(`SELECT delete_push_subscription($1) AS r`, [sub('tiph')[0]])).r.devices === 0);
+  await setToken(null);
+}
+
 // Contrat entre l'interface (src/app/api/supabase.ts) et la base / les Edge Functions :
 // chaque RPC, relation, colonne et opération appelée par le client doit exister, avec les droits de la clé anon.
 console.log('• Contrat de l\'interface Supabase (src/app/api/supabase.ts)');
@@ -280,7 +323,7 @@ console.log('• Contrat de l\'interface Supabase (src/app/api/supabase.ts)');
   const clientSrc = readFileSync(join(root, 'src', 'app', 'api', 'supabase.ts'), 'utf8');
   const rpcCalls = new Map();
   for (const m of clientSrc.matchAll(/this\.rpc(?:<[^>]*>)?\('([a-z_]+)'(?:,\s*\{([\s\S]*?)\})?\)/g)) {
-    const args = [...(m[2] ?? '').matchAll(/\b(p_[a-z_]+)\s*:/g)].map((a) => a[1]);
+    const args = [...(m[2] ?? '').matchAll(/\b(p_[a-z0-9_]+)\s*:/g)].map((a) => a[1]);
     rpcCalls.set(m[1], [...new Set([...(rpcCalls.get(m[1]) ?? []), ...args])]);
   }
   check(`${rpcCalls.size} RPC appelées par le client`, rpcCalls.size >= 20, [...rpcCalls.keys()].join(', '));
@@ -347,6 +390,11 @@ await expectError(db, `SELECT restore_daily_snapshot($1)`, [snap], /administrate
 await expectError(db, `SELECT export_full_state()`, [], /administrateur/, 'export refusé à un joueur non administrateur');
 await expectError(db, `SELECT engine_commit(0, '{}'::jsonb)`, [], /permission denied/, 'engine_commit interdit à la clé anon');
 await expectError(db, `SELECT session_player('00000000-0000-4000-8000-000000000000')`, [], /permission denied/, 'session_player interdit à la clé anon');
+await expectError(db, `SELECT * FROM claim_notifications(10)`, [], /permission denied/, 'claim_notifications interdit à la clé anon');
+await expectError(db, `SELECT unread_counts_for($1)`, [TIPH], /permission denied/, 'unread_counts_for interdit à la clé anon');
+await expectError(db, `SELECT endpoint FROM push_subscriptions`, [], /permission denied/, 'abonnements push illisibles avec la clé anon');
+await expectError(db, `SELECT * FROM notification_queue`, [], /permission denied/, 'file de notifications illisible avec la clé anon');
+check('RPC joueur des notifications ouvertes à la clé anon', (await one(`SELECT has_function_privilege('anon', 'my_unread_counts()', 'EXECUTE') AND has_function_privilege('anon', 'save_push_subscription(text,text,text,text)', 'EXECUTE') AS ok`)).ok === true);
 await setToken(lermeToken);
 check('l\'administrateur (M. Lerme) liste les sauvegardes', (await one(`SELECT count(*)::int AS n FROM list_daily_snapshots()`)).n >= 3);
 

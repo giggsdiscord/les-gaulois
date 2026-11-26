@@ -9,6 +9,8 @@ import type { GameApi } from './types.ts';
 export function createApi(): GameApi {
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-  if (url && key) return new SupabaseApi(url, key);
+  // Clé publique VAPID des notifications push (V4.3), facultative
+  const vapid = (import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined) ?? null;
+  if (url && key) return new SupabaseApi(url, key, vapid);
   return new DemoApi();
 }

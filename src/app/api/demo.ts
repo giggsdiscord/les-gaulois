@@ -26,6 +26,8 @@ import { demoPlayers, demoStructures, demoVillage, type DemoPlayer } from '../de
 import {
   HIDDEN_MIGRANT_KEYS,
   HIDDEN_VILLAGE_KEYS,
+  NOTIFICATION_CATEGORIES,
+  UNREAD_AREAS,
   type ActionInput,
   type ChangeListener,
   type DuelMode,
@@ -38,12 +40,16 @@ import {
   type LoginCard,
   type MotionKind,
   type MyPlayer,
+  type NotificationCategory,
+  type NotificationSettings,
   type OpResponse,
   type Proposal,
   type PublicPlayer,
   type ScreeningRow,
   type SnapshotInfo,
   type TavernMessage,
+  type UnreadArea,
+  type UnreadCounts,
 } from './types.ts';
 
 const STORAGE_KEY = 'les-gaulois-demo-v4';
@@ -66,6 +72,9 @@ interface DemoStore extends DemoCore {
   pins: Record<string, string>;
   sessions: Record<string, string>;
   snapshots: { info: SnapshotInfo; data: DemoCore }[];
+  /** V4.3 (facultatifs : parties démo plus anciennes) — dernières lectures, catégories de notifications. */
+  readMarks?: Record<string, Partial<Record<UnreadArea, string>>>;
+  notificationPrefs?: Record<string, NotificationCategory[]>;
 }
 
 const uuid = (): string => crypto.randomUUID();
@@ -362,6 +371,68 @@ export class DemoApi implements GameApi {
       screenings: s.screenings.filter((x) => x.screened_by === me.id),
       temptations: snap.temptations.filter((t) => t.player_id === me.id).slice().reverse().slice(0, 20),
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pastilles et notifications (V4.3) : même calcul que unread_counts_for (SQL).
+  // Pas de notification push en mode démo (aucun serveur pour les envoyer).
+  // ---------------------------------------------------------------------------
+  readonly pushPublicKey = null;
+
+  async unreadCounts(): Promise<UnreadCounts> {
+    return this.countsFor(this.me().id);
+  }
+
+  async markSeen(area: UnreadArea): Promise<UnreadCounts> {
+    const me = this.me();
+    if (!UNREAD_AREAS.includes(area)) throw new Error('Zone inconnue.');
+    this.store.readMarks ??= {};
+    this.store.readMarks[me.id] = { ...this.store.readMarks[me.id], [area]: this.now().toISOString() };
+    this.save();
+    return this.countsFor(me.id);
+  }
+
+  async notificationSettings(): Promise<NotificationSettings> {
+    const me = this.me();
+    return { categories: [...(this.store.notificationPrefs?.[me.id] ?? NOTIFICATION_CATEGORIES)], devices: 0 };
+  }
+
+  async setNotificationCategories(categories: NotificationCategory[]): Promise<NotificationSettings> {
+    const me = this.me();
+    this.store.notificationPrefs ??= {};
+    this.store.notificationPrefs[me.id] = [...new Set(categories.filter((c) => NOTIFICATION_CATEGORIES.includes(c)))].sort();
+    this.save();
+    return this.notificationSettings();
+  }
+
+  async savePushSubscription(): Promise<NotificationSettings> {
+    this.me();
+    throw new Error('Notifications indisponibles en mode démo.');
+  }
+
+  async deletePushSubscription(): Promise<NotificationSettings> {
+    return this.notificationSettings();
+  }
+
+  private countsFor(playerId: string): UnreadCounts {
+    const now = this.now().getTime();
+    const floor = now - 3 * 86_400_000;
+    const marks = this.store.readMarks?.[playerId] ?? {};
+    const since = (area: UnreadArea) => Math.max(marks[area] ? Date.parse(marks[area]!) : floor, floor);
+    const after = (iso: string, area: UnreadArea) => Date.parse(iso) > since(area);
+    const tavern = (channel: TavernMessage['channel']) =>
+      this.store.tavern.filter((m) => m.channel === channel && m.sender_id !== playerId && after(m.created_at, channel)).length;
+    const me = this.players.find((p) => p.id === playerId);
+    const counts = {
+      village_square: tavern('village_square'),
+      agora_hall: tavern('agora_hall'),
+      whisper: this.store.tavern.filter((m) => m.channel === 'whisper' && (m.recipient_ids ?? []).includes(playerId) && m.sender_id !== playerId && after(m.created_at, 'whisper')).length,
+      gazette: Math.min(this.store.gazette.filter((g) => after(g.created_at, 'gazette')).length, 1),
+      votes: this.store.state.proposals.filter((p) => p.status === 'open' && Date.parse(p.closes_at) > now && !p.votes_yes.includes(playerId) && !p.votes_no.includes(playerId)).length,
+      approvals: this.store.state.snapshot.approvals.filter((a) => a.status === 'pending' && a.required_role === me?.role_code).length,
+      duels: this.store.state.duels.filter((d) => d.status === 'active' && (d.player_a_id === playerId || d.player_b_id === playerId)).length,
+    };
+    return { ...counts, total: Object.values(counts).reduce((a, b) => a + b, 0) };
   }
 
   async loadTavern(channel: TavernMessage['channel']): Promise<TavernMessage[]> {

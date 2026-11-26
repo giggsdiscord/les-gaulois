@@ -1,12 +1,33 @@
 /** Écran 5 — La Gazette (édition quotidienne du Maître du Jeu) et La Taverne (chat en temps réel). */
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { GazetteEdition, TavernMessage } from '../api/types.ts';
+import { navigate, useRoute } from '../lib/router.ts';
+import { useUnread } from '../state/UnreadContext.tsx';
 import { Avatar, Badge, Button, Card, Empty, SectionTitle, Tabs, TextArea, cx } from '../components/ui.tsx';
 import { dateLong, relative, timeShort } from '../lib/format.ts';
 import { CHANNEL_LABEL } from '../lib/labels.ts';
 import { useData, useGame, useNow } from '../state/GameContext.tsx';
 
 type Tab = 'gazette' | 'taverne';
+
+/** Liens des notifications : #/gazette/taverne, #/gazette/agora, #/gazette/chuchotements (V4.3). */
+const CHANNEL_OF_PARAM: Record<string, TavernMessage['channel']> = { taverne: 'village_square', agora: 'agora_hall', chuchotements: 'whisper' };
+const PARAM_OF_CHANNEL: Record<TavernMessage['channel'], string> = { village_square: 'taverne', agora_hall: 'agora', whisper: 'chuchotements' };
+
+function Dot({ n }: { n: number }) {
+  return n > 0 ? <span className="ml-1.5 inline-block min-w-4 rounded-full bg-ember-600 px-1 text-center text-[10px] leading-4 text-white">{n}</span> : null;
+}
+
+/** Vrai quand l'onglet du navigateur est affiché (on ne marque pas « lu » en arrière-plan). */
+function usePageVisible(): boolean {
+  const [visible, setVisible] = useState(() => document.visibilityState === 'visible');
+  useEffect(() => {
+    const on = () => setVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', on);
+    return () => document.removeEventListener('visibilitychange', on);
+  }, []);
+  return visible;
+}
 
 /** Rendu Markdown minimal (paragraphes, titres, listes, gras, italique) sans HTML brut. */
 function inline(text: string): ReactNode[] {
@@ -74,6 +95,11 @@ function Edition({ e, latest }: { e: GazetteEdition; latest?: boolean }) {
 function Gazette() {
   const data = useData();
   const now = useNow(60_000);
+  const { counts, markSeen } = useUnread();
+  const visible = usePageVisible();
+  useEffect(() => {
+    if (visible) markSeen('gazette');
+  }, [visible, counts?.gazette, markSeen]);
   const [archive, setArchive] = useState(false);
   const [latest, ...older] = data.gazette;
   const events = data.events.filter((e) => e.visibility === 'public').slice(0, 30);
@@ -116,11 +142,18 @@ function Gazette() {
   );
 }
 
-function Tavern() {
+function Tavern({ initialChannel }: { initialChannel: TavernMessage['channel'] }) {
   const data = useData();
   const { api, toast } = useGame();
   const now = useNow(30_000);
-  const [channel, setChannel] = useState<TavernMessage['channel']>('village_square');
+  const { counts, markSeen } = useUnread();
+  const visible = usePageVisible();
+  const [channel, setChannelState] = useState<TavernMessage['channel']>(initialChannel);
+  const setChannel = (c: TavernMessage['channel']) => {
+    setChannelState(c);
+    navigate('gazette', PARAM_OF_CHANNEL[c]);
+  };
+  useEffect(() => setChannelState(initialChannel), [initialChannel]);
   const [messages, setMessages] = useState<TavernMessage[]>([]);
   const [text, setText] = useState('');
   const [recipients, setRecipients] = useState<string[]>([]);
@@ -156,6 +189,12 @@ function Tavern() {
     bottom.current?.scrollIntoView({ block: 'end' });
   }, [messages.length]);
 
+  // Salon affiché = lu (et de nouveau lu à chaque message arrivé pendant qu'on le regarde)
+  const unreadHere = counts?.[channel] ?? 0;
+  useEffect(() => {
+    if (visible) markSeen(channel);
+  }, [visible, channel, unreadHere, messages.length, markSeen]);
+
   const others = data.players.filter((p) => p.is_active_slot && p.id !== data.me.id);
   const send = async () => {
     const content = text.trim();
@@ -180,6 +219,7 @@ function Tavern() {
         {(['village_square', 'agora_hall', 'whisper'] as const).map((c) => (
           <button key={c} onClick={() => setChannel(c)} className={cx('shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold', channel === c ? 'bg-wood-700 text-parchment-50' : 'bg-parchment-200 text-ink')}>
             {CHANNEL_LABEL[c]}
+            {c !== channel && <Dot n={counts?.[c] ?? 0} />}
           </button>
         ))}
       </div>
@@ -256,18 +296,28 @@ function Tavern() {
 }
 
 export function GazetteScreen() {
-  const [tab, setTab] = useState<Tab>('gazette');
+  const route = useRoute();
+  const { counts } = useUnread();
+  const linked = route.param ? CHANNEL_OF_PARAM[route.param] : undefined;
+  const [tab, setTab] = useState<Tab>(linked ? 'taverne' : 'gazette');
+  useEffect(() => {
+    if (linked) setTab('taverne');
+  }, [linked, route.param]);
+  const tavernUnread = counts ? counts.village_square + counts.agora_hall + counts.whisper : 0;
   return (
     <div>
       <Tabs<Tab>
         value={tab}
-        onChange={setTab}
+        onChange={(t) => {
+          setTab(t);
+          navigate('gazette', t === 'taverne' ? PARAM_OF_CHANNEL[linked ?? 'village_square'] : null);
+        }}
         tabs={[
-          { id: 'gazette', label: 'La Gazette' },
-          { id: 'taverne', label: 'La Taverne' },
+          { id: 'gazette', label: 'La Gazette', badge: tab === 'gazette' ? 0 : counts?.gazette ?? 0 },
+          { id: 'taverne', label: 'La Taverne', badge: tab === 'taverne' ? 0 : tavernUnread },
         ]}
       />
-      {tab === 'gazette' ? <Gazette /> : <Tavern />}
+      {tab === 'gazette' ? <Gazette /> : <Tavern initialChannel={linked ?? 'village_square'} />}
     </div>
   );
 }

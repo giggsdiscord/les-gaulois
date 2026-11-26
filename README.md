@@ -54,7 +54,7 @@ Le modèle se règle par le secret `GM_MODEL` des Edge Functions, sans toucher a
 | `.github/workflows/deploy-functions.yml` | Déploiement des 3 Edge Functions sur Supabase depuis GitHub (secret `SUPABASE_ACCESS_TOKEN`, variable `SUPABASE_PROJECT_REF`) : aucune CLI à installer. |
 | `docs/DEPLOIEMENT.md` | Guide de déploiement express, mises à jour, sauvegardes, dépannage. |
 | `tests/` | Tests Vitest du moteur (`tests/*.test.ts`), des fonctions (`tests/functions/`) et du mode démo (`tests/app/`). |
-| `public/` | Application installable (V4.2) : `manifest.webmanifest`, `sw.js` (service worker), `icons/` (`npm run icons`). |
+| `public/` | Application installable (V4.2) : `manifest.webmanifest`, `sw.js` (service worker : cache, notifications push V4.3), `icons/` (`npm run icons`). |
 | `scripts/` | `check-sql.mjs` (PGlite + contrat interface ↔ base), `check-deploy.mjs` (vérification d'un déploiement réel), `bundle-sql.mjs`, `sync-engine.mjs`, `check-functions.mjs` (Deno), `build-gdd-pdf.mjs`, `build-icons.mjs`. |
 
 ## Commandes

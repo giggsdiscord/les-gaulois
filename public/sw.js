@@ -59,3 +59,49 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(networkFirst(request));
   }
 });
+
+// ---------------------------------------------------------------------------
+// Notifications push (V4.3) : affichage, pastille de l'icône, ouverture au clic
+// ---------------------------------------------------------------------------
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+  const badge = typeof data.badge === 'number' ? data.badge : null;
+  const nav = self.navigator;
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(data.title || 'Les Gaulois', {
+        body: data.body || '',
+        tag: data.tag || 'gaulois',
+        renotify: true,
+        lang: 'fr',
+        icon: 'icons/icon-192.png',
+        data: { url: typeof data.url === 'string' && data.url.startsWith('#/') ? data.url : '#/' },
+      }),
+      badge === null || !nav || !nav.setAppBadge
+        ? Promise.resolve()
+        : (badge > 0 ? nav.setAppBadge(badge) : nav.clearAppBadge()).catch(() => undefined),
+    ]),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '#/';
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const open = windows.find((c) => c.url.startsWith(self.registration.scope));
+      if (open) {
+        open.postMessage({ type: 'gaulois:navigate', url });
+        await open.focus();
+      } else {
+        await self.clients.openWindow(new URL(url, self.registration.scope).href);
+      }
+    })(),
+  );
+});

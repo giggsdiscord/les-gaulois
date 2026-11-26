@@ -2,6 +2,9 @@
 # À configurer une fois dans le dépôt (Settings → Secrets and variables → Actions) :
 #   Secret    SUPABASE_ACCESS_TOKEN  jeton personnel Supabase (https://supabase.com/dashboard/account/tokens)
 #   Variable  SUPABASE_PROJECT_REF   identifiant du projet (Settings > General > Project ID)
+# Notifications push (facultatif, V4.3) — recopiées dans les secrets Supabase à chaque déploiement :
+#   Variable  VITE_VAPID_PUBLIC_KEY  clé publique VAPID (aussi utilisée par le site)
+#   Secret    VAPID_PRIVATE_KEY      clé privée VAPID
 # Se déclenche quand le moteur ou les fonctions changent, ou à la main (onglet Actions → Run workflow).
 # Les secrets du jeu (ANTHROPIC_API_KEY, GM_MODEL, CRON_SECRET, ALLOWED_ORIGIN) se posent dans
 # Supabase > Edge Functions > Secrets ; ils ne transitent pas par GitHub.
@@ -14,6 +17,7 @@ on:
       - 'supabase/functions/**'
       - 'supabase/config.toml'
       - 'src/engine/**'
+      - '.github/workflows/deploy-functions.yml'
   workflow_dispatch:
 
 concurrency:
@@ -27,6 +31,8 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,5 +46,8 @@ jobs:
       - uses: supabase/setup-cli@v3
         with:
           version: latest
+      - name: Clés des notifications push (secrets Supabase)
+        if: ${{ env.VAPID_PRIVATE_KEY != '' && env.VAPID_PUBLIC_KEY != '' }}
+        run: supabase secrets set --project-ref "$PROJECT_REF" VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY"
       - name: Déployer game-engine, gm-ai-action, daily-world-sync
         run: supabase functions deploy --remote="$PROJECT_REF" --yes

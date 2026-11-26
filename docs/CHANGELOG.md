@@ -1,5 +1,11 @@
 # Historique des versions du GDD
 
+### V4.3 — 26/11/2026 — Pastilles rouges & notifications
+- Pastilles de non-lus sur les onglets (Taverne, chuchotements, Gazette, votes, validations, duels) et sur l'icône de l'appli installée ; lecture marquée à l'ouverture d'un salon ou de la Gazette (§7.6).
+- Notifications push sur téléphone et ordinateur, même appli fermée : Taverne, chuchotement, duel, Agora (proposition, motion visant le joueur, résultat), validation, Gazette, proposition discrète ; réglage par catégorie (icône de cloche) ; regroupement des messages d'une même catégorie.
+- Migration `20261130000100_notifications.sql` (marques de lecture, abonnements, préférences, file, déclencheurs, RPC) ; envoi par `daily-world-sync` (mode `push`) avec chiffrement RFC 8291 et VAPID en WebCrypto ; clés VAPID via GitHub.
+- Les fenêtres (feuilles) s'affichent au-dessus de la navigation basse, même ouvertes depuis l'en-tête.
+
 ### V4.2 — 26/11/2026 — Application installable
 - Le jeu s'installe comme une application depuis le navigateur (§7.6) : manifeste `public/manifest.webmanifest`, icônes (192, 512, maskable, iOS ; `npm run icons`), service worker `public/sw.js` (fichiers du site uniquement, jamais les appels Supabase ; page réseau d'abord).
 - Bouton « Installer l'appli » : encart sur l'écran de connexion, icône dans l'en-tête quand c'est possible ; invite native sur Chrome / Edge / Android, consignes Safari sur iPhone / iPad, consignes du menu ailleurs.

@@ -1,12 +1,12 @@
 ---
-version: 4.2
+version: 4.3
 date: 2026-11-26
 title: Les Gaulois — Game Design Document & Architecture Technique
 ---
 
 # LES GAULOIS — Simulation Coopérative de Village & Micro-État
 
-**Game Design Document (GDD) & Spécification Technique Complète — Version 4.2**
+**Game Design Document (GDD) & Spécification Technique Complète — Version 4.3**
 
 Jeu de stratégie, de gestion démographique, économique et politique asynchrone persistant, ancré dans le monde réel (Pyrénées de Lleida), piloté par un moteur déterministe TypeScript et un Maître du Jeu IA.
 
@@ -15,7 +15,9 @@ Jeu de stratégie, de gestion démographique, économique et politique asynchron
 | **Cadre réel :** hameau abandonné des Pyrénées de Lleida (Catalogne, Espagne), domaine de 30 ha situé à 18 km de la frontière d'Andorre. | **Achat & travaux :** 295 000 € (PLU 2013 validé). Rénovation globale estimée entre 600 000 € et 900 000 €. |
 | **Effectif & rythme :** 7 joueurs fondateurs (10 joueurs max) + population résidente dynamique (migrants accueillis, naturalisés, lignées et apprentis). 1 jour réel = 1 jour de jeu (3 PA/jour). | **Enjeux :** autonomie totale puis Micro-État souverain, pérennité démographique, équilibre idéologique (Droite vs Gauche), propriété privée vs collectivisation, contrebande, justice publique et dissuasion. Hébergement 0 € + API IA < 1 $/mois (Claude Haiku 5.5). |
 
-> **Nouveautés V4.2 :** le jeu **s'installe comme une application** sur téléphone et ordinateur, directement depuis le navigateur, sans magasin d'applications (§7.6) : bouton « Installer l'appli » sur l'écran de connexion (et dans l'en-tête quand le navigateur le permet), icône sur l'écran d'accueil, ouverture en plein écran.
+> **Nouveautés V4.3 :** **pastilles rouges et notifications sur le téléphone** (§7.6) : les onglets signalent les messages non lus de la Taverne, les chuchotements, la Gazette du jour, les votes, validations et duels en attente (total reporté sur l'icône de l'appli installée) ; chaque joueur peut recevoir une notification, même appli fermée, pour la Taverne, un chuchotement, un duel, l'Agora, une validation, la Gazette ou une proposition discrète, et choisir ses catégories (icône de cloche).
+
+> **Rappel V4.2 :** le jeu **s'installe comme une application** sur téléphone et ordinateur, directement depuis le navigateur, sans magasin d'applications (§7.6) : bouton « Installer l'appli » sur l'écran de connexion (et dans l'en-tête quand le navigateur le permet), icône sur l'écran d'accueil, ouverture en plein écran.
 
 > **Rappel V4.1 :** le jeu est prêt à être mis en ligne en une vingtaine de minutes grâce au **guide de déploiement express** (§7.8, `docs/DEPLOIEMENT.md`) : base installée par un seul script SQL, Edge Functions déployées par GitHub Actions (aucune CLI à installer sur le PC), tâches planifiées par un script rejouable, et vérification automatique du déploiement (`npm run deploy:check`).
 
@@ -707,6 +709,10 @@ Le Village Gaulois/
 - **Application installable (V4.2) :** le site est une *Progressive Web App*. Un manifeste (`public/manifest.webmanifest` : nom, icônes, affichage `standalone`, chemins relatifs pour GitHub Pages) et un service worker (`public/sw.js`) permettent l'installation ; l'interface propose un bouton « Installer l'appli » (`components/InstallApp.tsx`, `lib/install.ts`).
 
 > **Précisions V4.2.** *Bouton :* encart sur l'écran de connexion tant que le jeu n'est pas ouvert comme une appli ; icône dans l'en-tête seulement si l'installation est réellement possible. *Comportement selon l'appareil :* Chrome, Edge et Android ouvrent l'invite native du navigateur (`beforeinstallprompt`, mise de côté au chargement) ; iPhone et iPad (y compris l'iPad qui se présente comme un Mac) affichent les 4 gestes Safari (Partager → « Sur l'écran d'accueil » → Ajouter) ; les autres navigateurs affichent les consignes du menu (Firefox sur ordinateur ne sait pas installer). Le mode est choisi par `installMode()` (`lib/installMode.ts`, testé). *Service worker :* enregistré uniquement sur le site publié ; il ne met en cache que les fichiers du site (même origine, GET), jamais les appels Supabase, Edge Functions ou météo. Page : réseau d'abord (une mise à jour publiée est visible au lancement suivant), copie de secours hors connexion ; fichiers `assets/` (noms hachés) : cache d'abord. Hors connexion, l'appli s'ouvre mais le jeu, qui vit sur le serveur, ne répond pas. *Icônes :* 192 px, 512 px, 512 px « maskable » (dessin dans la zone sûre), 180 px pour iOS, générées par `npm run icons` depuis `public/icons/icon.svg`.
+
+- **Pastilles et notifications (V4.3) :** compteurs de non-lus calculés par la base (`unread_counts_for`, marques de lecture `player_read_marks`), notifications *Web Push* standard (Chrome, Edge, Firefox, Android, Safari iPhone / iPad 16.4+ une fois l'appli installée), sans service payant.
+
+> **Précisions V4.3.** *Pastilles :* onglet Gazette = messages non lus de la place du village, de la salle de l'Agora et des chuchotements + Gazette du jour (1) ; onglet Agora = votes ouverts non exprimés + duels où l'on est engagé ; Mon métier = validations attendues par son rôle. Sans marque de lecture, seuls les 3 derniers jours comptent ; ses propres messages ne comptent pas. Ouvrir la Gazette ou un salon de la Taverne (onglet du navigateur affiché) le marque comme lu. Le total s'affiche sur l'icône de l'appli installée (Badging API). *Notifications :* déclencheurs SQL sur les nouveaux messages (place et salle de l'Agora → tous les autres joueurs ; chuchotement → destinataires ; messages système exclus), duels (les deux adversaires), propositions de l'Agora (« Une motion vous vise » pour la cible) et résultats des votes, validations demandées (joueurs du rôle requis), Gazette du jour, tentations (sans rien dévoiler). Une notification n'est mise en file que pour un joueur actif, abonné sur au moins un appareil et qui n'a pas coupé la catégorie ; les lignes réinsérées par une restauration (plus de 15 minutes) n'en produisent pas. La base réveille `daily-world-sync` (mode `push`, une fois par transaction, via `gaulois_call_world_sync` de `cron.sql`) ; la maintenance du quart d'heure vide aussi la file. Plusieurs messages d'une même catégorie sont regroupés (« · 3 nouveaux messages à la Taverne ») et remplacent la notification précédente sur l'appareil ; un clic ouvre l'écran concerné (`#/gazette/taverne`, `#/duel/<id>`…). *Sécurité :* messages chiffrés de bout en bout pour l'appareil (RFC 8291) et signés par le serveur (VAPID, RFC 8292), écrits en WebCrypto sans dépendance ; abonnements, préférences et file inaccessibles à la clé publique (RPC seulement) ; un abonnement refusé (404 / 410) est supprimé. *Clés :* paire VAPID générée une fois ; clé publique dans la variable GitHub `VITE_VAPID_PUBLIC_KEY` (site) et clé privée dans le secret GitHub `VAPID_PRIVATE_KEY`, recopiées dans les secrets Supabase par le workflow des Edge Functions. Sans clés, la file est vidée sans envoi. *iPhone / iPad :* les notifications exigent l'appli installée sur l'écran d'accueil.
 
 - **Temps réel :** Realtime diffuse le chat, l'Agora, les duels, la carte, La Gazette et le journal d'événements ; les chuchotements, protégés par RLS, sont rechargés à la demande.
 

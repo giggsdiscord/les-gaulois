@@ -183,7 +183,8 @@ Le script contrôle, **sans rien modifier** : la base installée, les tables sec
 3. Onglet **Admin** > *Maître du Jeu* : vérifiez « Modèle : claude-haiku-5-5 » et « clé API configurée ». Facultatif : *Lancer la nuit* pour publier une première Gazette.
 4. Envoyez le lien aux 6 autres **dans votre groupe privé**, et demandez-leur de se connecter le jour même : tant qu'un joueur n'a pas choisi son PIN, `0000` reste valable pour son personnage. Un PIN oublié se réinitialise dans Admin > *Joueurs & places* (le joueur devra en choisir un nouveau).
 5. Installez l'appli : sur l'écran de connexion, bouton **Installer** de l'encart « Installer l'appli ». Sur Android, Chrome et Edge, le navigateur propose aussitôt l'installation ; sur iPhone / iPad, suivez les consignes affichées (Safari > Partager > **Sur l'écran d'accueil**). L'icône Les Gaulois apparaît alors parmi les applications et le jeu s'ouvre en plein écran.
-6. Places 8 à 10 : Admin > *Ouvrir la place*, prénom, personnage et PIN provisoire.
+6. Notifications : icône de **cloche** en haut de l'écran > *Activer les notifications*, puis choisir ce que l'on veut recevoir (sur iPhone / iPad, installer l'appli d'abord). Les pastilles rouges fonctionnent sans rien activer.
+7. Places 8 à 10 : Admin > *Ouvrir la place*, prénom, personnage et PIN provisoire.
 
 ---
 
@@ -192,6 +193,7 @@ Le script contrôle, **sans rien modifier** : la base installée, les tables sec
 | Changement | Que faire |
 |---|---|
 | Interface, moteur, Edge Functions | `npm run check` puis `git add .`, `git commit`, `git push`. Le site se republie tout seul ; les Edge Functions aussi si `src/engine/`, `supabase/functions/` ou `supabase/config.toml` ont changé. Après une modification du moteur, lancez `npm run engine:sync` avant le commit (le workflow le vérifie). |
+| Notifications push (clés VAPID) | Une paire de clés, générée une fois : variable GitHub `VITE_VAPID_PUBLIC_KEY` (clé publique, lue par le site) et secret GitHub `VAPID_PRIVATE_KEY`. Le workflow « Déploiement des Edge Functions » les recopie dans les secrets Supabase à chaque exécution. Sans elles, les pastilles marchent mais aucune notification n'est envoyée. |
 | Base de données | Le nouveau fichier `supabase/migrations/AAAAMMJJHHMMSS_….sql` **seul** dans le SQL Editor, après une sauvegarde (Admin > *Sauvegarder* et *Exporter (JSON)*). Jamais `setup_complete.sql` sur une partie en cours. |
 | Réglages de l'IA | Supabase > Edge Functions > Secrets (ex. `GM_MODEL` = `claude-opus-5-5` pour une plume plus riche, ≈ 25-35 $/mois). Si le changement ne semble pas pris en compte, relancez le workflow « Déploiement des Edge Functions ». |
 | Redéployer à la main | Onglet Actions > workflow voulu > **Run workflow**. |

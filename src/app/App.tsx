@@ -1,6 +1,8 @@
 /** Coquille de l'application : connexion, en-tête, bannières, navigation basse et écrans. */
 import { useEffect, type ComponentType, type SVGProps } from 'react';
 import { InstallHeaderButton } from './components/InstallApp.tsx';
+import { NotificationsButton } from './components/NotificationsSheet.tsx';
+import { UnreadProvider, useUnread } from './state/UnreadContext.tsx';
 import { ChangePinModal, TemptationModal } from './components/Modals.tsx';
 import { AgoraIcon, CoinsIcon, GearIcon, LogoutIcon, MapIcon, NewsIcon, SwordsIcon, ToolsIcon } from './components/icons.tsx';
 import { Avatar, Button, Spinner, ToastStack, cx } from './components/ui.tsx';
@@ -44,6 +46,7 @@ function Header() {
             ⚡ {me.action_points} PA
           </span>
           <InstallHeaderButton />
+          <NotificationsButton />
           <Avatar emoji={me.avatar_emoji} color={me.avatar_color} size="sm" />
           <button
             onClick={() => window.confirm('Se déconnecter ?') && void signOut()}
@@ -122,13 +125,16 @@ function Shell() {
   const now = useNow(60_000);
   const me = data.me;
   const myApprovals = data.approvals.filter((a) => a.status === 'pending' && a.required_role === me.role_code).length;
+  const { counts } = useUnread();
+  const myDuels = data.duels.filter((d) => d.status === 'active' && (d.player_a_id === me.id || d.player_b_id === me.id)).length;
+  const unreadNews = counts ? counts.village_square + counts.agora_hall + counts.whisper + counts.gazette : 0;
   const openVotes = data.proposals.filter((p) => p.status === 'open' && new Date(p.closes_at) > now && !p.votes_yes.includes(me.id) && !p.votes_no.includes(me.id)).length;
   const items: NavItem[] = [
     { id: 'carte', label: 'Carte', icon: MapIcon },
     { id: 'metier', label: 'Mon métier', icon: ToolsIcon, badge: myApprovals },
-    { id: 'agora', label: 'Agora', icon: AgoraIcon, badge: openVotes },
+    { id: 'agora', label: 'Agora', icon: AgoraIcon, badge: openVotes + myDuels },
     { id: 'tresor', label: 'Trésor', icon: CoinsIcon },
-    { id: 'gazette', label: 'Gazette', icon: NewsIcon },
+    { id: 'gazette', label: 'Gazette', icon: NewsIcon, badge: unreadNews },
   ];
   if (me.is_admin) items.push({ id: 'admin', label: 'Admin', icon: GearIcon });
   const active = route.name === 'duel' ? 'agora' : route.name;
@@ -208,7 +214,9 @@ export function App() {
   }
   return (
     <>
-      <Shell />
+      <UnreadProvider>
+        <Shell />
+      </UnreadProvider>
       <ToastStack />
     </>
   );

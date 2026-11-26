@@ -68,6 +68,12 @@ export const LogoutIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M10 8 6 12l4 4M6 12h10" />
   </Icon>
 );
+export const BellIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15L6 16Z" />
+    <path d="M10 20.5a2 2 0 0 0 4 0" />
+  </Icon>
+);
 export const InstallIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}>
     <rect x="6" y="2.5" width="12" height="19" rx="2.5" />

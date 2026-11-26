@@ -14,6 +14,7 @@ import { callRpc, createDb, isAdmin, playerIdFromToken, recentAiCalls, type Db }
 import type { FunctionEnv } from './env.ts';
 import { createHttpHandler, HttpError, optStr, safeEqual, str, type JsonBody } from './http.ts';
 import { createAnthropicLlm } from './llm.ts';
+import { dispatchPush } from './push.ts';
 import { runGame, type PipelineDeps } from './pipeline.ts';
 import { fetchHeadlines, fetchWeather } from './world.ts';
 
@@ -157,11 +158,18 @@ export function dailyWorldSyncHandler(env: FunctionEnv): (req: Request) => Promi
     const secret = req.headers.get('x-cron-secret');
     const fromCron = env.cronSecret !== null && secret !== null && safeEqual(secret, env.cronSecret);
     if (!fromCron) await requireAdmin(deps.db, req);
-    const mode = body.mode === 'nightly' ? 'nightly' : 'maintenance';
+    const mode = body.mode === 'nightly' ? 'nightly' : body.mode === 'push' ? 'push' : 'maintenance';
     const now = deps.clock();
     const today = dayKey(now);
 
+    // Notifications : réveillé par la base à chaque nouvelle entrée de notification_queue
+    if (mode === 'push') {
+      return { ok: true, mode, push: await dispatchPush(deps.db, env.vapid, now) };
+    }
+
     if (mode === 'maintenance') {
+      // Filet de sécurité : envoie ce qu'un réveil aurait manqué (une erreur ici ne bloque pas la maintenance)
+      await dispatchPush(deps.db, env.vapid, now).catch((err: unknown) => console.warn('Notifications : envoi différé impossible', err));
       const local = localParts(now);
       let preAgora = false;
       if (local.weekday === 7 && (local.hour === 10 && local.minute >= 30)) {

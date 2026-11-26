@@ -1,5 +1,6 @@
 /** Composants d'interface : boutons, cartes, jauges, fenêtres, onglets, champs. */
 import { useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { createPortal } from 'react-dom';
 import { useGame, type Toast } from '../state/GameContext.tsx';
 import { CloseIcon } from './icons.tsx';
 
@@ -107,7 +108,8 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
   if (!open) return null;
-  return (
+  // Rendue au niveau de <body> : une fenêtre ouverte depuis l'en-tête passe ainsi au-dessus de la navigation basse
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-wood-900/50 backdrop-blur-[2px] md:items-center" onClick={onClose} role="presentation">
       <div
         role="dialog"
@@ -123,7 +125,8 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

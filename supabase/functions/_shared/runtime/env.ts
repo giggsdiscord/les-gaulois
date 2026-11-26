@@ -3,6 +3,7 @@
  * SUPABASE_URL et la clé secrète (SUPABASE_SERVICE_ROLE_KEY ou SUPABASE_SECRET_KEYS) sont fournies
  * automatiquement par Supabase ; les secrets du jeu ne peuvent pas commencer par « SUPABASE_ ».
  */
+import type { VapidKeys } from '../core/push.ts';
 import { DEFAULT_LOCATION, DEFAULT_RSS_FEEDS } from '../core/world.ts';
 
 export type Effort = 'low' | 'medium' | 'high';
@@ -26,6 +27,8 @@ export interface FunctionEnv {
   locationLabel: string;
   /** Probabilité (%) qu'un joueur reçoive une tentation chaque nuit (~1,4 par semaine à 20 %). */
   temptationChancePct: number;
+  /** Clés VAPID (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT facultatif) ; null = pas de push. */
+  vapid: VapidKeys | null;
 }
 
 /**
@@ -78,5 +81,16 @@ export function readEnv(get: (key: string) => string | undefined): FunctionEnv {
     longitude: num('WEATHER_LON', DEFAULT_LOCATION.longitude),
     locationLabel: get('WEATHER_LABEL') || DEFAULT_LOCATION.label,
     temptationChancePct: num('TEMPTATION_CHANCE_PCT', 20),
+    vapid: readVapid(get),
   };
+}
+
+/** Clés VAPID des notifications push (V4.3) ; absentes = notifications désactivées (la file est vidée). */
+export function readVapid(get: (key: string) => string | undefined): VapidKeys | null {
+  const publicKey = get('VAPID_PUBLIC_KEY')?.trim();
+  const privateKey = get('VAPID_PRIVATE_KEY')?.trim();
+  if (!publicKey || !privateKey) return null;
+  const origin = get('ALLOWED_ORIGIN');
+  const subject = get('VAPID_SUBJECT') || (origin && origin.startsWith('https://') ? origin : 'https://github.com');
+  return { publicKey, privateKey, subject };
 }

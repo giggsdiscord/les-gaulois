@@ -227,6 +227,39 @@ export type MotionKind =
 export type DuelMode = 'carlage' | 'target';
 export type ChangeListener = (table: string) => void;
 
+/** Zones « lues / non lues » (V4.3). */
+export type UnreadArea = 'village_square' | 'agora_hall' | 'whisper' | 'gazette';
+export const UNREAD_AREAS: readonly UnreadArea[] = ['village_square', 'agora_hall', 'whisper', 'gazette'];
+
+/** Compteurs des pastilles rouges (même calcul que la fonction SQL unread_counts_for). */
+export interface UnreadCounts {
+  village_square: number;
+  agora_hall: number;
+  whisper: number;
+  gazette: number;
+  votes: number;
+  approvals: number;
+  duels: number;
+  total: number;
+}
+
+/** Catégories de notifications push (V4.3). */
+export type NotificationCategory = 'taverne' | 'chuchotement' | 'duel' | 'agora' | 'validation' | 'gazette' | 'prive';
+export const NOTIFICATION_CATEGORIES: readonly NotificationCategory[] = ['taverne', 'chuchotement', 'duel', 'agora', 'validation', 'gazette', 'prive'];
+
+export interface NotificationSettings {
+  categories: NotificationCategory[];
+  /** Nombre d'appareils abonnés pour ce joueur. */
+  devices: number;
+}
+
+export interface PushSubscriptionInput {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  userAgent?: string | null;
+}
+
 export interface GameApi {
   readonly mode: 'supabase' | 'demo';
   /** Horloge du jeu (le mode démo peut avancer le temps). */
@@ -263,6 +296,16 @@ export interface GameApi {
   submitTargetTaps(duelId: string, taps: TargetTap[]): Promise<{ both_submitted: boolean }>;
   setDelegation(delegateId: string | null, until: string | null): Promise<void>;
   editConstitution(articleNumber: number, title: string, body: string): Promise<void>;
+
+  // Pastilles et notifications (V4.3)
+  /** Clé publique VAPID (base64url) ; null = notifications push indisponibles (mode démo, clé absente). */
+  readonly pushPublicKey: string | null;
+  unreadCounts(): Promise<UnreadCounts>;
+  markSeen(area: UnreadArea): Promise<UnreadCounts>;
+  notificationSettings(): Promise<NotificationSettings>;
+  setNotificationCategories(categories: NotificationCategory[]): Promise<NotificationSettings>;
+  savePushSubscription(subscription: PushSubscriptionInput): Promise<NotificationSettings>;
+  deletePushSubscription(endpoint: string): Promise<NotificationSettings>;
 
   // Administration
   listSnapshots(): Promise<SnapshotInfo[]>;

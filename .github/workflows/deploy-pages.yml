@@ -2,6 +2,7 @@
 # Variables du dépôt (Settings → Secrets and variables → Actions → Variables) :
 #   VITE_SUPABASE_URL       https://<projet>.supabase.co
 #   VITE_SUPABASE_ANON_KEY  clé publique du projet : « Publishable key » (sb_publishable_…) ou ancienne clé « anon »
+#   VITE_VAPID_PUBLIC_KEY   (facultatif, V4.3) clé publique des notifications push
 #                           (elle est faite pour être publique ; la RLS protège les données). Jamais la clé secrète.
 # Sans ces variables, le site est publié en mode démo local.
 name: Déploiement GitHub Pages
@@ -35,6 +36,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

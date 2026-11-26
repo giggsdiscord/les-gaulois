@@ -4,7 +4,7 @@ Lu automatiquement au début de chaque session. À tenir à jour à chaque étap
 
 ## Contexte
 - Jeu web mobile-first asynchrone pour 7 amis (10 max), en **français**. L'utilisateur écrit en français : répondre en français.
-- Spécification de référence : `docs/GDD.md` (version dans l'en-tête YAML, actuellement 4.2). Les PDF précédents (dont la V3.7 d'origine) sont dans `docs/archive/`.
+- Spécification de référence : `docs/GDD.md` (version dans l'en-tête YAML, actuellement 4.3). Les PDF précédents (dont la V3.7 d'origine) sont dans `docs/archive/`.
 - Mission découpée en 5 étapes (voir README « État d'avancement ») : 1 SQL ✅, 2 moteur ✅, 3 Edge Functions ✅, 4 React ✅, 5 guide de déploiement ✅ (`docs/DEPLOIEMENT.md`).
 - **Déployé le 2026-11-26** : dépôt public `giggsdiscord/les-gaulois`, site `https://giggsdiscord.github.io/les-gaulois/`, projet Supabase `fojkfobtzuihxpgndshl` (setup_complete.sql, secrets `CRON_SECRET` + `ALLOWED_ORIGIN`, 3 Edge Functions, cron `gaulois-nightly` + `gaulois-maintenance`). `npm run deploy:check` vert (valeurs dans `.env.deploy`, secret cron dans `.env.cron`, tous deux ignorés). `ANTHROPIC_API_KEY` posée par l'utilisateur. Incident du 1er déploiement : SQL collé sans `-Encoding UTF8` → texte abîmé, réparé par effacement du schéma public + réinstallation (partie vierge).
 - **Copie de travail = `C:\dev\les-gaulois`** (dépôt Git) ; le dossier OneDrive d'origine n'est plus suivi. Désormais, une nouvelle migration = l'exécuter seule dans le SQL Editor, jamais `setup_complete.sql`. L'utilisateur veut un coût limité à l'API de l'IA (infra gratuite : GitHub Pages + Supabase Free).
@@ -41,6 +41,8 @@ Lu automatiquement au début de chaque session. À tenir à jour à chaque étap
 - Typecheck séparé : `tsconfig.app.json` (DOM) ; `npm run typecheck` lance les deux configurations.
 - Aperçu navigateur : `.claude/launch.json` (config `gaulois-demo`, port 5173 ; `gaulois-build` = `vite preview` de `dist/` sur 4173, après `npm run build`, pour tester service worker et manifeste).
 - (V4.2) Application installable : `public/manifest.webmanifest` (chemins **relatifs**), `public/sw.js` (même origine + GET seulement, jamais Supabase ; enregistré seulement en production), icônes par `npm run icons`. `lib/install.ts` (DOM, invite `beforeinstallprompt`) / `lib/installMode.ts` (pur, testé : le typecheck Node ne doit pas importer de code DOM depuis `tests/`). Changer `CACHE` dans `sw.js` si la stratégie de cache change.
+- (V4.3) Pastilles & notifications : `state/UnreadContext.tsx` (compteurs via RPC `my_unread_counts` / `mark_seen`, badge d'icône), `components/NotificationsSheet.tsx` (cloche), `lib/push.ts` (DOM) / `lib/pushState.ts` (pur, testé). Serveur : déclencheurs SQL → `notification_queue` → `_kick_push` → `daily-world-sync` mode `push` → `runtime/push.ts` ; chiffrement RFC 8291 + VAPID dans `core/push.ts` (WebCrypto, types `WebKey` dérivés de `crypto.subtle` car pas de lib DOM côté Node). Clés : `.env.vapid` (local, ignoré), variable GitHub `VITE_VAPID_PUBLIC_KEY`, secret GitHub `VAPID_PRIVATE_KEY` → secrets Supabase par le workflow. `Sheet` passe par un portail (`document.body`).
+- L'outil d'aperçu du navigateur lit encore `.claude/launch.json` de l'ancien dossier OneDrive : pour tester `C:dev`, y ajouter temporairement `npx vite C:/dev/les-gaulois --port 5174`.
 - **Ne jamais mettre les variables `VITE_SUPABASE_*` dans `.env.local`** : `npm run dev` jouerait sur la vraie partie. Les valeurs de `deploy:check` sont dans `.env.deploy`, le secret cron dans `.env.cron` (ignorés).
 
 ## Déploiement (V4.1)

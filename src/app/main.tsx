@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App.tsx';
 import { createApi } from './api/index.ts';
 import { initInstall, registerServiceWorker } from './lib/install.ts';
+import { listenServiceWorkerMessages } from './lib/push.ts';
 import { GameProvider } from './state/GameContext.tsx';
 import './styles.css';
 
@@ -12,6 +13,7 @@ if (!root) throw new Error('Élément #root introuvable dans index.html');
 
 initInstall();
 registerServiceWorker();
+listenServiceWorkerMessages();
 
 createRoot(root).render(
   <StrictMode>

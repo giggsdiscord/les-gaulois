@@ -13,10 +13,15 @@ import type {
   LoginCard,
   MotionKind,
   MyPlayer,
+  NotificationCategory,
+  NotificationSettings,
   OpResponse,
   PrivateLedger,
+  PushSubscriptionInput,
   SnapshotInfo,
   TavernMessage,
+  UnreadArea,
+  UnreadCounts,
 } from './types.ts';
 
 const REALTIME_TABLES = [
@@ -39,8 +44,31 @@ export class SupabaseApi implements GameApi {
   private token: string | null = null;
   private client: SupabaseClient;
 
-  constructor(private readonly url: string, private readonly anonKey: string) {
+  readonly pushPublicKey: string | null;
+
+  constructor(private readonly url: string, private readonly anonKey: string, pushPublicKey: string | null = null) {
     this.client = this.makeClient();
+    this.pushPublicKey = pushPublicKey && pushPublicKey.length > 40 ? pushPublicKey : null;
+  }
+
+  // Pastilles et notifications (V4.3)
+  unreadCounts(): Promise<UnreadCounts> {
+    return this.rpc<UnreadCounts>('my_unread_counts');
+  }
+  markSeen(area: UnreadArea): Promise<UnreadCounts> {
+    return this.rpc<UnreadCounts>('mark_seen', { p_area: area });
+  }
+  notificationSettings(): Promise<NotificationSettings> {
+    return this.rpc<NotificationSettings>('my_notification_settings');
+  }
+  setNotificationCategories(categories: NotificationCategory[]): Promise<NotificationSettings> {
+    return this.rpc<NotificationSettings>('set_notification_categories', { p_categories: categories });
+  }
+  savePushSubscription(s: PushSubscriptionInput): Promise<NotificationSettings> {
+    return this.rpc<NotificationSettings>('save_push_subscription', { p_endpoint: s.endpoint, p_p256dh: s.p256dh, p_auth: s.auth, p_user_agent: s.userAgent ?? null });
+  }
+  deletePushSubscription(endpoint: string): Promise<NotificationSettings> {
+    return this.rpc<NotificationSettings>('delete_push_subscription', { p_endpoint: endpoint });
   }
 
   private makeClient(): SupabaseClient {
