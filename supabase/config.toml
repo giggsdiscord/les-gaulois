@@ -1,0 +1,14 @@
+# Configuration Supabase CLI — Les Gaulois & Micro-État
+# Les fonctions n'utilisent pas Supabase Auth : l'authentification se fait par jeton de session
+# (en-tête x-player-token, obtenu avec le code PIN) ou par secret partagé avec pg_cron.
+# La vérification JWT de la passerelle est donc désactivée (compatible avec les nouvelles clés publiques).
+project_id = "les-gaulois"
+
+[functions.game-engine]
+verify_jwt = false
+
+[functions.gm-ai-action]
+verify_jwt = false
+
+[functions.daily-world-sync]
+verify_jwt = false

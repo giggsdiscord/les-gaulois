@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.vite/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+supabase/.temp/
+supabase/.branches/
+docs/build/
+.DS_Store
+Thumbs.db
+
+# Réglages locaux de Claude Code (le launch.json de l'aperçu reste versionné)
+.claude/settings.local.json

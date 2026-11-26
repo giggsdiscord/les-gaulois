@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+/* Thème « Pyrénées réalistes » : bois, pierre sèche, parchemin moderne & tableau de bord technique */
+@theme {
+  --font-serif: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --color-parchment-50: #fbf7ef;
+  --color-parchment-100: #f4ecdc;
+  --color-parchment-200: #e9dcc0;
+  --color-parchment-300: #d9c49c;
+  --color-ink: #2b2118;
+  --color-ink-soft: #5b4d40;
+  --color-wood-900: #2e2015;
+  --color-wood-800: #3b2a1c;
+  --color-wood-700: #5a3d24;
+  --color-wood-600: #7a4b26;
+  --color-wood-500: #96602f;
+  --color-stone-wall: #8c8377;
+  --color-moss-700: #3e5a24;
+  --color-moss-600: #4d6b2f;
+  --color-moss-500: #5f8238;
+  --color-moss-100: #e5ecd6;
+  --color-river-600: #2f6f8f;
+  --color-river-100: #dcebf1;
+  --color-ember-600: #b3452c;
+  --color-ember-100: #f6ddd4;
+  --color-gold-500: #c8962e;
+  --color-gold-100: #f6ebcf;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-parchment-50);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Grain discret de parchemin */
+.parchment {
+  background-color: var(--color-parchment-50);
+  background-image: radial-gradient(rgba(122, 75, 38, 0.05) 1px, transparent 1px);
+  background-size: 6px 6px;
+}
+
+.wood-bar {
+  background: linear-gradient(180deg, var(--color-wood-800), var(--color-wood-900));
+}
+
+.safe-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes target-pop {
+  from {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.target-pop {
+  animation: target-pop 90ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .target-pop {
+    animation: none;
+  }
+}
