@@ -1,6 +1,7 @@
 /** Écran d'accueil : grille des 7 fondateurs + 3 places, puis code PIN à 4 chiffres. */
 import { useEffect, useState } from 'react';
 import type { LoginCard } from '../api/types.ts';
+import { InstallCard } from '../components/InstallApp.tsx';
 import { Avatar, Button, Spinner, cx } from '../components/ui.tsx';
 import { useGame } from '../state/GameContext.tsx';
 
@@ -139,9 +140,12 @@ export function LoginScreen() {
         )}
         {message && <p className="mt-4 rounded-xl bg-ember-100 px-4 py-3 text-sm font-medium text-ember-600">{message}</p>}
         {!selected && (
-          <Button variant="ghost" className="mt-6" onClick={() => window.location.reload()}>
-            Actualiser
-          </Button>
+          <>
+            <InstallCard />
+            <Button variant="ghost" className="mt-6" onClick={() => window.location.reload()}>
+              Actualiser
+            </Button>
+          </>
         )}
       </main>
     </div>

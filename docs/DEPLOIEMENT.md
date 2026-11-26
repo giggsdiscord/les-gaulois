@@ -174,7 +174,7 @@ Depuis le PC :
 npm run deploy:check -- --url https://<ref>.supabase.co --key <clé publique> --site https://<pseudo>.github.io/les-gaulois/
 ```
 
-Le script contrôle, **sans rien modifier** : la base installée, les tables secrètes bien refusées à la clé publique, les 3 Edge Functions déployées et joignables depuis le site (CORS), et le site branché sur Supabase (et non en mode démo). Ajoutez `--cron-secret <CRON_SECRET>` pour tester aussi la maintenance planifiée de bout en bout. Les valeurs peuvent aussi être placées dans un fichier `.env.local` (`VITE_SUPABASE_URL=…`, `VITE_SUPABASE_ANON_KEY=…`, `SITE_URL=…`), ignoré par Git.
+Le script contrôle, **sans rien modifier** : la base installée, les tables secrètes bien refusées à la clé publique, les 3 Edge Functions déployées et joignables depuis le site (CORS), et le site branché sur Supabase (et non en mode démo). Ajoutez `--cron-secret <CRON_SECRET>` pour tester aussi la maintenance planifiée de bout en bout. Les valeurs peuvent aussi être placées dans un fichier `.env.deploy` à la racine (`VITE_SUPABASE_URL=…`, `VITE_SUPABASE_ANON_KEY=…`, `SITE_URL=…`) et le secret seul dans `.env.cron` : tous deux sont ignorés par Git, et la commande devient simplement `npm run deploy:check`. Évitez `.env.local` : Vite le lit aussi, et `npm run dev` se brancherait alors sur la vraie partie au lieu du mode démo.
 
 ## 7. Première connexion et PIN (2 min)
 
@@ -182,7 +182,7 @@ Le script contrôle, **sans rien modifier** : la base installée, les tables sec
 2. **Guillem** (administrateur) se connecte avec `0000` : le jeu impose aussitôt un nouveau PIN.
 3. Onglet **Admin** > *Maître du Jeu* : vérifiez « Modèle : claude-haiku-5-5 » et « clé API configurée ». Facultatif : *Lancer la nuit* pour publier une première Gazette.
 4. Envoyez le lien aux 6 autres **dans votre groupe privé**, et demandez-leur de se connecter le jour même : tant qu'un joueur n'a pas choisi son PIN, `0000` reste valable pour son personnage. Un PIN oublié se réinitialise dans Admin > *Joueurs & places* (le joueur devra en choisir un nouveau).
-5. Sur téléphone : menu du navigateur > **Ajouter à l'écran d'accueil**, pour l'ouvrir comme une application.
+5. Installez l'appli : sur l'écran de connexion, bouton **Installer** de l'encart « Installer l'appli ». Sur Android, Chrome et Edge, le navigateur propose aussitôt l'installation ; sur iPhone / iPad, suivez les consignes affichées (Safari > Partager > **Sur l'écran d'accueil**). L'icône Les Gaulois apparaît alors parmi les applications et le jeu s'ouvre en plein écran.
 6. Places 8 à 10 : Admin > *Ouvrir la place*, prénom, personnage et PIN provisoire.
 
 ---

@@ -1,5 +1,10 @@
 # Historique des versions du GDD
 
+### V4.2 — 26/11/2026 — Application installable
+- Le jeu s'installe comme une application depuis le navigateur (§7.6) : manifeste `public/manifest.webmanifest`, icônes (192, 512, maskable, iOS ; `npm run icons`), service worker `public/sw.js` (fichiers du site uniquement, jamais les appels Supabase ; page réseau d'abord).
+- Bouton « Installer l'appli » : encart sur l'écran de connexion, icône dans l'en-tête quand c'est possible ; invite native sur Chrome / Edge / Android, consignes Safari sur iPhone / iPad, consignes du menu ailleurs.
+- `deploy:check` lit `.env.deploy` (et le secret dans `.env.cron`) : un `.env.local` rempli faisait passer `npm run dev` sur la vraie partie au lieu du mode démo.
+
 ### V4.1 — 26/11/2026 — Déploiement express
 - Guide pas à pas `docs/DEPLOIEMENT.md` (≈ 20 min, §7.8) : projet Supabase, `setup_complete.sql`, secrets, dépôt GitHub, tâches planifiées, vérification, premières connexions, mises à jour, sauvegardes, dépannage.
 - Aucune CLI requise sur le PC : nouveau workflow `.github/workflows/deploy-functions.yml` (déploiement des Edge Functions par GitHub Actions, `supabase/setup-cli@v3`).

@@ -2,7 +2,7 @@
 
 Simulation coopérative asynchrone pour 7 à 10 amis : un hameau en ruines des Pyrénées de Lleida, 295 000 € de dette, 3 Points d'Action par jour, une Agora le dimanche, des duels (Carlage 2×2 en direct ou épreuve de la cible en différé) pour trancher les vetos et un Maître du Jeu IA pince-sans-rire. Objectif : l'autonomie, puis le Micro-État souverain.
 
-- **Game Design Document (source vivante) :** [docs/GDD.md](docs/GDD.md) → PDF à la racine : `Les Gaulois - Game Design Document & Architecture Technique V4.1.pdf` (versions précédentes dans `docs/archive/`)
+- **Game Design Document (source vivante) :** [docs/GDD.md](docs/GDD.md) → PDF à la racine : `Les Gaulois - Game Design Document & Architecture Technique V4.2.pdf` (versions précédentes dans `docs/archive/`)
 - **Historique des versions :** [docs/CHANGELOG.md](docs/CHANGELOG.md)
 - **Mise en ligne (≈ 20 min, 0 €) :** [docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md)
 
@@ -54,7 +54,8 @@ Le modèle se règle par le secret `GM_MODEL` des Edge Functions, sans toucher a
 | `.github/workflows/deploy-functions.yml` | Déploiement des 3 Edge Functions sur Supabase depuis GitHub (secret `SUPABASE_ACCESS_TOKEN`, variable `SUPABASE_PROJECT_REF`) : aucune CLI à installer. |
 | `docs/DEPLOIEMENT.md` | Guide de déploiement express, mises à jour, sauvegardes, dépannage. |
 | `tests/` | Tests Vitest du moteur (`tests/*.test.ts`), des fonctions (`tests/functions/`) et du mode démo (`tests/app/`). |
-| `scripts/` | `check-sql.mjs` (PGlite + contrat interface ↔ base), `check-deploy.mjs` (vérification d'un déploiement réel), `bundle-sql.mjs`, `sync-engine.mjs`, `check-functions.mjs` (Deno), `build-gdd-pdf.mjs`. |
+| `public/` | Application installable (V4.2) : `manifest.webmanifest`, `sw.js` (service worker), `icons/` (`npm run icons`). |
+| `scripts/` | `check-sql.mjs` (PGlite + contrat interface ↔ base), `check-deploy.mjs` (vérification d'un déploiement réel), `bundle-sql.mjs`, `sync-engine.mjs`, `check-functions.mjs` (Deno), `build-gdd-pdf.mjs`, `build-icons.mjs`. |
 
 ## Commandes
 
@@ -66,14 +67,15 @@ npm run check
 
 | Commande | Effet |
 |---|---|
-| `npm run dev` | Interface en local (mode démo, ou Supabase si `.env.local` renseigne `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY`, cf. `.env.example`) |
+| `npm run dev` | Interface en local (mode démo ; Supabase seulement si `.env.local` renseigne `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` : à éviter une fois la partie en ligne) |
 | `npm run build` | Build de production dans `dist/` (typecheck de l'interface inclus) |
 | `npm test` | Tests Vitest (moteur, fonctions, mode démo) |
 | `npm run typecheck` | Vérification TypeScript stricte (moteur + fonctions, puis interface) |
 | `npm run engine:sync` | Recopie `src/engine` dans `supabase/functions/_shared/engine` (à lancer après toute modification du moteur ; `dev` et `build` le font) |
 | `npm run functions:check` | Contrôle de types des 3 Edge Functions avec Deno (via npx, rien d'installé dans le projet) |
 | `npm run sql:check` | Rejoue migrations + seed dans un PostgreSQL WebAssembly et exerce les RPC (PIN, Agora, veto, Taverne, RLS, sauvegardes, engine_commit, épreuve de la cible), simule `cron.sql` et vérifie que tout ce qu'appelle l'interface existe avec les bons droits |
-| `npm run deploy:check -- --url … --key … --site …` | Vérifie en lecture seule le projet Supabase et le site en ligne (voir le guide de déploiement) |
+| `npm run deploy:check` | Vérifie en lecture seule le projet Supabase et le site en ligne (valeurs dans `.env.deploy` et `.env.cron`, ou `--url … --key … --site …`) |
+| `npm run icons` | Régénère les icônes PNG de l'application installable depuis `public/icons/icon.svg` (Chrome ou Edge requis) |
 | `npm run sql:bundle` | Régénère `supabase/setup_complete.sql` |
 | `npm run gdd:pdf` | Régénère le PDF du GDD depuis `docs/GDD.md` (Chrome ou Edge requis ; variable `CHROME_PATH` sinon) |
 

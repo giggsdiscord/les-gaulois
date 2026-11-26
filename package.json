@@ -21,7 +21,8 @@
     "gdd:pdf": "node scripts/build-gdd-pdf.mjs",
     "sql:bundle": "node scripts/bundle-sql.mjs",
     "sql:check": "node scripts/check-sql.mjs",
-    "deploy:check": "node scripts/check-deploy.mjs"
+    "deploy:check": "node scripts/check-deploy.mjs",
+    "icons": "node scripts/build-icons.mjs"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^1.14.0",

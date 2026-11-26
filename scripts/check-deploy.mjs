@@ -6,7 +6,8 @@
  *                           [--site https://<pseudo>.github.io/<depot>/] [--cron-secret <secret>]
  *
  * Les valeurs peuvent aussi venir des variables d'environnement VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY,
- * SITE_URL, CRON_SECRET, ou d'un fichier .env.local à la racine. Aucune valeur secrète n'est affichée.
+ * SITE_URL, CRON_SECRET, ou des fichiers .env.deploy / .env.local / .env.cron à la racine (ignorés par Git).
+ * Préférer .env.deploy : Vite ne le charge pas, donc `npm run dev` reste en mode démo. Aucune valeur secrète n'est affichée.
  * Rien n'est écrit dans la partie : seul --cron-secret déclenche une maintenance, qui n'écrit que s'il y a
  * quelque chose à faire (comme la tâche pg_cron toutes les 15 minutes).
  */
@@ -16,13 +17,22 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+// .env.deploy (que Vite ne charge pas : `npm run dev` reste en mode démo), sinon .env.local.
+// CRON_SECRET peut aussi venir du fichier .env.cron (une seule ligne : le secret).
 function fromDotEnv() {
-  const file = join(root, '.env.local');
-  if (!existsSync(file)) return {};
   const out = {};
-  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const m = /^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*?)\s*$/.exec(line);
-    if (m && !line.trim().startsWith('#')) out[m[1]] = m[2].replace(/^["']|["']$/g, '');
+  for (const name of ['.env.local', '.env.deploy']) {
+    const file = join(root, name);
+    if (!existsSync(file)) continue;
+    for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const m = /^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*?)\s*$/.exec(line);
+      if (m && !line.trim().startsWith('#')) out[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    }
+  }
+  const cronFile = join(root, '.env.cron');
+  if (!out.CRON_SECRET && existsSync(cronFile)) {
+    const value = readFileSync(cronFile, 'utf8').trim();
+    if (/^[A-Za-z0-9_-]{24,}$/.test(value)) out.CRON_SECRET = value;
   }
   return out;
 }
@@ -36,7 +46,7 @@ const dotenv = fromDotEnv();
 const url = (arg('url') ?? process.env.VITE_SUPABASE_URL ?? dotenv.VITE_SUPABASE_URL ?? '').replace(/\/+$/, '');
 const key = arg('key') ?? process.env.VITE_SUPABASE_ANON_KEY ?? dotenv.VITE_SUPABASE_ANON_KEY ?? '';
 const site = arg('site') ?? process.env.SITE_URL ?? dotenv.SITE_URL ?? '';
-const cronSecret = arg('cron-secret') ?? process.env.CRON_SECRET ?? '';
+const cronSecret = arg('cron-secret') ?? process.env.CRON_SECRET ?? dotenv.CRON_SECRET ?? '';
 
 if (!url || !key) {
   console.error('Usage : npm run deploy:check -- --url https://<ref>.supabase.co --key <clé publishable ou anon> [--site <url du site>] [--cron-secret <secret>]');

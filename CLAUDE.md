@@ -4,9 +4,9 @@ Lu automatiquement au début de chaque session. À tenir à jour à chaque étap
 
 ## Contexte
 - Jeu web mobile-first asynchrone pour 7 amis (10 max), en **français**. L'utilisateur écrit en français : répondre en français.
-- Spécification de référence : `docs/GDD.md` (version dans l'en-tête YAML, actuellement 4.1). Les PDF précédents (dont la V3.7 d'origine) sont dans `docs/archive/`.
+- Spécification de référence : `docs/GDD.md` (version dans l'en-tête YAML, actuellement 4.2). Les PDF précédents (dont la V3.7 d'origine) sont dans `docs/archive/`.
 - Mission découpée en 5 étapes (voir README « État d'avancement ») : 1 SQL ✅, 2 moteur ✅, 3 Edge Functions ✅, 4 React ✅, 5 guide de déploiement ✅ (`docs/DEPLOIEMENT.md`).
-- **Déployé le 2026-11-26** : dépôt public `giggsdiscord/les-gaulois`, site `https://giggsdiscord.github.io/les-gaulois/`, projet Supabase `fojkfobtzuihxpgndshl` (setup_complete.sql, secrets `CRON_SECRET` + `ALLOWED_ORIGIN`, 3 Edge Functions, cron `gaulois-nightly` + `gaulois-maintenance`). `npm run deploy:check` vert (valeurs dans `.env.local`, secret cron dans `.env.cron`, tous deux ignorés). Pas encore de `ANTHROPIC_API_KEY` (dictionnaire de secours).
+- **Déployé le 2026-11-26** : dépôt public `giggsdiscord/les-gaulois`, site `https://giggsdiscord.github.io/les-gaulois/`, projet Supabase `fojkfobtzuihxpgndshl` (setup_complete.sql, secrets `CRON_SECRET` + `ALLOWED_ORIGIN`, 3 Edge Functions, cron `gaulois-nightly` + `gaulois-maintenance`). `npm run deploy:check` vert (valeurs dans `.env.deploy`, secret cron dans `.env.cron`, tous deux ignorés). `ANTHROPIC_API_KEY` posée par l'utilisateur. Incident du 1er déploiement : SQL collé sans `-Encoding UTF8` → texte abîmé, réparé par effacement du schéma public + réinstallation (partie vierge).
 - **Copie de travail = `C:\dev\les-gaulois`** (dépôt Git) ; le dossier OneDrive d'origine n'est plus suivi. Désormais, une nouvelle migration = l'exécuter seule dans le SQL Editor, jamais `setup_complete.sql`. L'utilisateur veut un coût limité à l'API de l'IA (infra gratuite : GitHub Pages + Supabase Free).
 
 ## Règle permanente demandée par l'utilisateur : documentation continue
@@ -39,7 +39,9 @@ Lu automatiquement au début de chaque session. À tenir à jour à chaque étap
 - `demo/seed.ts` est le miroir de `supabase/seed.sql` + défauts de `village_state` : `tests/app/demoSeed.test.ts` échoue s'ils divergent.
 - `GameContext` : `perform(fn, succès)` = appel + toast + rechargement ; `useNow(ms)` = horloge du jeu (`api.now()`, décalable en démo). Ne pas passer de rappels instables comme dépendances d'effets longs (bug corrigé dans `TargetArena` : rappel lu via une ref).
 - Typecheck séparé : `tsconfig.app.json` (DOM) ; `npm run typecheck` lance les deux configurations.
-- Aperçu navigateur : `.claude/launch.json` (config `gaulois-demo`, port 5173).
+- Aperçu navigateur : `.claude/launch.json` (config `gaulois-demo`, port 5173 ; `gaulois-build` = `vite preview` de `dist/` sur 4173, après `npm run build`, pour tester service worker et manifeste).
+- (V4.2) Application installable : `public/manifest.webmanifest` (chemins **relatifs**), `public/sw.js` (même origine + GET seulement, jamais Supabase ; enregistré seulement en production), icônes par `npm run icons`. `lib/install.ts` (DOM, invite `beforeinstallprompt`) / `lib/installMode.ts` (pur, testé : le typecheck Node ne doit pas importer de code DOM depuis `tests/`). Changer `CACHE` dans `sw.js` si la stratégie de cache change.
+- **Ne jamais mettre les variables `VITE_SUPABASE_*` dans `.env.local`** : `npm run dev` jouerait sur la vraie partie. Les valeurs de `deploy:check` sont dans `.env.deploy`, le secret cron dans `.env.cron` (ignorés).
 
 ## Déploiement (V4.1)
 - **Jamais de CLI Supabase locale** : sur le PC de l'utilisateur, Windows (contrôle intelligent des applications) bloque `supabase.exe` non signé (notification « Une partie de cette application a été bloquée »). Ne pas tenter de contourner ; ne pas relancer `npx supabase`. Les Edge Functions se déploient par `.github/workflows/deploy-functions.yml` (`supabase/setup-cli@v3`, `supabase functions deploy --remote=$PROJECT_REF --yes`, secret `SUPABASE_ACCESS_TOKEN`, variable `SUPABASE_PROJECT_REF`).

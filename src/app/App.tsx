@@ -1,5 +1,6 @@
 /** Coquille de l'application : connexion, en-tête, bannières, navigation basse et écrans. */
 import { useEffect, type ComponentType, type SVGProps } from 'react';
+import { InstallHeaderButton } from './components/InstallApp.tsx';
 import { ChangePinModal, TemptationModal } from './components/Modals.tsx';
 import { AgoraIcon, CoinsIcon, GearIcon, LogoutIcon, MapIcon, NewsIcon, SwordsIcon, ToolsIcon } from './components/icons.tsx';
 import { Avatar, Button, Spinner, ToastStack, cx } from './components/ui.tsx';
@@ -42,6 +43,7 @@ function Header() {
           <span className="rounded-full bg-black/25 px-2.5 py-1 text-xs font-bold tabular-nums" title="Points d'Action du jour">
             ⚡ {me.action_points} PA
           </span>
+          <InstallHeaderButton />
           <Avatar emoji={me.avatar_emoji} color={me.avatar_color} size="sm" />
           <button
             onClick={() => window.confirm('Se déconnecter ?') && void signOut()}

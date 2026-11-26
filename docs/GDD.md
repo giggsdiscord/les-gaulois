@@ -1,12 +1,12 @@
 ---
-version: 4.1
+version: 4.2
 date: 2026-11-26
 title: Les Gaulois — Game Design Document & Architecture Technique
 ---
 
 # LES GAULOIS — Simulation Coopérative de Village & Micro-État
 
-**Game Design Document (GDD) & Spécification Technique Complète — Version 4.1**
+**Game Design Document (GDD) & Spécification Technique Complète — Version 4.2**
 
 Jeu de stratégie, de gestion démographique, économique et politique asynchrone persistant, ancré dans le monde réel (Pyrénées de Lleida), piloté par un moteur déterministe TypeScript et un Maître du Jeu IA.
 
@@ -15,7 +15,9 @@ Jeu de stratégie, de gestion démographique, économique et politique asynchron
 | **Cadre réel :** hameau abandonné des Pyrénées de Lleida (Catalogne, Espagne), domaine de 30 ha situé à 18 km de la frontière d'Andorre. | **Achat & travaux :** 295 000 € (PLU 2013 validé). Rénovation globale estimée entre 600 000 € et 900 000 €. |
 | **Effectif & rythme :** 7 joueurs fondateurs (10 joueurs max) + population résidente dynamique (migrants accueillis, naturalisés, lignées et apprentis). 1 jour réel = 1 jour de jeu (3 PA/jour). | **Enjeux :** autonomie totale puis Micro-État souverain, pérennité démographique, équilibre idéologique (Droite vs Gauche), propriété privée vs collectivisation, contrebande, justice publique et dissuasion. Hébergement 0 € + API IA < 1 $/mois (Claude Haiku 5.5). |
 
-> **Nouveautés V4.1 :** le jeu est prêt à être mis en ligne en une vingtaine de minutes grâce au **guide de déploiement express** (§7.8, `docs/DEPLOIEMENT.md`) : base installée par un seul script SQL, Edge Functions déployées par GitHub Actions (aucune CLI à installer sur le PC), tâches planifiées par un script rejouable, et vérification automatique du déploiement (`npm run deploy:check`).
+> **Nouveautés V4.2 :** le jeu **s'installe comme une application** sur téléphone et ordinateur, directement depuis le navigateur, sans magasin d'applications (§7.6) : bouton « Installer l'appli » sur l'écran de connexion (et dans l'en-tête quand le navigateur le permet), icône sur l'écran d'accueil, ouverture en plein écran.
+
+> **Rappel V4.1 :** le jeu est prêt à être mis en ligne en une vingtaine de minutes grâce au **guide de déploiement express** (§7.8, `docs/DEPLOIEMENT.md`) : base installée par un seul script SQL, Edge Functions déployées par GitHub Actions (aucune CLI à installer sur le PC), tâches planifiées par un script rejouable, et vérification automatique du déploiement (`npm run deploy:check`).
 
 > **Rappel V4.0 :** l'interface mobile-first est livrée (§6.3) — connexion par PIN, carte SVG, Mon Métier, Agora / Immigration / Tribunal / Constitution, Trésorerie & fournisseurs, Gazette & Taverne, administration — avec un **mode démo** jouable sans serveur. Les différends se règlent désormais au choix du challenger : **Carlage 2 × 2** en direct ou **épreuve de la cible** en différé (§6.1 bis) ; le putsch se joue à l'épreuve de la cible. Le Maître du Jeu IA tourne par défaut sur **Claude Haiku 5.5** (§7.2).
 
@@ -680,8 +682,9 @@ Le Village Gaulois/
 │   ├── state/GameContext.tsx             Session, rafraîchissement, Realtime, messages
 │   ├── screens/                          Connexion, Carte, Métier, Agora, Trésor, Gazette, Duel, Admin
 │   ├── components/                       ui, actions, scrutins, indicateurs cachés, modales
-│   └── lib/, demo/seed.ts                Libellés, formats, routeur par ancre, seed du mode démo
+│   └── lib/, demo/seed.ts                Libellés, formats, routeur par ancre, installation (V4.2), seed du mode démo
 ├── index.html, vite.config.ts            Build statique (base relative) → dist/
+├── public/                              manifest.webmanifest, sw.js, icons/ (application installable, V4.2)
 ├── .github/workflows/deploy-pages.yml    Tests + build + publication GitHub Pages à chaque push
 ├── supabase/migrations/                 Schéma SQL (migrations additives)
 ├── supabase/seed.sql                    7 fondateurs, 3 places, carte du hameau
@@ -701,6 +704,10 @@ Le Village Gaulois/
 - **Source de vérité :** le moteur s'exécute dans l'Edge Function `game-engine` (service_role) qui charge l'instantané complet, applique `applyElapsedTime()` puis l'action, et écrit le résultat avec contrôle de révision (concurrence optimiste). Le client exécute le même moteur pour l'aperçu instantané.
 - **Compatibilité Deno :** le moteur importe ses modules avec l'extension `.ts` et n'utilise que des API standard (`Intl`, `structuredClone`) ; il est copié dans `supabase/functions/_shared/engine/` au déploiement.
 - **Interface (V4.0) :** React 19, Vite, Tailwind CSS v4, routeur par ancre (`#/agora`, compatible GitHub Pages sans configuration). Le client choisit `SupabaseApi` si `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` sont fournies au build, sinon `DemoApi`. Il importe le moteur via la copie `_shared/engine` et n'écrit jamais l'état du village lui-même : toute action passe par `game-engine` ou une RPC contrôlée.
+- **Application installable (V4.2) :** le site est une *Progressive Web App*. Un manifeste (`public/manifest.webmanifest` : nom, icônes, affichage `standalone`, chemins relatifs pour GitHub Pages) et un service worker (`public/sw.js`) permettent l'installation ; l'interface propose un bouton « Installer l'appli » (`components/InstallApp.tsx`, `lib/install.ts`).
+
+> **Précisions V4.2.** *Bouton :* encart sur l'écran de connexion tant que le jeu n'est pas ouvert comme une appli ; icône dans l'en-tête seulement si l'installation est réellement possible. *Comportement selon l'appareil :* Chrome, Edge et Android ouvrent l'invite native du navigateur (`beforeinstallprompt`, mise de côté au chargement) ; iPhone et iPad (y compris l'iPad qui se présente comme un Mac) affichent les 4 gestes Safari (Partager → « Sur l'écran d'accueil » → Ajouter) ; les autres navigateurs affichent les consignes du menu (Firefox sur ordinateur ne sait pas installer). Le mode est choisi par `installMode()` (`lib/installMode.ts`, testé). *Service worker :* enregistré uniquement sur le site publié ; il ne met en cache que les fichiers du site (même origine, GET), jamais les appels Supabase, Edge Functions ou météo. Page : réseau d'abord (une mise à jour publiée est visible au lancement suivant), copie de secours hors connexion ; fichiers `assets/` (noms hachés) : cache d'abord. Hors connexion, l'appli s'ouvre mais le jeu, qui vit sur le serveur, ne répond pas. *Icônes :* 192 px, 512 px, 512 px « maskable » (dessin dans la zone sûre), 180 px pour iOS, générées par `npm run icons` depuis `public/icons/icon.svg`.
+
 - **Temps réel :** Realtime diffuse le chat, l'Agora, les duels, la carte, La Gazette et le journal d'événements ; les chuchotements, protégés par RLS, sont rechargés à la demande.
 
 ### 7.7 Edge Functions & planification (V3.9)
@@ -737,7 +744,7 @@ Le guide pas à pas est dans `docs/DEPLOIEMENT.md` (≈ 20 minutes, 0 € hors A
 - **Publication continue :** `.github/workflows/deploy-pages.yml` (tests, build, GitHub Pages) à chaque push sur `main` ; `.github/workflows/deploy-functions.yml` (contrôle de la copie du moteur, tests, `supabase functions deploy --remote=<ref> --yes` via `supabase/setup-cli@v3`) quand `src/engine/`, `supabase/functions/` ou `supabase/config.toml` changent, ou à la demande.
 - **Base :** les évolutions futures arrivent en migrations additives exécutées une par une dans le SQL Editor, après une sauvegarde ; `setup_complete.sql` ne sert qu'à l'installation initiale.
 
-> **Précisions V4.1.** *Clés Supabase :* le site accepte la nouvelle clé publique « Publishable » (`sb_publishable_…`) comme l'ancienne clé `anon` ; les Edge Functions lisent l'ancienne clé `SUPABASE_SERVICE_ROLE_KEY` si le projet la fournit, sinon la nouvelle clé secrète injectée dans `SUPABASE_SECRET_KEYS` (dictionnaire JSON, entrée `default`). Les secrets du jeu ne peuvent pas commencer par `SUPABASE_`. *Planification :* `cron.sql` refuse de s'exécuter tant que `<PROJECT_REF>` ou `<CRON_SECRET>` n'ont pas été remplacés, exige un secret d'au moins 24 caractères, et met à jour les secrets Vault et les tâches au lieu de les dupliquer s'il est rejoué. *Vérification :* `npm run deploy:check` contrôle en lecture seule la base, le refus des tables secrètes à la clé publique, le déploiement des trois fonctions (réponse du jeu et non de la passerelle, donc `verify_jwt = false` appliqué), le CORS pour l'adresse du site, le branchement du site sur Supabase (pas en mode démo) et, avec `--cron-secret`, la maintenance de bout en bout. *Garde-fou du code :* `npm run sql:check` vérifie que chaque RPC, vue, table, colonne, opération d'Edge Function et table Realtime utilisée par l'interface existe avec les droits de la clé publique.
+> **Précisions V4.1.** *Clés Supabase :* le site accepte la nouvelle clé publique « Publishable » (`sb_publishable_…`) comme l'ancienne clé `anon` ; les Edge Functions lisent l'ancienne clé `SUPABASE_SERVICE_ROLE_KEY` si le projet la fournit, sinon la nouvelle clé secrète injectée dans `SUPABASE_SECRET_KEYS` (dictionnaire JSON, entrée `default`). Les secrets du jeu ne peuvent pas commencer par `SUPABASE_`. *Planification :* `cron.sql` refuse de s'exécuter tant que `<PROJECT_REF>` ou `<CRON_SECRET>` n'ont pas été remplacés, exige un secret d'au moins 24 caractères, et met à jour les secrets Vault et les tâches au lieu de les dupliquer s'il est rejoué. *Vérification :* `npm run deploy:check` contrôle en lecture seule la base, le refus des tables secrètes à la clé publique, le déploiement des trois fonctions (réponse du jeu et non de la passerelle, donc `verify_jwt = false` appliqué), le CORS pour l'adresse du site, le branchement du site sur Supabase (pas en mode démo) et, avec `--cron-secret`, la maintenance de bout en bout. *Garde-fou du code :* `npm run sql:check` vérifie que chaque RPC, vue, table, colonne, opération d'Edge Function et table Realtime utilisée par l'interface existe avec les droits de la clé publique. *Encodage (V4.2) :* les scripts SQL se copient avec `Get-Content … -Raw -Encoding UTF8` (sans cette option, Windows PowerShell 5.1 abîme accents et emojis) ; `deploy:check` signale un texte mal encodé en base et lit ses valeurs dans `.env.deploy` (que Vite ne charge pas : `npm run dev` reste en mode démo) et le secret dans `.env.cron`.
 
 ## Annexe A — Constantes d'équilibrage du moteur (générée depuis `src/engine/constants.ts`)
 
