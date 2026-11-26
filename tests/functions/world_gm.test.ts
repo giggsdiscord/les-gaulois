@@ -3,7 +3,7 @@ import { createRng, validateMigrantDraft } from '../../src/engine/index.ts';
 import { generateMigrantDraft, fallbackResponse } from '../../supabase/functions/_shared/core/gm/fallback.ts';
 import { buildUserMessage, SYSTEM_PROMPT, type GmContext, type PlayerBrief } from '../../supabase/functions/_shared/core/gm/prompt.ts';
 import { createGm, type LlmPort } from '../../supabase/functions/_shared/core/gm/runner.ts';
-import { GM_RESPONSE_SCHEMA, DELTA_KEYS } from '../../supabase/functions/_shared/core/gm/schema.ts';
+import { GM_SCHEMAS, DELTA_KEYS, countUnions } from '../../supabase/functions/_shared/core/gm/schema.ts';
 import { interleaveHeadlines, parseOpenMeteo, parseRssTitles, weatherCodeLabel } from '../../supabase/functions/_shared/core/world.ts';
 
 describe('Connecteurs monde réel', () => {
@@ -103,7 +103,18 @@ describe('Maître du Jeu IA', () => {
       }
       for (const v of Object.values(n)) visit(v);
     };
-    visit(GM_RESPONSE_SCHEMA);
+    for (const schema of Object.values(GM_SCHEMAS)) visit(schema);
+  });
+
+  it('schémas par tâche assez petits pour la grammaire de l’API (unions limitées)', () => {
+    for (const [kind, schema] of Object.entries(GM_SCHEMAS)) {
+      expect(countUnions(schema), kind).toBeLessThanOrEqual(2);
+      const props = Object.keys((schema as { properties: object }).properties);
+      expect(props, kind).toEqual(expect.arrayContaining(['gazette_headline', 'narrative_text', 'deltas']));
+    }
+    expect(Object.keys((GM_SCHEMAS.migrant as { properties: object }).properties)).toContain('new_migrant_candidate');
+    expect(Object.keys((GM_SCHEMAS.temptation as { properties: object }).properties)).toContain('private_temptation');
+    expect(Object.keys((GM_SCHEMAS.gazette as { properties: object }).properties)).not.toContain('new_migrant_candidate');
   });
 
   it('réponse valide du LLM : utilisée et bornée par le moteur', async () => {
@@ -113,7 +124,7 @@ describe('Maître du Jeu IA', () => {
     expect(out.usedFallback).toBe(false);
     expect(out.response.deltas.treasury_eur).toBe(3000);
     expect(out.aiCall).toMatchObject({ used_fallback: false, model: 'claude-test', input_tokens: 2100, output_tokens: 50 });
-    expect(llm.complete).toHaveBeenCalledWith(expect.objectContaining({ system: SYSTEM_PROMPT, schema: GM_RESPONSE_SCHEMA }));
+    expect(llm.complete).toHaveBeenCalledWith(expect.objectContaining({ system: SYSTEM_PROMPT, schema: GM_SCHEMAS.free_action }));
   });
 
   it('erreur de l\'API : dictionnaire de secours, erreur journalisée', async () => {

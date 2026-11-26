@@ -4,6 +4,7 @@
 - Pastilles de non-lus sur les onglets (Taverne, chuchotements, Gazette, votes, validations, duels) et sur l'icône de l'appli installée ; lecture marquée à l'ouverture d'un salon ou de la Gazette (§7.6).
 - Notifications push sur téléphone et ordinateur, même appli fermée : Taverne, chuchotement, duel, Agora (proposition, motion visant le joueur, résultat), validation, Gazette, proposition discrète ; réglage par catégorie (icône de cloche) ; regroupement des messages d'une même catégorie.
 - Migration `20261130000100_notifications.sql` (marques de lecture, abonnements, préférences, file, déclencheurs, RPC) ; envoi par `daily-world-sync` (mode `push`) avec chiffrement RFC 8291 et VAPID en WebCrypto ; clés VAPID via GitHub.
+- Correctif IA : chaque appel au Maître du Jeu échouait (« The compiled grammar is too large ») et tombait sur le dictionnaire de secours ; un schéma JSON par tâche (`GM_SCHEMAS`), au plus deux unions, testé.
 - Les fenêtres (feuilles) s'affichent au-dessus de la navigation basse, même ouvertes depuis l'en-tête.
 
 ### V4.2 — 26/11/2026 — Application installable

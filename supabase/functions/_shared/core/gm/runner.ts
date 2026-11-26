@@ -8,7 +8,7 @@ import { sanitizeAiResponse, type SanitizedAiResponse } from '../../engine/index
 import type { AiCallDraft } from '../types.ts';
 import { fallbackResponse } from './fallback.ts';
 import { buildUserMessage, SYSTEM_PROMPT, TASK_CONTEXT, type GmContext, type GmTask } from './prompt.ts';
-import { GM_RESPONSE_SCHEMA } from './schema.ts';
+import { GM_SCHEMAS } from './schema.ts';
 
 export interface LlmUsage {
   input_tokens: number;
@@ -92,7 +92,7 @@ export function createGm(llm: LlmPort | null, options: GmOptions): GmPort {
     let model: string | null = null;
     if (llm) {
       try {
-        const completion = await llm.complete({ system: SYSTEM_PROMPT, user: buildUserMessage(task, ctx), schema: GM_RESPONSE_SCHEMA });
+        const completion = await llm.complete({ system: SYSTEM_PROMPT, user: buildUserMessage(task, ctx), schema: GM_SCHEMAS[task.kind] });
         usage = completion.usage;
         model = completion.model;
         const sanitized = sanitizeAiResponse(completion.text, context);
