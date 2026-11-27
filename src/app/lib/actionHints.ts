@@ -3,7 +3,7 @@
  * recherche et actions récentes. Pur (aucun DOM) : testé dans tests/app/actionHints.test.ts.
  * La validation qui fait foi reste celle du moteur (performAction).
  */
-import { getAction, isAfter, isSunday, type ActionDef } from '../engine.ts';
+import { forestBan, getAction, isAfter, isSunday, type ActionDef } from '../engine.ts';
 import type { GameData, PublicPlayer } from '../api/types.ts';
 
 export interface ActionSituation {
@@ -14,6 +14,8 @@ export interface ActionSituation {
   viaDelegation: boolean;
   defeated: boolean;
   now: Date;
+  /** Coupes de bois interdites par Ely jusqu'à lundi (V4.9). */
+  forestBanned?: boolean;
 }
 
 /** Situation du joueur qui agit, pour lui-même (`holderId` null) ou pour un poste délégué. */
@@ -31,6 +33,7 @@ export function situationFor(data: Pick<GameData, 'me' | 'players' | 'village'>,
     viaDelegation: holder.id !== me.id,
     defeated: data.village.is_defeated,
     now,
+    forestBanned: forestBan(data.village) !== null,
   };
 }
 
@@ -42,6 +45,9 @@ export function actionBlockReason(def: ActionDef, s: ActionSituation): string | 
   if (def.sundayOnly && !isSunday(s.now)) return 'Uniquement le dimanche.';
   if (s.holder.action_points < def.apCost) return s.holder.action_points === 0 ? "Plus de PA aujourd'hui." : `Il faut ${def.apCost} PA.`;
   if (s.holder.status === 'forced_labor' && !def.physical && def.apCost > 0) return 'Travaux forcés : tâches physiques seulement.';
+  // Droit de regard d'Ely sur la forêt (V4.9)
+  if (s.forestBanned && (def.code === 'cut_wood' || def.code === 'forest_ban')) return 'Coupes interdites par Ely jusqu\'à lundi.';
+  if (s.forestBanned === false && def.code === 'lift_forest_ban') return 'La forêt est ouverte : rien à lever.';
   return null;
 }
 

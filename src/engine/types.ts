@@ -160,6 +160,38 @@ export interface VillageLife {
   cold_streak?: number;
   /** Bois brûlé pour le chauffage la nuit dernière. */
   heating_last?: number;
+  /** Coupes de bois interdites par Ely jusqu'au lundi suivant (V4.9) ; null = forêt ouverte. */
+  forest_ban?: ForestBan | null;
+  /** Ce que les résidents ont produit la nuit dernière (V4.9). */
+  work_last?: ResidentWorkTotals;
+}
+
+/** Droit de regard d'Ely sur les coupes de bois (V4.9). */
+export interface ForestBan {
+  by: string;
+  reason: string;
+  since: ISODate;
+}
+
+/** Production d'une nuit de travail des résidents (V4.9). */
+export interface ResidentWorkTotals {
+  /** Résidents au travail / résidents avec un poste mais inactifs / résidents sans poste. */
+  workers: number;
+  idle: number;
+  unassigned: number;
+  rations: number;
+  tomatoes: number;
+  wood: number;
+  /** Points d'avancement de chantier et de réparation. */
+  build: number;
+  repair: number;
+  stone_used: number;
+  tools_wear: number;
+  iron: number;
+  scrap_used: number;
+  water: number;
+  track: number;
+  ecology: number;
 }
 
 export interface Player {
@@ -260,7 +292,7 @@ export interface Migrant {
   generated_by: 'ai' | 'fallback' | 'manual';
   arrived_at: ISODate;
   decided_at: ISODate | null;
-  /** Poste de travail d'un résident (V4.9) : null = sans affectation. */
+  /** Poste de travail d'un résident (V4.9, code de `WORK_POSTS`) : null = sans affectation. */
   work_post?: string | null;
   /** Personnalité et humeur d'un résident (V5.x, JSONB). */
   traits?: Record<string, unknown>;

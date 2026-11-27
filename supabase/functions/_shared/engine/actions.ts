@@ -11,8 +11,9 @@ import { emptyEffects, pushEvent, pushLedger, pushTrigger } from './effects.ts';
 import { massMoraleGain, poleFactor, smugglingRiskPct } from './formulas.ts';
 import { applyInjury, healInjury, injuryRiskPct, isDetained } from './health.ts';
 import { applyMarketSale, ensureLife, marketQuote } from './life.ts';
+import { advanceStructure, BUILDING_KINDS, findWorkPost, forestBan, residentSkill } from './work.ts';
 import { checkLocks, markGroupExecuted } from './locks.ts';
-import { clamp, deepClone, gauge, money, stock } from './math.ts';
+import { clamp, deepClone, gauge, money, round2, stock } from './math.ts';
 import { adjustLoyalty } from './migrants.ts';
 import { holderHasPortfolio, holderHasRole, resolveActor } from './permissions.ts';
 import { findMigrant, findPlayer, isOperational, structureByCode } from './population.ts';
@@ -78,9 +79,6 @@ export interface ActionDef {
   run: (ctx: ActionContext) => string;
 }
 
-const BUILDING_KINDS: readonly StructureKind[] = ['building', 'gite', 'school', 'jail', 'lab', 'church', 'forge', 'border_post'];
-/** Ouvrages livrés seulement après raccordement électrique validé par Tiphaine [GDD §2.1]. */
-const NEEDS_POWER: readonly StructureKind[] = [...BUILDING_KINDS, 'mining_farm', 'dam', 'solar'];
 
 function factor(ctx: ActionContext, pole?: RoleCode | null): number {
   return poleFactor(ctx.s, pole === undefined ? ctx.def.pole ?? ctx.holder.role_code : pole, ctx.now);
@@ -153,25 +151,7 @@ function useStock(ctx: ActionContext, key: 'wood_stock' | 'stone_stock' | 'iron_
 /** Fait progresser un chantier ; livraison conditionnée au raccordement électrique. */
 function progressStructure(ctx: ActionContext, st: MapStructure, basePoints: number, pole: RoleCode = 'civil_eng'): number {
   const gain = Math.max(1, Math.round(basePoints * factor(ctx, pole)));
-  st.progress_pct = Math.min(100, st.progress_pct + gain);
-  if (st.status === 'ruin' || st.status === 'cleared' || st.status === 'planned') st.status = 'in_progress';
-  if (st.progress_pct >= 100) {
-    st.condition_pct = Math.max(st.condition_pct, 80);
-    if (NEEDS_POWER.includes(st.kind) && !st.is_power_connected) {
-      st.status = 'awaiting_power';
-    } else {
-      st.status = 'operational';
-    }
-    pushEvent(ctx.fx, ctx.s, {
-      event_type: 'structure_completed',
-      title: 'Chantier achevé',
-      body:
-        st.status === 'operational'
-          ? `« ${st.name} » est livré.`
-          : `« ${st.name} » est achevé mais attend le raccordement électrique de Tiphaine.`,
-      data: { structure_id: st.id },
-    });
-  }
+  advanceStructure(ctx.s, ctx.fx, st, gain);
   return gain;
 }
 
@@ -323,15 +303,17 @@ export const ACTIONS: readonly ActionDef[] = [
   {
     code: 'cut_wood', label: 'Couper du bois', description: 'Bois de chauffage et de chantier dans la forêt communale (environ 8 stères). Au-delà de 10 coupes par semaine, la forêt souffre et les agents rurals s\'en mêlent.', anyone: true, apCost: 1, physical: true, ecoSensitive: false, pole: 'smith_diplo', target: 'none',
     run: (ctx) => {
+      const ban = forestBan(ctx.v);
+      ensure(!ban, `Ely a interdit les coupes jusqu'à lundi : « ${ban?.reason ?? ''} ».`);
       const life = ensureLife(ctx.v);
-      const cuts = (life.wood_cuts ?? 0) + 1;
+      const cuts = round2((life.wood_cuts ?? 0) + 1);
       life.wood_cuts = cuts;
       const wood = Math.max(1, Math.round(C.WOOD_CUT_BASE * factor(ctx)));
       ctx.v.wood_stock = stock(ctx.v.wood_stock + wood);
       let note = '';
       if (cuts > C.WOOD_CUT_SUSTAINABLE) {
         ctx.v.ecology_index_pct = gauge(ctx.v.ecology_index_pct - C.WOOD_OVERCUT_ECOLOGY);
-        note = ` La forêt s'éclaircit à vue d'œil (${cuts} coupes cette semaine).`;
+        note = ` La forêt s'éclaircit à vue d'œil (${String(cuts).replace('.', ',')} coupes cette semaine).`;
         if (ctx.rng.chance(C.WOOD_OVERCUT_RISK_PCT)) {
           ctx.v.admin_pressure_pct = gauge(ctx.v.admin_pressure_pct + C.WOOD_OVERCUT_ADMIN);
           pushEvent(ctx.fx, ctx.s, { event_type: 'overcut', title: 'Les agents rurals comptent les souches', body: 'Coupes excessives dans la forêt communale : procès-verbal en vue, pression administrative en hausse.' });
@@ -352,6 +334,48 @@ export const ACTIONS: readonly ActionDef[] = [
       return `${C.PRESERVES_TOMATOES_KG} kg de tomates mis en bocaux : +${rations} rations pour l'hiver.`;
     },
   },
+  // ======================= Travail des résidents & droit de regard d'Ely (V4.9) =======================
+  {
+    code: 'assign_work_post', label: 'Affecter un résident à un poste', description: 'Potager, forêt, chantier, forge, pâturage, réseau d\'eau ou piste : il y travaille chaque nuit, bien mieux s\'il en a la spécialité.', anyone: true, apCost: 0, delegable: false, target: 'migrant',
+    run: (ctx) => {
+      const m = targetMigrant(ctx, ['accepted', 'forced_labor']);
+      const code = String(ctx.req.params?.post ?? '').trim();
+      if (code === '' || code === 'none') {
+        ensure(m.work_post, `${m.full_name} n'a pas de poste.`);
+        m.work_post = null;
+        return `${m.full_name} n'a plus de poste : il ne produira plus rien la nuit.`;
+      }
+      const post = findWorkPost(code);
+      ensure(post, 'Poste inconnu.');
+      const boss = m.private_employer_id ? findPlayer(ctx.s, m.private_employer_id) : undefined;
+      ensure(!m.private_employer_id, `${m.full_name} travaille sur le chantier privé${boss ? ` de ${boss.display_name}` : ''} : il faut d'abord mettre fin au contrat.`);
+      ensure(m.work_post !== post.code, `${m.full_name} travaille déjà ${post.place}.`);
+      m.work_post = post.code;
+      const skill = residentSkill(m, post);
+      return `${m.full_name} travaillera ${post.place} chaque nuit${skill > 1 ? ` — c'est sa spécialité (rendement ×${String(skill).replace('.', ',')})` : ''}.`;
+    },
+  },
+  {
+    code: 'forest_ban', label: 'Interdire les coupes de bois (jusqu\'à lundi)', description: 'Droit de regard d\'Ely sur la forêt communale : plus aucune coupe jusqu\'au lundi ; les bûcherons résidents entretiennent la forêt (motif obligatoire).', roles: ['mayor_agri'], apCost: 0, delegable: false, target: 'none',
+    run: (ctx) => {
+      const ban = forestBan(ctx.v);
+      ensure(!ban, 'Les coupes sont déjà interdites jusqu\'à lundi.');
+      const reason = String(ctx.req.params?.reason ?? '').trim();
+      ensure(reason.length >= C.FOREST_BAN_REASON_MIN, `Motivez l'interdiction (${C.FOREST_BAN_REASON_MIN} caractères minimum).`);
+      ensureLife(ctx.v).forest_ban = { by: ctx.actor.id, reason, since: ctx.now.toISOString() };
+      pushEvent(ctx.fx, ctx.s, { event_type: 'forest_ban', title: 'Forêt fermée aux coupes', body: `Ely interdit les coupes de bois jusqu'à lundi : ${reason}`, data: { reason } });
+      return 'Coupes interdites jusqu\'à lundi : les bûcherons entretiendront la forêt.';
+    },
+  },
+  {
+    code: 'lift_forest_ban', label: 'Rouvrir la forêt aux coupes', description: 'Lève l\'interdiction des coupes de bois avant lundi.', roles: ['mayor_agri'], apCost: 0, delegable: false, target: 'none',
+    run: (ctx) => {
+      ensure(forestBan(ctx.v), 'La forêt est déjà ouverte aux coupes.');
+      ensureLife(ctx.v).forest_ban = null;
+      pushEvent(ctx.fx, ctx.s, { event_type: 'forest_ban_lifted', title: 'Forêt rouverte', body: 'Ely lève l\'interdiction : les coupes de bois reprennent.' });
+      return 'La forêt est rouverte aux coupes.';
+    },
+  },
   {
     code: 'hire_resident', label: 'Embaucher un résident (chantier privé)', description: 'Salaire hebdomadaire sur fonds privés : bonus de propriété privée +10 à +20 %.', anyone: true, apCost: 0, delegable: false, target: 'migrant',
     run: (ctx) => {
@@ -362,8 +386,10 @@ export const ACTIONS: readonly ActionDef[] = [
       ensure(ctx.actor.private_wealth_eur >= wage, 'Épargne insuffisante pour la première semaine.');
       m.private_employer_id = ctx.actor.id;
       m.private_wage_eur_week = wage;
+      const leftPost = findWorkPost(m.work_post);
+      m.work_post = null;
       adjustLoyalty(m, ctx.actor.role_code, 10);
-      return `${m.full_name} rejoint votre chantier privé pour ${wage} €/semaine.`;
+      return `${m.full_name} rejoint votre chantier privé pour ${wage} €/semaine${leftPost ? ` (il quitte son poste ${leftPost.place})` : ''}.`;
     },
   },
   {

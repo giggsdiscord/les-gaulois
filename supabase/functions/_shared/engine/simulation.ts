@@ -40,6 +40,7 @@ import { processHeating, resetSeasonLife } from './life.ts';
 import { clamp, deepClone, gauge, money, stepToward, stock } from './math.ts';
 import { activePlayers, computeHousingCapacity, countPopulation, residents, structureByCode } from './population.ts';
 import { createRng, type Rng } from './rng.ts';
+import { processResidentWork } from './work.ts';
 import { pickPutschLeader, putschConditions, updateIdeologyAndFriction, updateSubstancesAndBlackMarket } from './society.ts';
 import type { CalendarSeason, EngineEffects, GameSnapshot } from './types.ts';
 
@@ -61,6 +62,7 @@ function closeDay(s: GameSnapshot, fx: EngineEffects, endedKey: string, midnight
 
   updateWaterAndSanitation(s, fx, rng, season, midnight);
   updateEnergy(s, fx);
+  processResidentWork(s, fx, season, midnight);
   updateFood(s, fx, rng, season);
   processHeating(s, fx);
   updateToolsAndTrack(s, rng);

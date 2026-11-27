@@ -15,9 +15,11 @@ import {
   countPopulation,
   dailyFoodConsumption,
   dayKey,
+  forestBan,
   heatingNeed,
   lifeOf,
   marketQuote,
+  planResidentWork,
   purchaseCost,
   type CalendarSeason,
   type GameSnapshot,
@@ -90,6 +92,12 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
   const energy = computeEnergyBalance(s);
   const pen = data.structures.find((st) => st.code === 'cleda');
   const penReady = pen?.status === 'operational';
+  // Travail des résidents (V4.9) : ce que leurs postes rapportent cette nuit
+  const work = planResidentWork(s, season, now).totals;
+  const ban = forestBan(v);
+  const hasResidents = work.workers + work.idle + work.unassigned > 0;
+  const assign = (post: string, label: string, detail: string): ReserveSource | null =>
+    hasResidents ? act('assign_work_post', label, detail, { params: { post } }) : null;
 
   const act = (code: string, label: string, detail: string, preset?: Partial<ActionInput>): ReserveSource => ({ label, detail, actionCode: code, preset, ...actorsOf(code, data) });
   const buy = (id: string): ReserveSource | null => {
@@ -114,7 +122,7 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
   // --- Rations ---------------------------------------------------------------
   const consumption = dailyFoodConsumption(s);
   const herd = v.livestock_count * C.LIVESTOCK_RATIONS_PER_HEAD_DAY;
-  const foodNet = harvest.rations + herd - consumption;
+  const foodNet = harvest.rations + herd + work.rations - consumption;
   const foodDays = foodNet < 0 ? Math.floor(v.food_rations / -foodNet) : null;
   lines.push({
     key: 'food', emoji: '🥖', label: 'Rations', amount: v.food_rations, display: num(Math.floor(v.food_rations)),
@@ -123,6 +131,7 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
       `Consommation : ${pop.adults} ${pop.adults > 1 ? 'adultes' : 'adulte'} × ${C.RATIONS_ADULT_DAY}${pop.children > 0 ? ` + ${pop.children} enfant(s) × ${C.RATIONS_CHILD_DAY}` : ''} = −${num(round1(consumption))} par jour${v.rationing_active ? ` (rationnement : ×${C.RATIONING_FACTOR})` : ''}.`,
       `Potager : +${num(round1(harvest.rations))} par jour (${SEASON[season]}${water.gardenSupplyRatio < 1 ? `, arrosé à ${Math.round(water.gardenSupplyRatio * 100)} % faute d'eau` : ''}).`,
       `Cheptel : +${num(round1(herd))} par jour (${v.livestock_count} ${v.livestock_count > 1 ? 'bêtes' : 'bête'} × ${num(C.LIVESTOCK_RATIONS_PER_HEAD_DAY)}).`,
+      ...(work.rations > 0 ? [`Résidents au potager et au pâturage : +${num(round1(work.rations))} par nuit.`] : []),
       foodDays !== null ? `Au rythme actuel, la réserve tient environ ${foodDays} ${foodDays > 1 ? 'jours' : 'jour'}. À zéro : faim, santé et moral en chute.` : 'La production couvre la consommation : la réserve ne baisse pas.',
     ],
     uses: [
@@ -136,6 +145,7 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
       act('butcher_livestock', 'Boucherie du cheptel', '1 bête → 25 rations.'),
       act('make_preserves', 'Faire des conserves', `${C.PRESERVES_TOMATOES_KG} kg de tomates + ${C.PRESERVES_JARS_EUR} € de bocaux → ${C.PRESERVES_RATIONS} rations qui se gardent.`),
       buy('andorre_conserves'),
+      assign('garden', 'Mettre un résident au potager', `Chaque nuit, environ ${num(round1(C.RESIDENT_GARDEN_RATIONS * C.SEASON_HARVEST_COEFF[season]))} ration(s) en ${SEASON[season]} (bien plus pour un maraîcher) ; un jardinier par ${C.RESIDENT_GARDEN_M2_PER_WORKER} m².`),
       act('expand_garden', 'Agrandir le potager', '+100 m² : plus de récolte chaque jour, pour toujours (150 €).'),
     ),
   });
@@ -144,13 +154,14 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
   const tomatoShare = C.TOMATO_SHARE[season];
   lines.push({
     key: 'tomatoes', emoji: '🍅', label: 'Tomates', amount: v.tomatoes_stock, display: `${num(Math.floor(v.tomatoes_stock))} kg`,
-    perDay: harvest.tomatoesKg > 0 ? round1(harvest.tomatoesKg) : null,
-    rate: harvest.tomatoesKg > 0 ? `${signed(harvest.tomatoesKg)} kg / jour` : 'pas de récolte',
+    perDay: harvest.tomatoesKg + work.tomatoes > 0 ? round1(harvest.tomatoesKg + work.tomatoes) : null,
+    rate: harvest.tomatoesKg + work.tomatoes > 0 ? `${signed(harvest.tomatoesKg + work.tomatoes)} kg / jour` : 'pas de récolte',
     daysLeft: null, low: v.tomatoes_stock < C.TOMATO_THROW_TOMATOES,
     daily: [
       tomatoShare > 0
         ? `Le potager en produit seul : +${num(round1(harvest.tomatoesKg))} kg par jour (${Math.round(tomatoShare * 100)} % de la récolte en ${SEASON[season]}).`
         : 'Aucune tomate en hiver : la réserve attend le printemps.',
+      ...(work.tomatoes > 0 ? [`Résidents au potager : +${num(round1(work.tomatoes))} kg par nuit.`] : []),
       'Personne n\'en mange au quotidien : elles ne baissent pas toutes seules — vendez-les ou mettez-les en conserve.',
     ],
     uses: [
@@ -189,20 +200,23 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
     return `${n} ${what}${n > 1 ? 's' : ''}`;
   };
   const heat = heatingNeed(s);
-  const woodDays = heat.wood > 0 ? Math.floor(v.wood_stock / heat.wood) : null;
   const cuts = lifeOf(v).wood_cuts ?? 0;
+  const woodNet = round1(work.wood - heat.wood);
+  const woodDays = woodNet < 0 ? Math.floor(v.wood_stock / -woodNet) : null;
   lines.push({
     key: 'wood', emoji: '🪵', label: 'Bois', amount: v.wood_stock, display: num(v.wood_stock),
-    perDay: heat.wood > 0 ? -heat.wood : null,
-    rate: heat.wood > 0 ? `−${heat.wood} / nuit (chauffage)` : sessions(v.wood_stock, 5),
+    perDay: heat.wood > 0 || work.wood > 0 ? woodNet : null,
+    rate: heat.wood > 0 || work.wood > 0 ? `${signed(woodNet)} / nuit${heat.wood > 0 ? ' (chauffage)' : ' (bûcherons)'}` : sessions(v.wood_stock, 5),
     daysLeft: woodDays,
     low: v.wood_stock < 5 || (woodDays !== null && woodDays < 5),
     daily: [
       heat.wood > 0
-        ? `Chauffage : ${heat.buildings} ${heat.buildings > 1 ? 'bâtisses habitées' : 'bâtisse habitée'} × ${heat.perBuilding} = −${heat.wood} stères par nuit (minimale réelle ${Math.round(heat.tempMin)} °C${v.energy_tier >= 4 ? ', moitié moins grâce au palier 4' : ''}). Au rythme actuel, la réserve tient environ ${woodDays} nuit${woodDays === 1 ? '' : 's'}.`
+        ? `Chauffage : ${heat.buildings} ${heat.buildings > 1 ? 'bâtisses habitées' : 'bâtisse habitée'} × ${heat.perBuilding} = −${heat.wood} stères par nuit (minimale réelle ${Math.round(heat.tempMin)} °C${v.energy_tier >= 4 ? ', moitié moins grâce au palier 4' : ''}). ${woodDays !== null ? `Au rythme actuel${work.wood > 0 ? ' (bûcherons compris)' : ''}, la réserve tient environ ${woodDays} nuit${woodDays === 1 ? '' : 's'}.` : 'Les bûcherons résidents couvrent le chauffage.'}`
         : `Pas de chauffage cette nuit (minimale réelle ${Math.round(heat.tempMin)} °C) : on chauffe sous 10 °C (1 stère par bâtisse habitée), sous 5 °C (2) et sous 0 °C (3).`,
       `Sans bois une nuit de froid : moral −${C.HEATING_COLD_MORALE} % et santé −${C.HEATING_COLD_HEALTH} pour chaque fondateur.`,
-      `Coupes cette semaine : ${cuts} / ${C.WOOD_CUT_SUSTAINABLE} soutenables (au-delà, la forêt souffre et les agents rurals peuvent verbaliser).`,
+      ...(work.wood > 0 ? [`Bûcherons résidents : +${num(round1(work.wood))} stères par nuit.`] : []),
+      `Coupes cette semaine : ${num(cuts)} / ${C.WOOD_CUT_SUSTAINABLE} soutenables (au-delà, la forêt souffre et les agents rurals peuvent verbaliser ; une nuit de bûcheron résident compte pour ${num(C.RESIDENT_FOREST_CUT_SHARE)} coupe).`,
+      ...(ban ? [`🚫 Ely a interdit les coupes jusqu'à lundi : « ${ban.reason} ». Les bûcherons résidents entretiennent la forêt.`] : []),
     ],
     uses: [
       'Chauffer les bâtisses habitées les nuits froides.',
@@ -212,7 +226,8 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
       `Vendre au marché d'Organyà : ${sale('wood')}.`,
     ],
     sources: sources(
-      act('cut_wood', 'Couper du bois', `Environ ${C.WOOD_CUT_BASE} stères par séance, gratuit (forêt communale).`),
+      act('cut_wood', 'Couper du bois', ban ? "Interdit par Ely jusqu'à lundi." : `Environ ${C.WOOD_CUT_BASE} stères par séance, gratuit (forêt communale).`),
+      assign('forest', 'Mettre un résident en forêt', `Environ ${C.RESIDENT_FOREST_WOOD} stères par nuit (plus pour un charpentier), gratuit.`),
       buy('kiloutou_tronconneuse'),
       buy('gedimat_charpente'),
       buy('bigmat_tuiles'),
@@ -220,9 +235,16 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
   });
   lines.push({
     key: 'stone', emoji: '🪨', label: 'Pierre', amount: v.stone_stock, display: num(v.stone_stock),
-    perDay: null, rate: sessions(v.stone_stock, 5), daysLeft: null, low: v.stone_stock < 5,
-    daily: ['Rien ne la consomme toute seule : elle part uniquement dans les chantiers.'],
-    uses: ['Rénover une bâtisse : 5 par séance.', 'Empierrer la piste : 5.', 'Micro-barrage : 10 par séance.'],
+    perDay: work.stone_used > 0 ? -work.stone_used : null,
+    rate: work.stone_used > 0 ? `−${work.stone_used} / nuit (résidents)` : sessions(v.stone_stock, 5),
+    daysLeft: work.stone_used > 0 ? Math.floor(v.stone_stock / work.stone_used) : null,
+    low: v.stone_stock < 5,
+    daily: [
+      work.stone_used > 0
+        ? `Résidents au chantier : −${work.stone_used} pierre${work.stone_used > 1 ? 's' : ''} par nuit (${C.RESIDENT_BUILD_STONE} par maçon). Sans pierre, ils s'arrêtent.`
+        : 'Rien ne la consomme toute seule : elle part uniquement dans les chantiers.',
+    ],
+    uses: ['Rénover une bâtisse : 5 par séance.', `Résident au chantier : ${C.RESIDENT_BUILD_STONE} par nuit.`, 'Empierrer la piste : 5.', 'Micro-barrage : 10 par séance.'],
     sources: sources(
       act('clear_rubble', 'Déblayer les gravats d\'une ruine', 'Environ 6 pierres, gratuit.'),
       act('demolish_building', 'Démolir une bâtisse', '+10 pierres (accord PLU).'),
@@ -232,7 +254,10 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
   lines.push({
     key: 'iron', emoji: '⛓️', label: 'Fer', amount: v.iron_stock, display: num(v.iron_stock),
     perDay: null, rate: sessions(v.iron_stock, C.IRON_PER_TOOL, 'fournée'), daysLeft: null, low: v.iron_stock < C.IRON_PER_TOOL,
-    daily: ['Rien ne le consomme tout seul : il part à la forge et dans les gros ouvrages.'],
+    daily: [
+      'Rien ne le consomme tout seul : il part à la forge et dans les gros ouvrages.',
+      ...(work.iron > 0 ? [`Résidents à la forge : +${work.iron} fer par nuit (ferraille recyclée).`] : []),
+    ],
     uses: [`Forger des outils : ${C.IRON_PER_TOOL} par fournée.`, 'Herses & équipements de garde : 5.', 'Micro-barrage : 5 par séance.'],
     sources: sources(act('recycle_scrap', 'Recycler la ferraille', '4 ferrailles → 2 fers (les outils cassés deviennent de la ferraille).'), buy('gedimat_quincaillerie')),
   });
@@ -250,9 +275,14 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
       `Il en faut un par travailleur (${pop.workers}) : en dessous, tout le village perd ${C.TOOLS_MALUS} % de rendement.`,
       daysPerTool ? `Usure : ${pop.workers} travailleurs × ${C.TOOLS_WEAR_PER_WORKER_DAY} % par jour → un outil cassé environ tous les ${daysPerTool} jours (plus vite quand l'alcool circule).` : 'Personne ne travaille : pas d\'usure.',
       'Quand l\'insécurité dépasse 30 %, des outils disparaissent.',
+      ...(work.tools_wear > 0 ? [`Résidents à la forge : usure réparée de ${num(round1(work.tools_wear))} % par nuit.`] : []),
     ],
     uses: ['Chaque outil cassé devient de la ferraille (recyclable en fer).'],
-    sources: sources(act('forge_tools', 'Forger des outils', `${C.IRON_PER_TOOL} fers par fournée, rendement selon la productivité.`), buy('bigmat_outillage')),
+    sources: sources(
+      act('forge_tools', 'Forger des outils', `${C.IRON_PER_TOOL} fers par fournée, rendement selon la productivité.`),
+      assign('forge', 'Mettre un résident à la forge', `Répare ${C.RESIDENT_FORGE_WEAR} % d'usure par nuit (plus pour un soudeur ou un mécanicien), puis recycle la ferraille.`),
+      buy('bigmat_outillage'),
+    ),
   });
 
   // --- Remèdes ---------------------------------------------------------------

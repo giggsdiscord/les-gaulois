@@ -139,4 +139,6 @@ export function resetSeasonLife(v: VillageState): void {
   const life = ensureLife(v);
   life.market_sold = {};
   life.wood_cuts = 0;
+  // Interdiction des coupes par Ely : valable jusqu'au lundi (V4.9)
+  if (life.forest_ban) life.forest_ban = null;
 }

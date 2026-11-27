@@ -9,7 +9,7 @@ import type { ActionInput, OpResponse } from '../api/types.ts';
 import { actionBlockReason, lockNotes, situationFor } from '../lib/actionHints.ts';
 import { AMOUNT_ACTIONS, QUANTITY_ACTIONS, STRUCTURE_ACTION_KINDS } from '../lib/game.ts';
 import { eur } from '../lib/format.ts';
-import { MIGRANT_STATUS, STRUCTURE_STATUS } from '../lib/labels.ts';
+import { MIGRANT_STATUS, SPECIALTY_LABEL, STRUCTURE_STATUS } from '../lib/labels.ts';
 import { useData, useGame, useNow } from '../state/GameContext.tsx';
 import { Avatar, Badge, Button, Field, Input, Segmented, Select, Sheet, Stepper, TextArea, cx } from './ui.tsx';
 
@@ -92,6 +92,7 @@ export function ActionSheet({
   const [amount, setAmount] = useState(amountConf?.initial ?? 0);
   const [direction, setDirection] = useState<'in' | 'out'>('in');
   const [reason, setReason] = useState('');
+  const [workPost, setWorkPost] = useState(typeof preset?.params?.post === 'string' ? preset.params.post : constants.WORK_POSTS[0]!.code);
   const [freeText, setFreeText] = useState('');
   const [partnerA, setPartnerA] = useState('');
   const [partnerB, setPartnerB] = useState('');
@@ -149,10 +150,11 @@ export function ActionSheet({
     }
     if (amountConf) input.amount_eur = isTransfer && direction === 'out' ? -amount : amount;
     if (QUANTITY_ACTIONS[def.code] && def.target !== 'catalog' && def.target !== 'market') input.quantity = quantity;
-    if (def.code === 'eco_veto') {
-      if (reason.trim().length < 10) return 'Motivez votre veto (10 caractères minimum).';
+    if (def.code === 'eco_veto' || def.code === 'forest_ban') {
+      if (reason.trim().length < 10) return def.code === 'eco_veto' ? 'Motivez votre veto (10 caractères minimum).' : 'Motivez l\'interdiction (10 caractères minimum).';
       input.params = { reason: reason.trim() };
     }
+    if (def.code === 'assign_work_post') input.params = { post: workPost };
     if (def.code === 'celebrate_marriage') {
       if (!partnerA || !partnerB) return 'Désignez les deux époux.';
       const side = (v: string, key: 'a' | 'b') => (v.startsWith('m:') ? { [`${key}_migrant`]: v.slice(2) } : { [`${key}_player`]: v });
@@ -281,14 +283,26 @@ export function ActionSheet({
           </Field>
         )}
         {def.target === 'migrant' && (
-          <Field label="Résident ou candidat">
+          <Field label={def.code === 'assign_work_post' ? 'Résident' : 'Résident ou candidat'}>
             <Select value={target} onChange={(e) => setTarget(e.target.value)}>
               <option value="">— Choisir —</option>
-              {[...candidates, ...residents].map((m) => (
+              {[...(def.code === 'assign_work_post' ? [] : candidates), ...residents].map((m) => (
                 <option key={m.id} value={`m:${m.id}`}>
-                  {m.full_name} — {MIGRANT_STATUS[m.status]}
+                  {m.full_name} — {def.code === 'assign_work_post' ? `${SPECIALTY_LABEL[m.specialty_code]} ${m.specialty_level}` : MIGRANT_STATUS[m.status]}
                 </option>
               ))}
+            </Select>
+          </Field>
+        )}
+        {def.code === 'assign_work_post' && (
+          <Field label="Poste" hint={constants.WORK_POSTS.find((p) => p.code === workPost)?.summary}>
+            <Select value={workPost} onChange={(e) => setWorkPost(e.target.value as typeof workPost)}>
+              {constants.WORK_POSTS.map((p) => (
+                <option key={p.code} value={p.code}>
+                  {p.icon} {p.label}
+                </option>
+              ))}
+              <option value="none">Aucun poste</option>
             </Select>
           </Field>
         )}
@@ -396,6 +410,11 @@ export function ActionSheet({
         )}
         {def.code === 'eco_veto' && (
           <Field label="Motif du veto" hint="Ex. : famille de grenouilles protégées sur le tracé.">
+            <TextArea value={reason} onChange={(e) => setReason(e.target.value)} />
+          </Field>
+        )}
+        {def.code === 'forest_ban' && (
+          <Field label="Motif de l'interdiction" hint="Ex. : trop de souches cette semaine, la forêt doit se reposer.">
             <TextArea value={reason} onChange={(e) => setReason(e.target.value)} />
           </Field>
         )}

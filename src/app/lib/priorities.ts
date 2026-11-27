@@ -17,7 +17,9 @@ import {
   dailyFoodConsumption,
   dayKey,
   getAction,
+  forestBan,
   heatingNeed,
+  planResidentWork,
   type ActionDef,
   type AutonomyBreakdown,
   type GameSnapshot,
@@ -289,14 +291,39 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
 
   // Bois de chauffage (V4.8) : une nuit froide sans bois coûte moral et santé
   const heat = heatingNeed(s);
-  if (heat.wood > 0 && v.wood_stock < heat.wood * 4) {
-    const nights = Math.floor(v.wood_stock / heat.wood);
+  // Travail des résidents (V4.9) : les bûcherons compensent le chauffage
+  const work = planResidentWork(s, season, now).totals;
+  const ban = forestBan(v);
+  const burn = heat.wood - work.wood;
+  if (heat.wood > 0 && burn > 0 && v.wood_stock < burn * 4) {
+    const nights = Math.floor(v.wood_stock / burn);
     P.add({
       key: 'heating', short: nights < 2 ? 'Plus assez de bois pour chauffer cette nuit.' : `Bois de chauffage pour ${nights} nuits seulement.`, emoji: '🪵', title: 'Faire des réserves de bois', urgent: nights < 2, score: nights < 2 ? 91 : 72,
-      why: `Il fait ${Math.round(heat.tempMin)} °C au petit matin : ${heat.buildings} ${heat.buildings > 1 ? 'bâtisses habitées brûlent' : 'bâtisse habitée brûle'} ${heat.wood} stères par nuit, et il en reste ${v.wood_stock}. Une nuit sans feu coûte ${C.HEATING_COLD_MORALE} % de moral et 1 point de santé à chaque fondateur.`,
-      actionCode: 'cut_wood',
-      steps: [`Couper du bois : environ ${C.WOOD_CUT_BASE} stères par séance, gratuit — au-delà de ${C.WOOD_CUT_SUSTAINABLE} coupes par semaine, la forêt souffre.`, 'Ou louer une tronçonneuse chez Kiloutou (60 €, +10 bois).'],
-      gain: `+${C.WOOD_CUT_BASE} stères par séance`,
+      why: `Il fait ${Math.round(heat.tempMin)} °C au petit matin : ${heat.buildings} ${heat.buildings > 1 ? 'bâtisses habitées brûlent' : 'bâtisse habitée brûle'} ${heat.wood} stères par nuit${work.wood > 0 ? ` (les bûcherons résidents en rapportent ${Math.round(work.wood * 10) / 10})` : ''}, et il en reste ${v.wood_stock}. Une nuit sans feu coûte ${C.HEATING_COLD_MORALE} % de moral et 1 point de santé à chaque fondateur.`,
+      actionCode: ban ? 'buy_supplies' : 'cut_wood',
+      preset: ban ? { catalog_item_id: 'kiloutou_tronconneuse' } : undefined,
+      steps: [
+        ban
+          ? `${P.nameOf('mayor_agri')} a interdit les coupes jusqu'à lundi (« ${ban.reason} ») : il faut acheter du bois, ou lui demander de rouvrir la forêt.`
+          : `Couper du bois : environ ${C.WOOD_CUT_BASE} stères par séance, gratuit — au-delà de ${C.WOOD_CUT_SUSTAINABLE} coupes par semaine, la forêt souffre.`,
+        `Mettre un résident en forêt (Agora → Immigration) : environ ${C.RESIDENT_FOREST_WOOD} stères chaque nuit.`,
+        'Ou louer une tronçonneuse chez Kiloutou (60 €, +10 bois).',
+      ],
+      gain: ban ? '+10 stères par location' : `+${C.WOOD_CUT_BASE} stères par séance`,
+    });
+  }
+  if (work.unassigned > 0) {
+    const n = work.unassigned;
+    P.add({
+      key: 'residents_idle', emoji: '🧑‍🌾', title: `Donner un poste à ${n} ${plural(n, 'résident', 'résidents')}`, urgent: false, score: 64,
+      short: `${n} ${plural(n, 'résident mange', 'résidents mangent')} sans rien produire.`,
+      why: `Chaque résident mange ${C.RATIONS_ADULT_DAY} ration par jour. Au potager, en forêt, au chantier, à la forge, au pâturage, sur le réseau d'eau ou sur la piste, il produit chaque nuit — bien plus au poste de sa spécialité.`,
+      actionCode: null, route: { name: 'agora', param: 'immigration' },
+      steps: [
+        'Agora → Immigration → touchez un résident pour choisir son poste (gratuit, sans PA, tout le monde peut le faire).',
+        'Poste conseillé : celui de sa spécialité (maçon → chantier, maraîcher → potager, berger → pâturage, soudeur → forge…).',
+      ],
+      gain: 'Rations, bois, chantiers ou outils chaque nuit',
     });
   }
   if (v.tomatoes_stock >= 60) {

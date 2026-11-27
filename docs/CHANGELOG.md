@@ -1,5 +1,13 @@
 # Historique des versions du GDD
 
+### V4.9 — 27/11/2026 — Travail des résidents & droit de regard d'Ely sur la forêt
+- **Un poste pour chaque résident** (§4.7) : potager, forêt, chantier, forge, pâturage, réseau d'eau ou piste ; tout le monde l'affecte, sans PA. Chaque nuit, il produit selon son poste : rations et tomates, bois, avancement ou réparation des bâtisses (1 pierre par nuit), entretien des outils et recyclage de la ferraille, lait, réseau d'eau, piste.
+- Au poste de sa **spécialité**, un résident rend +25 % par niveau (×1,25 à ×2,25) ; places comptées (un jardinier par 100 m², un berger pour 10 bêtes) ; sans poste, au chantier privé, au cachot, blessé ou trop faible, il ne produit rien ; la grève divise le travail par deux.
+- **Droit de regard d'Ely** (§5.4) : elle peut interdire les coupes de bois jusqu'au lundi (motif obligatoire) et rouvrir la forêt plus tôt ; les bûcherons résidents entretiennent alors la forêt.
+- Agora → Immigration : carte « Résidents au travail » (production prévue cette nuit, nuit dernière) et fenêtre de choix du poste ; Réserves du hameau et « À faire en priorité » tiennent compte des résidents (résidents sans poste, bois de chauffage bûcherons déduits).
+- Aucune nouvelle migration (colonne `work_post` et `village_state.life` préparées en V4.8).
+- 19 nouveaux tests Vitest.
+
 ### V4.8 — 26/11/2026 — Marché, bois de chauffage & conserves
 - **Marché d'Organyà** (§5.4) : tout le monde peut vendre tomates, bois et conserves pour la caisse commune ; +30 % le samedi, prix qui baissent à mesure que la semaine sature, plafond hebdomadaire par produit, meilleurs prix avec l'espagnol.
 - **Couper du bois** dans la forêt communale (≈ 8 stères par séance) ; au-delà de 10 coupes par semaine, la forêt souffre et les agents rurals peuvent verbaliser.

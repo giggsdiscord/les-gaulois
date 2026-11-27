@@ -395,3 +395,54 @@ export const HEATING_COLD_HEALTH = 1; // santé perdue par fondateur par nuit sa
 export const PRESERVES_TOMATOES_KG = 10; // [GDD §5.5]
 export const PRESERVES_RATIONS = 8; // [GDD §5.5]
 export const PRESERVES_JARS_EUR = 12;
+
+// ---------------------------------------------------------------------------
+// Travail des résidents [GDD §4.7, V4.9]
+// ---------------------------------------------------------------------------
+export type WorkPostCode = 'garden' | 'forest' | 'construction' | 'forge' | 'pasture' | 'water' | 'track';
+export interface WorkPost {
+  code: WorkPostCode;
+  label: string;
+  icon: string;
+  /** Complément de lieu : « au potager », « en forêt »… */
+  place: string;
+  /** Spécialités qui y travaillent avec un bonus de niveau. */
+  specialties: readonly SpecialtyCode[];
+  /** Ce que le poste produit chaque nuit (texte d'aide). */
+  summary: string;
+}
+export const WORK_POSTS: readonly WorkPost[] = [
+  { code: 'garden', place: 'au potager', label: 'Potager', icon: '🥕', specialties: ['farmer'], summary: 'Rations et tomates selon la saison et l\'arrosage ; un jardinier par 100 m² de potager.' },
+  { code: 'forest', place: 'en forêt', label: 'Forêt', icon: '🪓', specialties: ['carpenter'], summary: 'Bois de chauffage (compte dans les coupes de la semaine) ; entretien de la forêt si Ely interdit les coupes.' },
+  { code: 'construction', place: 'sur le chantier', label: 'Chantier', icon: '🧱', specialties: ['mason', 'carpenter', 'electrician'], summary: 'Fait avancer le chantier de bâtisse le plus avancé (1 pierre par nuit), sinon répare une bâtisse abîmée.' },
+  { code: 'forge', place: 'à la forge', label: 'Forge', icon: '⚒️', specialties: ['welder', 'mechanic'], summary: 'Répare l\'usure des outils, puis recycle la ferraille en fer ; forge en service requise.' },
+  { code: 'pasture', place: 'au pâturage', label: 'Pâturage', icon: '🐑', specialties: ['shepherd', 'farmer'], summary: 'Lait et fromage frais : rations selon le cheptel (un berger pour 10 bêtes).' },
+  { code: 'water', place: 'sur le réseau d\'eau', label: 'Réseau d\'eau', icon: '🚰', specialties: ['mechanic', 'welder'], summary: 'Entretient les conduites : état du réseau en hausse.' },
+  { code: 'track', place: 'sur la piste', label: 'Piste', icon: '🛤️', specialties: ['mason', 'mechanic'], summary: 'Bouche les ornières : état de la piste en hausse.' },
+]; // [GDD §4.7]
+/** Bonus d'un spécialiste au poste de sa spécialité : +25 % par niveau (niveau 1 → ×1,25, niveau 5 → ×2,25). */
+export const RESIDENT_SKILL_BONUS_PER_LEVEL = 0.25; // [GDD §4.7]
+/** En dessous de cette santé, un résident se repose au lieu de travailler. */
+export const RESIDENT_MIN_HEALTH = 30;
+/** Grève : les résidents travaillent à moitié. */
+export const RESIDENT_STRIKE_FACTOR = 0.5;
+export const RESIDENT_GARDEN_RATIONS = 1.5; // [GDD §4.7] rations par nuit × coefficient de saison
+export const RESIDENT_GARDEN_M2_PER_WORKER = 100;
+export const RESIDENT_FOREST_WOOD = 2; // [GDD §4.7] stères par nuit
+/** Une nuit de bûcheronnage d'un résident compte pour un quart de coupe (8 stères = 1 coupe). */
+export const RESIDENT_FOREST_CUT_SHARE = 0.25;
+/** Coupes interdites : le bûcheron entretient la forêt (écologie + par nuit). */
+export const RESIDENT_FOREST_CARE_ECOLOGY = 0.2;
+/** Au-delà des coupes soutenables, chaque bûcheron abîme la forêt (écologie − par nuit). */
+export const RESIDENT_OVERCUT_ECOLOGY = 0.5;
+export const RESIDENT_BUILD_POINTS = 2; // [GDD §4.7] % d'avancement par nuit
+export const RESIDENT_BUILD_STONE = 1;
+export const RESIDENT_REPAIR_POINTS = 3;
+export const RESIDENT_FORGE_WEAR = 10; // [GDD §4.7] usure des outils réparée par nuit
+export const RESIDENT_FORGE_SCRAP = 2; // ferrailles recyclées en 1 fer quand les outils sont neufs
+export const RESIDENT_PASTURE_HEADS = 10;
+export const RESIDENT_PASTURE_RATIONS_PER_HEAD = 0.08; // [GDD §4.7]
+export const RESIDENT_WATER_POINTS = 2; // [GDD §4.7] % d'état du réseau par nuit
+export const RESIDENT_TRACK_POINTS = 1; // [GDD §4.7] % d'état de la piste par nuit
+/** Motif minimal de l'interdiction des coupes par Ely. */
+export const FOREST_BAN_REASON_MIN = 10;

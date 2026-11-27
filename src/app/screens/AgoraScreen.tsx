@@ -1,10 +1,11 @@
 /** Écran 3 — L'Agora, Bureau de l'Immigration, Tribunal Public, Constitution & duels. */
 import { useMemo, useState } from 'react';
-import { nextAgoraSession, type ActionDef } from '../engine.ts';
-import type { MotionKind, Proposal } from '../api/types.ts';
+import { findWorkPost, nextAgoraSession, type ActionDef } from '../engine.ts';
+import type { MotionKind, Proposal, PublicMigrant } from '../api/types.ts';
 import { ActionSheet } from '../components/ActionSheet.tsx';
 import { ProposalCard } from '../components/ProposalCard.tsx';
-import { Badge, Button, Card, Empty, Field, Gauge, Input, SectionTitle, Select, Tabs, TextArea } from '../components/ui.tsx';
+import { Badge, Button, Card, Empty, Field, Gauge, Input, ListRow, SectionTitle, Select, Sheet, Tabs, TextArea, cx } from '../components/ui.tsx';
+import { postChoices, residentWorkView, skillLabel, totalsParts } from '../lib/residentWork.ts';
 import { availableActions, canFight, nextAgoraWeek, playerName, population } from '../lib/game.ts';
 import { countdown, dateTime } from '../lib/format.ts';
 import { CATEGORY_LABEL, DUEL_CONTEXT, DUEL_MODE, MIGRANT_STATUS, PORTFOLIO_LABEL, SENTENCE_LABEL, SPECIALTY_LABEL } from '../lib/labels.ts';
@@ -178,6 +179,141 @@ function Initiatives() {
   );
 }
 
+/** Travail des résidents (V4.9) : un poste par résident, production de la nuit. */
+function ResidentsAtWork() {
+  const data = useData();
+  const { api, perform, toast } = useGame();
+  const now = useNow(60_000);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const view = useMemo(() => residentWorkView(data, now), [data, now]);
+  const v = data.village;
+  const selected = view.workforce.find((m) => m.id === openId) ?? null;
+  const t = view.tonight;
+  const tonight = totalsParts(t);
+  const last = view.lastNight ? totalsParts(view.lastNight) : [];
+
+  async function assign(m: PublicMigrant, post: string) {
+    setBusy(true);
+    const r = await perform(
+      () => api.action({ action_code: 'assign_work_post', target_migrant_id: m.id, params: { post } }),
+      (res) => (res.ok ? res.narrative ?? 'Poste mis à jour.' : undefined),
+    );
+    setBusy(false);
+    if (r && !r.ok) toast('error', r.error ?? 'Affectation refusée.');
+    if (r?.ok) setOpenId(null);
+  }
+
+  return (
+    <>
+      <SectionTitle>Résidents au travail ({view.workforce.length})</SectionTitle>
+      {view.workforce.length === 0 ? (
+        <Empty>Aucun résident pour l'instant. Une fois admis, chacun reçoit un poste et produit chaque nuit.</Empty>
+      ) : (
+        <Card flush>
+          <div className="space-y-2 px-4 pt-3 pb-2 text-sm">
+            <div className="flex flex-wrap gap-1.5">
+              <Badge tone="moss">{t.workers} au travail</Badge>
+              {t.idle > 0 && <Badge tone="gold">{t.idle} à l'arrêt</Badge>}
+              {t.unassigned > 0 && <Badge tone="ember">{t.unassigned} sans poste</Badge>}
+            </div>
+            <p className="text-ink-soft">
+              <strong className="text-ink">Cette nuit :</strong> {tonight.length > 0 ? tonight.join(' · ') : 'rien de prévu'}
+            </p>
+            {last.length > 0 && <p className="text-xs text-ink-soft">Nuit dernière : {last.join(' · ')}</p>}
+            {view.ban && <p className="rounded-xl bg-ember-600/10 px-3 py-2 text-xs text-ember-600">🚫 Ely a interdit les coupes jusqu'à lundi : « {view.ban.reason} ». Les bûcherons entretiennent la forêt.</p>}
+          </div>
+          <ul className="divide-y divide-parchment-200 border-t border-parchment-200">
+            {view.workforce.map((m) => {
+              const line = view.lines[m.id];
+              const post = findWorkPost(m.work_post);
+              return (
+                <li key={m.id}>
+                  <ListRow
+                    icon={post?.icon ?? '💤'}
+                    title={m.full_name}
+                    subtitle={
+                      <>
+                        {SPECIALTY_LABEL[m.specialty_code]} {m.specialty_level}
+                        {post ? ` · ${post.label}` : ''}
+                        {m.status === 'forced_labor' ? ' · travaux forcés' : ''}
+                        <span className={cx('block text-xs', line?.working ? 'text-moss-700' : 'text-ember-600')}>{line?.working ? line.note : line?.note ?? 'Sans poste'}</span>
+                      </>
+                    }
+                    aside={!post ? <Badge tone="ember">Sans poste</Badge> : line?.skilled ? <Badge tone="moss">★</Badge> : null}
+                    onClick={() => setOpenId(m.id)}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+      <Sheet open={selected !== null} onClose={() => setOpenId(null)} title={selected ? `Poste de ${selected.full_name}` : ''}>
+        {selected && (
+          <div className="space-y-3">
+            <p className="text-sm text-ink-soft">
+              {SPECIALTY_LABEL[selected.specialty_code]} niveau {selected.specialty_level} · {selected.origin} · santé {selected.health_pct} %
+              {selected.patron_player_id ? ` · protégé de ${playerName(data.players, selected.patron_player_id)}` : ''}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {selected.is_naturalized && <Badge tone="moss">Citoyen</Badge>}
+              <Badge tone={selected.status === 'forced_labor' ? 'ember' : 'neutral'}>{MIGRANT_STATUS[selected.status]}</Badge>
+            </div>
+            {selected.private_employer_id ? (
+              <p className="rounded-xl bg-parchment-100 px-3 py-2 text-sm">
+                Il travaille sur le chantier privé de {playerName(data.players, selected.private_employer_id)} : pour lui donner un poste au hameau, il faut d'abord mettre fin au contrat.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm">Choisissez où il travaillera chaque nuit (gratuit, sans PA). ★ = sa spécialité : il y rend bien plus.</p>
+                <div className="space-y-2">
+                  {postChoices(selected).map((c) => (
+                    <button
+                      key={c.post.code}
+                      type="button"
+                      disabled={busy || c.current}
+                      onClick={() => void assign(selected, c.post.code)}
+                      className={cx(
+                        'flex min-h-14 w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left',
+                        c.current ? 'border-moss-600 bg-moss-600/10' : 'border-parchment-300 bg-white active:bg-parchment-100',
+                      )}
+                    >
+                      <span className="text-2xl leading-none">{c.post.icon}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-1.5 font-semibold">
+                          {c.post.label}
+                          {c.skill > 1 && <Badge tone="moss">★ {skillLabel(c.skill)}</Badge>}
+                          {c.current && <Badge tone="river">poste actuel</Badge>}
+                        </span>
+                        <span className="block text-xs leading-snug text-ink-soft">{c.post.summary}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {selected.work_post && (
+                  <Button variant="ghost" className="w-full" disabled={busy} onClick={() => void assign(selected, 'none')}>
+                    Retirer de son poste
+                  </Button>
+                )}
+              </>
+            )}
+            {v.act_number >= 3 && !selected.is_naturalized && (
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => void perform(() => api.submitMotion('naturalization', `Naturalisation de ${selected.full_name}`, 'Résident loyal, intégré au hameau.', { migrant_id: selected.id }), 'Motion de naturalisation déposée.')}
+              >
+                Proposer sa naturalisation
+              </Button>
+            )}
+          </div>
+        )}
+      </Sheet>
+    </>
+  );
+}
+
 function Immigration() {
   const data = useData();
   const { api, perform } = useGame();
@@ -288,29 +424,18 @@ function Immigration() {
         );
       })}
 
-      <SectionTitle>Résidents ({residents.length})</SectionTitle>
-      {residents.length === 0 ? (
-        <Empty>Aucun résident pour l'instant.</Empty>
-      ) : (
-        <Card>
-          <ul className="divide-y divide-parchment-200">
-            {residents.map((m) => (
-              <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                <span>
-                  <strong>{m.full_name}</strong> · {SPECIALTY_LABEL[m.specialty_code]} {m.specialty_level} · {m.origin}
-                  {m.patron_player_id && <span className="text-ink-soft"> · protégé de {playerName(data.players, m.patron_player_id)}</span>}
-                </span>
-                <span className="flex gap-1">
-                  {m.is_naturalized && <Badge tone="moss">Citoyen</Badge>}
-                  <Badge tone={m.status === 'forced_labor' ? 'ember' : 'neutral'}>{MIGRANT_STATUS[m.status]}</Badge>
-                  {v.act_number >= 3 && !m.is_naturalized && (
-                    <Button size="sm" variant="ghost" onClick={() => void perform(() => api.submitMotion('naturalization', `Naturalisation de ${m.full_name}`, 'Résident loyal, intégré au hameau.', { migrant_id: m.id }), 'Motion de naturalisation déposée.')}>
-                      Naturaliser
-                    </Button>
-                  )}
-                </span>
-              </li>
-            ))}
+      <ResidentsAtWork />
+      {residents.some((m) => m.status !== 'accepted' && m.status !== 'forced_labor') && (
+        <Card title="Anciens résidents">
+          <ul className="space-y-1 text-sm">
+            {residents
+              .filter((m) => m.status !== 'accepted' && m.status !== 'forced_labor')
+              .map((m) => (
+                <li key={m.id} className="flex items-center justify-between gap-2">
+                  <span>{m.full_name}</span>
+                  <Badge>{MIGRANT_STATUS[m.status]}</Badge>
+                </li>
+              ))}
           </ul>
         </Card>
       )}
