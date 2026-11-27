@@ -5,6 +5,7 @@
  */
 import { currentCollective, forestBan, getAction, isAfter, isSunday, lifeOf, type ActionDef } from '../engine.ts';
 import type { GameData, PublicPlayer } from '../api/types.ts';
+import { electionView } from './election.ts';
 
 export interface ActionSituation {
   /** Titulaire du poste dont les PA sont dépensés (soi-même ou un délégant). */
@@ -19,6 +20,8 @@ export interface ActionSituation {
   /** Chantier collectif de la semaine (V5.0) : absent, ouvert ou achevé ; projets soumis au vote. */
   collective?: 'none' | 'open' | 'done';
   collectiveVotable?: boolean;
+  /** Élection vivante (V5.3) : gestes possibles maintenant. */
+  election?: { open: boolean; canStand: boolean; canSpeak: boolean; canVote: boolean; phase: string | null };
 }
 
 /** Situation du joueur qui agit, pour lui-même (`holderId` null) ou pour un poste délégué. */
@@ -39,6 +42,7 @@ export function situationFor(data: Pick<GameData, 'me' | 'players' | 'village'>,
     forestBanned: forestBan(data.village) !== null,
     collective: collectiveState(data.village),
     collectiveVotable: (lifeOf(data.village).collective_candidates ?? []).length > 0,
+    election: electionSituation(data, holder.id === me.id, now),
   };
 }
 
@@ -57,6 +61,14 @@ export function actionBlockReason(def: ActionDef, s: ActionSituation): string | 
   if (def.code === 'contribute_collective' && s.collective === 'none') return "Le premier chantier commun s'ouvrira cette nuit.";
   if (def.code === 'contribute_collective' && s.collective === 'done') return 'Chantier de la semaine achevé : rendez-vous lundi.';
   if (def.code === 'vote_collective_project' && s.collectiveVotable === false) return "Aucun projet à voter pour l'instant.";
+  // Élection vivante d'un portefeuille (V5.3)
+  if (s.election && (def.code === 'run_for_office' || def.code === 'campaign_speech' || def.code === 'vote_election')) {
+    const e = s.election;
+    if (!e.open) return 'Aucune élection en cours.';
+    if (def.code === 'run_for_office' && !e.canStand) return e.phase === 'candidacy' ? 'Déjà candidat·e (ou titulaire du portefeuille).' : 'Candidatures closes.';
+    if (def.code === 'campaign_speech' && !e.canSpeak) return 'Réservé aux candidats, une intervention par jour.';
+    if (def.code === 'vote_election' && !e.canVote) return e.phase === 'candidacy' ? 'Le vote ouvrira après les candidatures.' : 'Pas de vote possible maintenant.';
+  }
   return null;
 }
 
@@ -109,4 +121,10 @@ export function actionLabel(code: string): string {
 function collectiveState(v: GameData['village']): 'none' | 'open' | 'done' {
   const p = currentCollective(v);
   return !p ? 'none' : p.completed_at ? 'done' : 'open';
+}
+
+function electionSituation(data: Pick<GameData, 'me' | 'players' | 'village'>, self: boolean, now: Date): ActionSituation['election'] {
+  const v = electionView(data, now);
+  if (!v.election) return { open: false, canStand: false, canSpeak: false, canVote: false, phase: null };
+  return { open: true, canStand: self && v.canStand, canSpeak: self && v.canSpeak, canVote: self && v.canVote, phase: v.phase };
 }

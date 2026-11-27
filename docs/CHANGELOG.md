@@ -1,5 +1,11 @@
 # Historique des versions du GDD
 
+### V5.3 — 27/11/2026 — Élections vivantes des portefeuilles
+- **Élections vivantes** (§2.2) : tant qu'une place 8 à 10 est vacante, ses portefeuilles débloqués sont mis en jeu un à un (Défense, Intérieur, Douanes dès l'Acte II ; Chancellerie, Médias à l'Acte III).
+- **Candidatures avec programme** (3 jours, 1 PA), **débat à la Taverne** (1 intervention par jour et par candidat, 1 PA), **vote secret** (2 jours, 0 PA, pas pour soi) ; dépouillement de nuit, égalité départagée par la présence au débat.
+- **Mandat de 4 semaines** pour l'élu·e (+10 XP ; participation ≥ 50 % : moral +2 %) ; sans candidat, report d'une semaine. La motion « Élection à un portefeuille » vaut mandat.
+- Carte « Élection » (accueil, Agora, Taverne) et priorités « Voter / Se présenter / Défendre votre programme ». Aucune migration (`village_state.life.election`, `election_last`, `mandates`) ; 15 nouveaux tests Vitest.
+
 ### V5.2 — 27/11/2026 — Niveaux de métier, mission du jour & binômes
 - **Niveaux de métier visibles** (§2.3) : 150 / 400 / 800 XP pour les niveaux 2, 3, 4 ; +10 / +20 / +30 % de rendement dans son métier ; fournée double à la forge de Julio au niveau 4 ; passage de niveau annoncé.
 - **Mission du jour** par joueur : une action conseillée de son métier (faisable ce jour-là), +20 XP et moral du village +1 % si elle est faite ; carte « Niveau & mission » en tête du menu Agir et ligne dans « À faire en priorité ».

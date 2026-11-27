@@ -37,6 +37,7 @@ import {
 import { addictionDrift, applyInjury, computeDailyAp, isInWithdrawal } from './health.ts';
 import { checkActGoals } from './goals.ts';
 import { closeCollectiveWeek, startWeeklyProject } from './collective.ts';
+import { processElections } from './elections.ts';
 import { lifeOf, processHeating, resetSeasonLife } from './life.ts';
 import { clamp, deepClone, gauge, money, stepToward, stock } from './math.ts';
 import { activePlayers, computeHousingCapacity, countPopulation, residents, structureByCode } from './population.ts';
@@ -73,6 +74,8 @@ function closeDay(s: GameSnapshot, fx: EngineEffects, endedKey: string, midnight
   refreshDerived(s, midnight, season, fx);
   // Premier chantier collectif (V5.0) : ouvert dès la première nuit, sauf le lundi (closeSeason s'en charge)
   if (!lifeOf(v).collective && localParts(midnight).weekday !== 1) startWeeklyProject(s, fx, rng.fork('collective'), midnight);
+  // Élections vivantes des portefeuilles (V5.3)
+  processElections(s, fx, endedKey, midnight);
   v.game_day += 1;
 }
 

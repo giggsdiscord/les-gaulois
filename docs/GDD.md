@@ -1,12 +1,12 @@
 ---
-version: 5.2
+version: 5.3
 date: 2026-11-27
 title: Les Gaulois — Game Design Document & Architecture Technique
 ---
 
 # LES GAULOIS — Simulation Coopérative de Village & Micro-État
 
-**Game Design Document (GDD) & Spécification Technique Complète — Version 5.2**
+**Game Design Document (GDD) & Spécification Technique Complète — Version 5.3**
 
 Jeu de stratégie, de gestion démographique, économique et politique asynchrone persistant, ancré dans le monde réel (Pyrénées de Lleida), piloté par un moteur déterministe TypeScript et un Maître du Jeu IA.
 
@@ -15,9 +15,10 @@ Jeu de stratégie, de gestion démographique, économique et politique asynchron
 | **Cadre réel :** hameau abandonné des Pyrénées de Lleida (Catalogne, Espagne), domaine de 30 ha situé à 18 km de la frontière d'Andorre. | **Achat & travaux :** 295 000 € (PLU 2013 validé). Rénovation globale estimée entre 600 000 € et 900 000 €. |
 | **Effectif & rythme :** 7 joueurs fondateurs (10 joueurs max) + population résidente dynamique (migrants accueillis, naturalisés, lignées et apprentis). 1 jour réel = 1 jour de jeu (3 PA/jour). | **Enjeux :** autonomie totale puis Micro-État souverain, pérennité démographique, équilibre idéologique (Droite vs Gauche), propriété privée vs collectivisation, contrebande, justice publique et dissuasion. Hébergement 0 € + API IA < 1 $/mois (Claude Haiku 5.5). |
 
-> **Nouveautés V5.2 :** **les métiers progressent** (§2.3) : niveaux 1 à 4 visibles (bonus de rendement dans son métier, fournée double à la forge de Julio au niveau 4), **une mission du jour** par joueur (une action conseillée, +20 XP et moral +1 % si elle est faite) et des **binômes** : deux joueurs qui font le même type d'action le même jour gagnent +25 % de rendement et de l'expérience.
+> **Nouveautés V5.3 :** **des élections vivantes** (§2.2) : tant qu'une place 8 à 10 est vacante, ses portefeuilles débloqués (Défense, Intérieur, Douanes à l'Acte II ; Chancellerie, Médias à l'Acte III) sont mis en jeu un à un — **candidatures avec programme**, **débat à la Taverne** (une intervention par jour et par candidat), **vote secret**, puis un **mandat de 4 semaines** pour l'élu·e.
 
-> **Rappel V5.1 :** **des objectifs d'Acte en liste à cocher** (§1.3) : pour chaque Acte, quelques étapes concrètes (électricité, 20 lits, 500 m² de potager, piste à 70 %, gîte ouvert pour l'Acte I) qui se cochent toutes seules et versent chacune une récompense — surtout des remises sur l'emprunt foncier, pour faire bouger le pilier dette — et une prime quand la liste est terminée.
+> **Rappel V5.2 :** **les métiers progressent** (§2.3) : niveaux 1 à 4 visibles (bonus de rendement dans son métier, fournée double à la forge de Julio au niveau 4), **une mission du jour** par joueur (une action conseillée, +20 XP et moral +1 % si elle est faite) et des **binômes** : deux joueurs qui font le même type d'action le même jour gagnent +25 % de rendement et de l'expérience.
+
 
 > **Rappel V5.0 :** **un chantier collectif chaque semaine** (§5.5) : un projet commun (bois, piste, canaux, potager, chantier, fête) choisi par vote, auquel chacun met ses PA ; barre de progression commune, effet ×1,5 et moral en plus s'il est achevé avant dimanche.
 
@@ -95,6 +96,15 @@ Le jeu fonctionne aussi bien à 7 joueurs qu'à 10 joueurs. Si de nouveaux amis 
 | **5. Médias, Culture & Propagande** (Acte III) | Rédige les éditoriaux officiels de La Gazette, organise les banquets et la venue mensuelle des BOR, neutralise les campagnes de diffamation (ex. dénonciations d'un migrant banni ou scandale lié à une sentence publique) et médiatise le Micro-État auprès de la presse européenne pour créer un bouclier diplomatique. | Score de notoriété internationale et sympathie de l'opinion publique européenne. |
 
 > **Précision V3.8 — places 8 à 10.** Codes de rôle : `defense_sec` (portefeuilles Défense + Intérieur), `transport_customs` (Douanes), `legal_media` (Chancellerie + Médias). Une place reste inactive (`is_active_slot = false`) jusqu'à ce que l'administrateur l'attribue à un ami (nom + PIN). Les actions d'un portefeuille restent soumises à l'Acte de déblocage, même pour un titulaire à temps plein.
+
+> **Précisions V5.3 — élections vivantes.**
+> - **Quand :** chaque nuit, si aucune élection n'est en cours, le moteur met en jeu le premier portefeuille (ordre Défense, Intérieur, Douanes, Chancellerie, Médias) qui est **débloqué** par l'Acte, **pas tenu à temps plein** (place 8, 9 ou 10 occupée) et **sans mandat en cours** (mandat expiré, titulaire banni ou exécuté). Une seule élection à la fois ; annonce dans le fil des événements.
+> - **Calendrier :** 3 jours de **candidatures** (le jour d'ouverture compris), puis 2 jours de **vote** ; dépouillement la nuit qui suit le dernier jour de vote, et l'élection suivante s'ouvre aussitôt s'il reste un portefeuille à pourvoir.
+> - **Candidature** (`run_for_office`, 1 PA, tout joueur actif sauf le titulaire actuel) : programme de 20 à 280 caractères, visible par tous. **Débat** (`campaign_speech`, 1 PA, candidats seulement, une intervention par jour, 10 à 280 caractères) : affiché dans la Taverne, salle de l'Agora ; la première intervention du jour au hameau donne moral +1 %. **Vote** (`vote_election`, 0 PA, pendant le vote) : un bulletin par joueur, jamais pour soi, modifiable jusqu'au soir ; secret jusqu'au dépouillement (seul le nombre de votants s'affiche).
+> - **Dépouillement :** le plus de voix l'emporte ; à égalité, le candidat le plus présent au débat, puis la candidature la plus ancienne. Un seul candidat est élu sans opposition. L'élu·e reçoit le portefeuille (retiré aux autres cumulards) pour un **mandat de 4 semaines**, +10 XP ; participation ≥ 50 % : moral du village +2 %. **Sans candidat**, le portefeuille reste vacant et revient en jeu 7 jours plus tard.
+> - La **motion « Élection à un portefeuille »** de l'Agora reste possible : adoptée, elle vaut mandat de 4 semaines et annule l'élection vivante du même portefeuille.
+> - Interface : carte « Élection » sur l'accueil (candidats, candidature, vote), en tête d'Agora → Initiatives (programmes, débat, mandats en cours, dernier résultat) et dans la Taverne (salle de l'Agora : prise de parole et débat) ; lignes « Voter », « Se présenter » et « Défendre votre programme » dans « À faire en priorité ».
+> - État dans `village_state.life` (`election`, `election_last`, `mandates`) : **aucune migration**, aucune nouvelle opération d'API.
 
 ### 2.3 Niveaux de métier, mission du jour & binômes (V5.2)
 

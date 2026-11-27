@@ -9,6 +9,7 @@ import {
   PRESIDENT_ROLE,
 } from './constants.ts';
 import { pushEvent, pushLedger, pushTrigger } from './effects.ts';
+import { grantPortfolio } from './elections.ts';
 import { applySentence, type Sentence } from './justice.ts';
 import { gauge, money } from './math.ts';
 import { admitMigrant, naturalizeMigrant, rejectMigrant } from './migrants.ts';
@@ -217,13 +218,8 @@ export function executeProposal(s: GameSnapshot, fx: EngineEffects, rng: Rng, pr
     case 'ministry_election': {
       const portfolio = String(p.payload.portfolio) as Portfolio;
       const winner = findPlayer(s, p.target_player_id);
-      for (const player of s.players) {
-        if (player.role_code === 'defense_sec' || player.role_code === 'transport_customs' || player.role_code === 'legal_media') continue;
-        player.ministerial_portfolios = player.ministerial_portfolios.filter((x) => x !== portfolio);
-      }
-      if (winner && !winner.ministerial_portfolios.includes(portfolio)) {
-        winner.ministerial_portfolios = [...winner.ministerial_portfolios, portfolio];
-      }
+      // V5.3 : la motion vaut mandat (et annule l'élection vivante du même portefeuille)
+      grantPortfolio(s, portfolio, winner, now, null);
       summary = winner ? `${winner.display_name} reçoit le portefeuille ${portfolio}.` : 'Élection sans titulaire.';
       break;
     }

@@ -28,6 +28,7 @@ import {
 } from '../engine.ts';
 import { actGoalsView, goalForPriority, type ActGoalsView } from './actGoals.ts';
 import { collectiveView } from './collective.ts';
+import { electionView } from './election.ts';
 import { MISSION_REWARD_TEXT } from './jobLevel.ts';
 import type { ActionInput, GameData, Structure } from '../api/types.ts';
 import { eur } from './format.ts';
@@ -355,6 +356,41 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
       ],
       gain: col.def.summary,
     });
+  }
+  // Élection vivante d'un portefeuille (V5.3) : voter, se présenter, défendre son programme
+  const el = electionView(data, now);
+  if (el.election) {
+    const lastDay = el.lastDay;
+    const mandate = `Mandat de ${C.ELECTION_MANDATE_WEEKS} semaines : le portefeuille débloque ses actions pour l'élu·e (seconde casquette).`;
+    if (el.canVote && !el.myVote) {
+      P.add({
+        key: 'election:vote', emoji: '🗳️', title: `Voter : ${el.title}`, urgent: lastDay, score: lastDay ? 74 : 64,
+        short: `${el.candidates.length} candidat(s), ${el.voters}/${el.electors} votant(s) — vote secret, 0 PA.`,
+        why: `Le portefeuille « ${el.title} » est mis en jeu tant que sa place à temps plein est vacante. ${mandate}`,
+        actionCode: null, route: { name: 'agora' },
+        steps: ['Lisez les programmes (Agora) et le débat (Taverne → Hall de l\'Agora).', 'Touchez un candidat pour voter ; on ne vote pas pour soi, on peut changer d\'avis jusqu\'au soir.', `Participation d'au moins ${Math.round(C.ELECTION_TURNOUT_MIN * 100)} % : moral +${C.ELECTION_TURNOUT_MORALE} %.`],
+        gain: `moral +${C.ELECTION_TURNOUT_MORALE} % si la participation est bonne`,
+      });
+    } else if (el.canStand) {
+      P.add({
+        key: 'election:stand', emoji: '🗳️', title: `Se présenter : ${el.title}`, urgent: lastDay && el.candidates.length === 0, score: el.candidates.length === 0 ? 54 : 44,
+        short: el.candidates.length === 0 ? 'Aucun candidat pour l\'instant : sans candidat, le portefeuille reste vacant une semaine.' : `${el.candidates.length} candidat(s) déjà : ${el.status}`,
+        why: `${mandate} L'élu·e gagne aussi ${C.ELECTION_WINNER_XP} XP.`,
+        actionCode: null, route: { name: 'agora' },
+        steps: [`Rédigez un programme (${C.ELECTION_PROGRAM_MIN} à ${C.ELECTION_TEXT_MAX} caractères) : 1 PA.`, 'Puis défendez-le au débat de la Taverne (1 PA par jour).'],
+        gain: `le portefeuille pour ${C.ELECTION_MANDATE_WEEKS} semaines`,
+      });
+    }
+    if (el.canSpeak) {
+      P.add({
+        key: 'election:speak', emoji: '🎙️', title: 'Défendre votre programme au débat', urgent: false, score: 50,
+        short: 'Une intervention par jour à la Taverne : à égalité de voix, le plus présent au débat l\'emporte.',
+        why: `Vous êtes candidat·e à « ${el.title} ». La première intervention du jour au hameau anime la place (moral +${C.ELECTION_SPEECH_MORALE} %).`,
+        actionCode: null, route: { name: 'gazette', param: 'agora' },
+        steps: [`${C.ELECTION_SPEECH_MIN} à ${C.ELECTION_TEXT_MAX} caractères, 1 PA.`],
+        gain: 'départage les égalités',
+      });
+    }
   }
   if (work.unassigned > 0) {
     const n = work.unassigned;

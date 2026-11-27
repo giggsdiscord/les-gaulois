@@ -13,6 +13,7 @@ import { applyInjury, healInjury, injuryRiskPct, isDetained } from './health.ts'
 import { applyMarketSale, ensureLife, marketQuote } from './life.ts';
 import { advanceStructure, BUILDING_KINDS, findWorkPost, forestBan, residentSkill } from './work.ts';
 import { contributeToCollective, currentCollective, findCollectiveProject } from './collective.ts';
+import { castElectionVote, speakAtDebate, standForElection } from './elections.ts';
 import { checkLocks, markGroupExecuted } from './locks.ts';
 import { clamp, deepClone, gauge, money, round2, stock } from './math.ts';
 import { adjustLoyalty } from './migrants.ts';
@@ -43,6 +44,16 @@ export class ActionError extends Error {}
 
 function ensure(condition: unknown, message: string): asserts condition {
   if (!condition) throw new ActionError(message);
+}
+
+/** Traduit l'erreur d'une règle (Error) en refus d'action. */
+function asAction<T>(fn: () => T): T {
+  try {
+    return fn();
+  } catch (err) {
+    if (err instanceof Error && !(err instanceof ActionError)) throw new ActionError(err.message);
+    throw err;
+  }
 }
 
 export interface ActionContext {
@@ -417,6 +428,29 @@ export const ACTIONS: readonly ActionDef[] = [
       ensure(life.collective_votes?.[ctx.actor.id] !== choice, `Vous avez déjà voté pour « ${def.label} ».`);
       life.collective_votes = { ...(life.collective_votes ?? {}), [ctx.actor.id]: choice };
       return `Voix donnée à « ${def.icon} ${def.label} » pour la semaine prochaine.`;
+    },
+  },
+  // ======================= Élections vivantes (V5.3) =======================
+  {
+    code: 'run_for_office', label: 'Se porter candidat·e à l\'élection', description: 'Pendant les candidatures : se présenter au portefeuille mis en jeu avec un programme (20 à 280 caractères).', anyone: true, apCost: 1, minAct: 2, delegable: false, target: 'none',
+    run: (ctx) => {
+      const e = asAction(() => standForElection(ctx.s, ctx.actor, ctx.req.params?.program, ctx.now));
+      return `🗳️ Candidature déposée : ${C.PORTFOLIO_TITLE[e.portfolio]}. Défendez votre programme au débat de la Taverne.`;
+    },
+  },
+  {
+    code: 'campaign_speech', label: 'Prendre la parole au débat', description: 'Candidat·e : une intervention par jour au débat de la Taverne (10 à 280 caractères) ; à égalité de voix, le plus présent au débat l\'emporte.', anyone: true, apCost: 1, minAct: 2, delegable: false, target: 'none',
+    run: (ctx) => {
+      const first = asAction(() => speakAtDebate(ctx.s, ctx.actor, ctx.req.params?.text, ctx.now));
+      if (first) ctx.v.morale_pct = gauge(ctx.v.morale_pct + C.ELECTION_SPEECH_MORALE);
+      return `🎙️ Intervention publiée au débat${first ? ` : la place s'anime (moral +${C.ELECTION_SPEECH_MORALE} %)` : ''}.`;
+    },
+  },
+  {
+    code: 'vote_election', label: 'Voter à l\'élection', description: 'Pendant le vote : choisir un candidat (pas soi-même) ; on peut changer d\'avis jusqu\'au dépouillement.', anyone: true, apCost: 0, minAct: 2, delegable: false, target: 'none',
+    run: (ctx) => {
+      const who = asAction(() => castElectionVote(ctx.s, ctx.actor, ctx.req.params?.candidate, ctx.now));
+      return `🗳️ Bulletin déposé pour ${who.display_name}. Dépouillement à la fin du vote.`;
     },
   },
   {

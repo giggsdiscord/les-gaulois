@@ -181,6 +181,44 @@ export interface VillageLife {
   missions_done?: Record<string, { day: string; code: string }>;
   /** Binômes du jour (V5.2). */
   duo_day?: DuoDay;
+  /** Élection d'un portefeuille en cours (V5.3) ; null = aucune. */
+  election?: Election | null;
+  /** Dernière élection dépouillée (V5.3). */
+  election_last?: ElectionResult | null;
+  /** Mandats issus des élections (V5.3) : portefeuille → mandat. */
+  mandates?: Partial<Record<Portfolio, Mandate>>;
+}
+
+/** Élection vivante d'un portefeuille (V5.3) : candidatures, débat, vote. */
+export interface Election {
+  portfolio: Portfolio;
+  /** Jour local d'ouverture 'YYYY-MM-DD'. */
+  opened_day: string;
+  candidates: Array<{ player_id: string; program: string; at: ISODate }>;
+  /** Prises de parole au débat de la Taverne. */
+  debate: Array<{ player_id: string; text: string; at: ISODate }>;
+  /** Bulletins : votant → candidat. */
+  votes: Record<string, string>;
+}
+
+/** Résultat d'une élection (V5.3). */
+export interface ElectionResult {
+  portfolio: Portfolio;
+  closed_day: string;
+  winner_id: string | null;
+  /** Voix par candidat. */
+  counts: Record<string, number>;
+  voters: number;
+  electors: number;
+}
+
+/** Mandat d'un portefeuille (V5.3) ; player_id null = élection reportée faute de candidat. */
+export interface Mandate {
+  player_id: string | null;
+  since: ISODate;
+  /** Jour local à partir duquel une nouvelle élection peut s'ouvrir. */
+  until_day: string;
+  program: string | null;
 }
 
 /** Journal des actions à deux du jour (V5.2). */

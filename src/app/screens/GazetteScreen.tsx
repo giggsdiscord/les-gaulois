@@ -4,6 +4,7 @@ import type { GazetteEdition, TavernMessage } from '../api/types.ts';
 import { navigate, useRoute } from '../lib/router.ts';
 import { useUnread } from '../state/UnreadContext.tsx';
 import { Avatar, Badge, Button, Card, Empty, SectionTitle, Segmented, Tabs, TextArea, cx } from '../components/ui.tsx';
+import { ElectionCard } from '../components/ElectionCard.tsx';
 import { isMajorEvent, splitPublicEvents } from '../lib/events.ts';
 import { dateLong, relative, timeShort } from '../lib/format.ts';
 import { CHANNEL_LABEL } from '../lib/labels.ts';
@@ -244,6 +245,7 @@ function Tavern({ initialChannel }: { initialChannel: TavernMessage['channel'] }
           </button>
         ))}
       </div>
+      {channel === 'agora_hall' && <ElectionCard mode="debate" />}
       <Card className="max-h-[55vh] min-h-64 overflow-y-auto">
         {messages.length === 0 ? (
           <Empty>Personne n'a encore pris la parole ici.</Empty>

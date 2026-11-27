@@ -53,7 +53,7 @@ export const ACTION_CATEGORIES: readonly ActionCategory[] = [
     id: 'village',
     emoji: '🎻',
     label: 'Vie du village',
-    codes: ['spanish_lesson', 'banjo_evening', 'throw_tomatoes', 'sunday_mass', 'celebrate_marriage', 'hear_confession', 'mediation', 'train_apprentice', 'organize_banquet', 'bor_concert'],
+    codes: ['spanish_lesson', 'banjo_evening', 'throw_tomatoes', 'sunday_mass', 'celebrate_marriage', 'hear_confession', 'mediation', 'train_apprentice', 'organize_banquet', 'bor_concert', 'run_for_office', 'campaign_speech', 'vote_election'],
   },
   {
     id: 'diplomatie',

@@ -29,5 +29,6 @@ export * from './work.ts';
 export * from './collective.ts';
 export * from './goals.ts';
 export * from './skills.ts';
+export * from './elections.ts';
 export * from './aiDeltas.ts';
 export * from './hiddenIndicators.ts';

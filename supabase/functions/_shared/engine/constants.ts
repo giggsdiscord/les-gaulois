@@ -587,3 +587,35 @@ export const DUO_GROUPS: readonly DuoGroup[] = [
   { id: 'network', label: 'Réseaux', icon: '🔧', codes: ['lay_pipes', 'repair_pipes', 'track_maintenance', 'build_power_line'] },
   { id: 'forge', label: 'Forge', icon: '⚒️', codes: ['forge_tools', 'recycle_scrap'] },
 ]; // [GDD §2.3]
+
+// ---------------------------------------------------------------------------
+// Élections vivantes des portefeuilles (V5.3) [GDD §2.2]
+// ---------------------------------------------------------------------------
+/** Ordre d'ouverture des élections (une seule à la fois). */
+export const ELECTION_ORDER: readonly Portfolio[] = ['defense', 'interior', 'customs', 'chancery', 'media'];
+export const PORTFOLIO_TITLE: Record<Portfolio, string> = {
+  defense: 'Défense & Sécurité extérieure',
+  interior: 'Sécurité intérieure & Justice',
+  customs: 'Transports, Piste & Douanes',
+  chancery: 'Droit, Fiscalité & Chancellerie',
+  media: 'Médias, Culture & Propagande',
+};
+/** Place à temps plein (8 à 10) qui tient déjà ces portefeuilles quand elle est occupée. */
+export const FULL_TIME_ROLE_OF: Record<Portfolio, RoleCode> = {
+  defense: 'defense_sec',
+  interior: 'defense_sec',
+  customs: 'transport_customs',
+  chancery: 'legal_media',
+  media: 'legal_media',
+};
+export const ELECTION_CANDIDACY_DAYS = 3; // [GDD §2.2] jours de candidature (le jour d'ouverture compris)
+export const ELECTION_VOTE_DAYS = 2; // [GDD §2.2] jours de vote ensuite ; dépouillement la nuit suivante
+export const ELECTION_MANDATE_WEEKS = 4; // [GDD §2.2]
+export const ELECTION_POSTPONE_DAYS = 7; // [GDD §2.2] sans candidat, le portefeuille attend une semaine
+export const ELECTION_PROGRAM_MIN = 20;
+export const ELECTION_TEXT_MAX = 280;
+export const ELECTION_SPEECH_MIN = 10;
+export const ELECTION_WINNER_XP = 10; // [GDD §2.2]
+export const ELECTION_TURNOUT_MIN = 0.5; // [GDD §2.2] participation qui donne le bonus de moral
+export const ELECTION_TURNOUT_MORALE = 2; // [GDD §2.2]
+export const ELECTION_SPEECH_MORALE = 1; // [GDD §2.2] la 1re prise de parole du jour anime la place
