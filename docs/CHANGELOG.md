@@ -1,5 +1,11 @@
 # Historique des versions du GDD
 
+### V5.2 — 27/11/2026 — Niveaux de métier, mission du jour & binômes
+- **Niveaux de métier visibles** (§2.3) : 150 / 400 / 800 XP pour les niveaux 2, 3, 4 ; +10 / +20 / +30 % de rendement dans son métier ; fournée double à la forge de Julio au niveau 4 ; passage de niveau annoncé.
+- **Mission du jour** par joueur : une action conseillée de son métier (faisable ce jour-là), +20 XP et moral du village +1 % si elle est faite ; carte « Niveau & mission » en tête du menu Agir et ligne dans « À faire en priorité ».
+- **Binômes** : deux joueurs qui font une action du même groupe (négociation, soins, chantier, terre & forêt, réseaux, forge) le même jour : +25 % de rendement (+15 points en négociation), +10 XP chacun, annonce publique.
+- Aucune migration (`village_state.life.missions_done`, `duo_day`) ; 15 nouveaux tests Vitest.
+
 ### V5.1 — 27/11/2026 — Objectifs d'Acte en liste à cocher
 - **Une liste à cocher par Acte** (§1.3) : Acte I électricité, 20 lits, 500 m² de potager, piste à 70 %, gîte ouvert ; Acte II barrage ou solaire, 30 lits, 10 bêtes, 5 résidents au travail, un quart de l'emprunt remboursé ; Acte III Constitution, dissuasion 3, moitié de l'emprunt, indépendance.
 - **Une récompense par étape**, versée une seule fois dès que l'étape est atteinte (action, nuit ou maintenance) : surtout des **remises sur l'emprunt foncier** (le pilier dette bouge enfin), plus moral ou matériaux ; **prime de fin de liste** (10 000 €, 20 000 €, 30 000 € d'emprunt effacés).

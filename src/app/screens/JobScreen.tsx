@@ -5,9 +5,10 @@
  * le bouton retour du téléphone ramène au menu.
  */
 import { useEffect, useMemo, useState } from 'react';
-import type { ActionDef } from '../engine.ts';
+import { skillLevel, type ActionDef } from '../engine.ts';
 import { ActionRow, ActionSheet } from '../components/ActionSheet.tsx';
 import { HiddenIndicators } from '../components/HiddenIndicators.tsx';
+import { JobLevelCard } from '../components/JobLevelCard.tsx';
 import { ChangePinModal } from '../components/Modals.tsx';
 import { Avatar, Badge, Button, Card, Empty, Field, Gauge, Input, SectionTitle, Select, Tabs, cx } from '../components/ui.tsx';
 import { ACTION_CATEGORIES, FREE_ACTION_CODE, groupByCategory } from '../lib/actionCategories.ts';
@@ -286,6 +287,7 @@ function ActPanel({ categoryId }: { categoryId: string | null }) {
             )
           ) : (
             <>
+              {!acting && <JobLevelCard onAction={setAction} />}
               {free && (
                 <button
                   onClick={() => setAction(free)}
@@ -382,7 +384,7 @@ function ProfilePanel() {
             </Badge>
           ))}
           {me.veto_tokens > 0 && <Badge tone="gold">Jeton de veto</Badge>}
-          <Badge>{me.skill_xp} XP</Badge>
+          <Badge>Niveau {skillLevel(me.skill_xp)} · {me.skill_xp} XP</Badge>
         </div>
         <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-parchment-100 px-3 py-2.5">
           <span className="text-sm text-ink-soft">Patrimoine privé</span>

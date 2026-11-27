@@ -539,3 +539,50 @@ export const ACT_GOAL_TRACK_PCT = 70; // [GDD §1.3]
 export const ACT_GOAL_HERD = 10; // [GDD §1.3]
 export const ACT_GOAL_RESIDENTS = 5; // [GDD §1.3]
 export const ACT_GOAL_DETERRENCE = 3; // [GDD §1.3]
+
+// ---------------------------------------------------------------------------
+// Niveaux de métier, mission du jour & bonus à deux (V5.2) [GDD §2.3]
+// ---------------------------------------------------------------------------
+/** Expérience requise pour les niveaux 1 à 4 (une action à 1 PA rapporte 10 XP). */
+export const SKILL_LEVEL_XP = [0, 150, 400, 800] as const; // [GDD §2.3]
+/** Bonus de rendement dans son propre métier, par niveau (niveau 3 : +20 % sur les chantiers de Tiphaine). */
+export const SKILL_LEVEL_BONUS = [0, 0.1, 0.2, 0.3] as const; // [GDD §2.3]
+/** Niveau 4 de Julio : chaque fournée de la forge compte double. */
+export const SKILL_FORGE_DOUBLE_LEVEL = 4; // [GDD §2.3]
+/** Mission du jour : expérience et moral du village gagnés quand elle est faite. */
+export const MISSION_XP_REWARD = 20; // [GDD §2.3]
+export const MISSION_MORALE_REWARD = 1; // [GDD §2.3]
+/** Actions conseillées chaque jour, par métier (tirage déterministe joueur + jour). */
+export const MISSION_POOLS: Record<RoleCode, readonly string[]> = {
+  mayor_agri: ['garden_tend', 'livestock_care', 'forest_patrol', 'make_preserves'],
+  treasurer_physio: ['financial_audit', 'preventive_strapping', 'spanish_lesson'],
+  civil_eng: ['plu_inspection', 'clear_rubble', 'contribute_collective'],
+  water_eng: ['repair_pipes', 'track_maintenance', 'repair_machinery'],
+  smith_diplo: ['forge_tools', 'fish_hunt', 'recycle_scrap', 'negotiate_spain_andorra'],
+  druid: ['brew_remedies', 'analyze_water', 'rd_progress'],
+  priest_apoth: ['mediation', 'therapy', 'brew_remedies', 'sunday_mass'],
+  defense_sec: ['guard_rounds', 'repel_boars'],
+  transport_customs: ['inspect_cargo', 'vehicle_maintenance', 'track_maintenance'],
+  legal_media: ['editorial', 'counter_defamation'],
+}; // [GDD §2.3]
+/** Repli si le tirage tombe sur une action indisponible (dimanche, Acte). */
+export const MISSION_FALLBACK = ['cut_wood', 'contribute_collective', 'spanish_lesson'] as const;
+/** Bonus d'action à deux : rendement ×1,25, +15 points de chance en négociation, 10 XP à chacun. */
+export const DUO_BONUS = 0.25; // [GDD §2.3]
+export const DUO_NEGOTIATION_BONUS = 15; // [GDD §2.3]
+export const DUO_XP = 10; // [GDD §2.3]
+export interface DuoGroup {
+  id: string;
+  label: string;
+  icon: string;
+  codes: readonly string[];
+}
+/** Deux joueurs différents qui font une action du même groupe le même jour forment un binôme. */
+export const DUO_GROUPS: readonly DuoGroup[] = [
+  { id: 'negotiation', label: 'Négociation', icon: '🤝', codes: ['negotiate_spain_andorra', 'diplomacy_ayuntamiento'] },
+  { id: 'care', label: 'Soins', icon: '🩺', codes: ['withdrawal_cure', 'therapy', 'brew_remedies'] },
+  { id: 'building', label: 'Chantier', icon: '🧱', codes: ['renovate_building', 'clear_rubble', 'build_livestock_pen', 'build_solar', 'build_dam', 'build_watchtower'] },
+  { id: 'land', label: 'Terre & forêt', icon: '🌾', codes: ['garden_tend', 'livestock_care', 'fish_hunt', 'cut_wood', 'make_preserves'] },
+  { id: 'network', label: 'Réseaux', icon: '🔧', codes: ['lay_pipes', 'repair_pipes', 'track_maintenance', 'build_power_line'] },
+  { id: 'forge', label: 'Forge', icon: '⚒️', codes: ['forge_tools', 'recycle_scrap'] },
+]; // [GDD §2.3]

@@ -176,6 +176,18 @@ export interface VillageLife {
   act_goals?: Record<string, ISODate>;
   /** Actes dont toute la liste est cochée (récompense de fin de liste versée). */
   act_goals_complete?: number[];
+  /** Dernière mission du jour accomplie (V5.2) : joueur → jour local 'YYYY-MM-DD' et action. */
+  missions_done?: Record<string, { day: string; code: string }>;
+  /** Binômes du jour (V5.2). */
+  duo_day?: DuoDay;
+}
+
+/** Journal des actions à deux du jour (V5.2). */
+export interface DuoDay {
+  day: string;
+  acts: Array<{ player_id: string; group: string }>;
+  /** Groupes dont le binôme a déjà été annoncé aujourd'hui. */
+  announced: string[];
 }
 
 /** Chantier collectif de la semaine (V5.0) : tout le monde y met des PA. */

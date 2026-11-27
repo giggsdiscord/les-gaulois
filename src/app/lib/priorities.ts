@@ -14,6 +14,8 @@ import {
   computeWaterBalance,
   constants as C,
   countPopulation,
+  dailyMission,
+  missionDone,
   dailyFoodConsumption,
   dayKey,
   getAction,
@@ -26,6 +28,7 @@ import {
 } from '../engine.ts';
 import { actGoalsView, goalForPriority, type ActGoalsView } from './actGoals.ts';
 import { collectiveView } from './collective.ts';
+import { MISSION_REWARD_TEXT } from './jobLevel.ts';
 import type { ActionInput, GameData, Structure } from '../api/types.ts';
 import { eur } from './format.ts';
 import { availableActions } from './game.ts';
@@ -321,6 +324,21 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
       gain: ban ? '+10 stères par location' : `+${C.WOOD_CUT_BASE} stères par séance`,
     });
   }
+  // Mission du jour (V5.2) : l'action conseillée au joueur aujourd'hui, petite récompense si elle est faite
+  const mission = dailyMission(s, data.me as unknown as GameSnapshot['players'][number], now);
+  if (mission && !missionDone(v, data.me.id, now) && data.me.action_points >= mission.apCost) {
+    P.add({
+      key: `mission:${mission.code}`, emoji: '🎯', title: `Mission du jour : ${mission.label}`, urgent: false, score: 56,
+      short: `Votre action conseillée aujourd'hui : ${MISSION_REWARD_TEXT}.`,
+      why: `Chaque jour, votre métier vous conseille une action. Faite avant minuit, elle rapporte ${MISSION_REWARD_TEXT} ; l'expérience fait monter votre niveau de métier (niveau 2 à ${C.SKILL_LEVEL_XP[1]} XP : +${Math.round(C.SKILL_LEVEL_BONUS[1] * 100)} % de rendement dans votre métier).`,
+      actionCode: mission.code,
+      steps: [mission.description, ...(mission.apCost > 0 ? [`${mission.apCost} PA.`] : [])],
+      gain: MISSION_REWARD_TEXT,
+    });
+    const item = P.items.find((x) => x.key === `mission:${mission.code}`);
+    if (item) Object.assign(item, { who: 'vous', mine: true });
+  }
+
   // Chantier collectif de la semaine (V5.0) : tant qu'il n'est pas fini, chaque PA compte
   const col = collectiveView(data, now);
   if (col.project && col.def && !col.done) {

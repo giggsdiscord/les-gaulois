@@ -1,12 +1,12 @@
 ---
-version: 5.1
+version: 5.2
 date: 2026-11-27
 title: Les Gaulois — Game Design Document & Architecture Technique
 ---
 
 # LES GAULOIS — Simulation Coopérative de Village & Micro-État
 
-**Game Design Document (GDD) & Spécification Technique Complète — Version 5.1**
+**Game Design Document (GDD) & Spécification Technique Complète — Version 5.2**
 
 Jeu de stratégie, de gestion démographique, économique et politique asynchrone persistant, ancré dans le monde réel (Pyrénées de Lleida), piloté par un moteur déterministe TypeScript et un Maître du Jeu IA.
 
@@ -15,7 +15,9 @@ Jeu de stratégie, de gestion démographique, économique et politique asynchron
 | **Cadre réel :** hameau abandonné des Pyrénées de Lleida (Catalogne, Espagne), domaine de 30 ha situé à 18 km de la frontière d'Andorre. | **Achat & travaux :** 295 000 € (PLU 2013 validé). Rénovation globale estimée entre 600 000 € et 900 000 €. |
 | **Effectif & rythme :** 7 joueurs fondateurs (10 joueurs max) + population résidente dynamique (migrants accueillis, naturalisés, lignées et apprentis). 1 jour réel = 1 jour de jeu (3 PA/jour). | **Enjeux :** autonomie totale puis Micro-État souverain, pérennité démographique, équilibre idéologique (Droite vs Gauche), propriété privée vs collectivisation, contrebande, justice publique et dissuasion. Hébergement 0 € + API IA < 1 $/mois (Claude Haiku 5.5). |
 
-> **Nouveautés V5.1 :** **des objectifs d'Acte en liste à cocher** (§1.3) : pour chaque Acte, quelques étapes concrètes (électricité, 20 lits, 500 m² de potager, piste à 70 %, gîte ouvert pour l'Acte I) qui se cochent toutes seules et versent chacune une récompense — surtout des remises sur l'emprunt foncier, pour faire bouger le pilier dette — et une prime quand la liste est terminée.
+> **Nouveautés V5.2 :** **les métiers progressent** (§2.3) : niveaux 1 à 4 visibles (bonus de rendement dans son métier, fournée double à la forge de Julio au niveau 4), **une mission du jour** par joueur (une action conseillée, +20 XP et moral +1 % si elle est faite) et des **binômes** : deux joueurs qui font le même type d'action le même jour gagnent +25 % de rendement et de l'expérience.
+
+> **Rappel V5.1 :** **des objectifs d'Acte en liste à cocher** (§1.3) : pour chaque Acte, quelques étapes concrètes (électricité, 20 lits, 500 m² de potager, piste à 70 %, gîte ouvert pour l'Acte I) qui se cochent toutes seules et versent chacune une récompense — surtout des remises sur l'emprunt foncier, pour faire bouger le pilier dette — et une prime quand la liste est terminée.
 
 > **Rappel V5.0 :** **un chantier collectif chaque semaine** (§5.5) : un projet commun (bois, piste, canaux, potager, chantier, fête) choisi par vote, auquel chacun met ses PA ; barre de progression commune, effet ×1,5 et moral en plus s'il est achevé avant dimanche.
 
@@ -93,6 +95,16 @@ Le jeu fonctionne aussi bien à 7 joueurs qu'à 10 joueurs. Si de nouveaux amis 
 | **5. Médias, Culture & Propagande** (Acte III) | Rédige les éditoriaux officiels de La Gazette, organise les banquets et la venue mensuelle des BOR, neutralise les campagnes de diffamation (ex. dénonciations d'un migrant banni ou scandale lié à une sentence publique) et médiatise le Micro-État auprès de la presse européenne pour créer un bouclier diplomatique. | Score de notoriété internationale et sympathie de l'opinion publique européenne. |
 
 > **Précision V3.8 — places 8 à 10.** Codes de rôle : `defense_sec` (portefeuilles Défense + Intérieur), `transport_customs` (Douanes), `legal_media` (Chancellerie + Médias). Une place reste inactive (`is_active_slot = false`) jusqu'à ce que l'administrateur l'attribue à un ami (nom + PIN). Les actions d'un portefeuille restent soumises à l'Acte de déblocage, même pour un titulaire à temps plein.
+
+### 2.3 Niveaux de métier, mission du jour & binômes (V5.2)
+
+Chaque fondateur progresse dans son métier : chaque action rapporte de l'expérience, et le niveau atteint (1 à 4) se voit en tête du menu « Agir » de l'écran Métier, avec la barre vers le niveau suivant. Chaque jour, le métier conseille aussi **une mission** — une action précise — qui rapporte un petit bonus si elle est faite avant minuit. Enfin, deux joueurs qui travaillent **ensemble le même jour** (Tanguy et Brunel sur une cure, Ely et Julio en négociation, deux bâtisseurs sur les chantiers…) forment un **binôme** et font mieux à deux.
+
+> **Précisions V5.2.**
+> - **Niveaux** : calculés depuis l'expérience `players.skill_xp` (une action à 1 PA = 10 XP, 5 XP pour une action gratuite). Niveau 2 à 150 XP, niveau 3 à 400 XP, niveau 4 à 800 XP. Bonus de rendement **dans son propre métier** (quand le pôle de l'action est celui du joueur) : +10 %, +20 % (ex. chantiers de Tiphaine), +30 %. Niveau 4 de Julio : **fournée double** à la forge. Un passage de niveau est annoncé dans le fil des événements.
+> - **Mission du jour** : tirée chaque jour (graine joueur + jour local) parmi les actions conseillées du métier (`MISSION_POOLS`), en écartant celles qu'il ne peut pas faire ce jour-là (Acte, messe hors dimanche) ou qui seraient refusées faute de moyens (cheptel vide, fer, ferraille, pierre, tomates, caisse, forêt interdite, pas de chantier de la semaine) ; repli : couper du bois, chantier de la semaine, cours d'espagnol. Faite : **+20 XP et moral du village +1 %**, une fois par jour. Elle apparaît dans « À faire en priorité » (« Mission du jour : … ») et sur la carte du Métier, où un appui ouvre l'action.
+> - **Binômes** : six groupes d'actions (négociation, soins, chantier, terre & forêt, réseaux, forge). Quand un joueur fait une action d'un groupe où un autre joueur a déjà agi le même jour : **rendement +25 %** (négociation : +15 points de chance ; cure de sevrage −25 au lieu de −20 ; thérapie +25 au lieu de +20) et **+10 XP** ; la première fois du jour, le partenaire reçoit aussi +10 XP et le binôme est annoncé à tous. La carte du Métier signale « Ely a agi aujourd'hui (négociation) : faites … pour former un binôme ».
+> - État dans `village_state.life` (`missions_done`, `duo_day`) : **aucune migration**, aucune nouvelle action ni opération d'API.
 
 ## 3. Moteur Déterministe : Règles Physiques, Démographiques & Sociales
 

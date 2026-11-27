@@ -5,7 +5,7 @@
  * PA, verrous (PLU, budget > 500 €, veto écologique), puis applique l'effet de façon déterministe.
  */
 import { findCatalogItem, purchaseCost } from './catalog.ts';
-import { addDays, addHours, calendarSeasonOf, isAfter, isSunday, localParts } from './calendar.ts';
+import { addDays, addHours, calendarSeasonOf, dayKey as dayKeyOf, isAfter, isSunday, localParts } from './calendar.ts';
 import * as C from './constants.ts';
 import { emptyEffects, pushEvent, pushLedger, pushTrigger } from './effects.ts';
 import { massMoraleGain, poleFactor, smugglingRiskPct } from './formulas.ts';
@@ -20,6 +20,7 @@ import { holderHasPortfolio, holderHasRole, resolveActor } from './permissions.t
 import { findMigrant, findPlayer, isOperational, structureByCode } from './population.ts';
 import { createRng, type Rng } from './rng.ts';
 import { refreshDerived } from './simulation.ts';
+import { duoGroupOf, duoPartners, missionFeasible, pickMission, recordDuoAct, skillLevel, skillMultiplier } from './skills.ts';
 import type {
   ActionOutcome,
   ActionRequest,
@@ -55,6 +56,8 @@ export interface ActionContext {
   holder: Player;
   viaDelegation: boolean;
   def: ActionDef;
+  /** Partenaires du binôme du jour (V5.2) : autres joueurs ayant fait une action du même groupe. */
+  duo: string[];
 }
 
 export type TargetKind = 'none' | 'player' | 'migrant' | 'person' | 'child' | 'structure' | 'catalog' | 'market';
@@ -82,7 +85,18 @@ export interface ActionDef {
 
 
 function factor(ctx: ActionContext, pole?: RoleCode | null): number {
-  return poleFactor(ctx.s, pole === undefined ? ctx.def.pole ?? ctx.holder.role_code : pole, ctx.now);
+  const effective = pole === undefined ? ctx.def.pole ?? ctx.holder.role_code : pole;
+  let f = poleFactor(ctx.s, effective, ctx.now);
+  // Niveau de métier (V5.2) : bonus quand on travaille dans son propre métier
+  if (effective && effective === ctx.actor.role_code) f *= skillMultiplier(ctx.actor.skill_xp);
+  // Bonus d'action à deux (V5.2)
+  if (ctx.duo.length > 0) f *= 1 + C.DUO_BONUS;
+  return f;
+}
+
+/** Effet fixe renforcé par un binôme (V5.2). */
+function duoBoost(ctx: ActionContext, base: number): number {
+  return ctx.duo.length > 0 ? Math.round(base * (1 + C.DUO_BONUS)) : base;
 }
 
 function spendTreasury(ctx: ActionContext, amount: number, label: string, category: string, supplier: string | null = null): void {
@@ -176,7 +190,8 @@ function physicalRisk(ctx: ActionContext): string {
 
 /** Négociation avec les autorités ou fournisseurs : quiproquos si espagnol < 40 % [GDD §3.1]. */
 function negotiation(ctx: ActionContext, baseChance: number): { success: boolean; quiproquo: boolean } {
-  const success = ctx.rng.chance(baseChance + ctx.v.spanish_fluency_pct / 2);
+  const duo = ctx.duo.length > 0 ? C.DUO_NEGOTIATION_BONUS : 0;
+  const success = ctx.rng.chance(baseChance + duo + ctx.v.spanish_fluency_pct / 2);
   if (success) {
     ctx.v.spanish_fluency_pct = gauge(ctx.v.spanish_fluency_pct + 2);
     return { success, quiproquo: false };
@@ -923,7 +938,9 @@ export const ACTIONS: readonly ActionDef[] = [
     run: (ctx) => {
       ensure(isOperational(ctx.s, 'cal_ferrer'), 'La forge est hors service.');
       useStock(ctx, 'iron_stock', C.IRON_PER_TOOL, 'fer');
-      const tools = Math.max(1, Math.round(1.5 * factor(ctx)));
+      const batch = Math.max(1, Math.round(1.5 * factor(ctx)));
+      // Niveau 4 de Julio (V5.2) : fournée double
+      const tools = ctx.actor.role_code === 'smith_diplo' && skillLevel(ctx.actor.skill_xp) >= C.SKILL_FORGE_DOUBLE_LEVEL ? batch * 2 : batch;
       ctx.v.tools_stock += tools;
       return `Clang ! +${tools} outil(s) (stock : ${ctx.v.tools_stock}).${physicalRisk(ctx)}`;
     },
@@ -1048,7 +1065,7 @@ export const ACTIONS: readonly ActionDef[] = [
     run: (ctx) => {
       const t = targetPerson(ctx);
       useStock(ctx, 'medicine_stock', 1, 'remèdes');
-      t.addiction_level_pct = gauge(t.addiction_level_pct - 20);
+      t.addiction_level_pct = gauge(t.addiction_level_pct - duoBoost(ctx, 20));
       if ('mental_health_pct' in t) t.mental_health_pct = Math.round(clamp(t.mental_health_pct + 5, 0, 100));
       if ('loyalty_scores' in t) adjustLoyalty(t, ctx.holder.role_code, 10);
       return 'Tisanes, marche en montagne et volonté : l\'addiction recule.';
@@ -1160,7 +1177,7 @@ export const ACTIONS: readonly ActionDef[] = [
     code: 'therapy', label: 'Thérapie individuelle', description: 'Santé mentale +20 %, guérit les troubles psychologiques.', roles: ['priest_apoth'], apCost: 1, target: 'person',
     run: (ctx) => {
       const t = targetPerson(ctx);
-      if ('mental_health_pct' in t) t.mental_health_pct = Math.round(clamp(t.mental_health_pct + 20, 0, 100));
+      if ('mental_health_pct' in t) t.mental_health_pct = Math.round(clamp(t.mental_health_pct + duoBoost(ctx, 20), 0, 100));
       if (t.injury_type === 'psychological') healInjury(t, 0);
       if ('loyalty_scores' in t) adjustLoyalty(t, 'priest_apoth', 10);
       ctx.v.brunel_reduction_pct = gauge(ctx.v.brunel_reduction_pct + 1);
@@ -1389,6 +1406,70 @@ export function getAction(code: string): ActionDef | undefined {
 }
 
 /** Les fondateurs peuvent toujours agir sur leurs rôles « co- » listés ; utilitaire pour l'UI. */
+/**
+ * Mission du jour (V5.2) : action conseillée au joueur aujourd'hui, parmi celles de son métier
+ * qu'il peut faire (Acte, dimanche) ; null s'il n'en a aucune.
+ */
+export function dailyMission(s: Pick<GameSnapshot, 'village'>, player: Player, now: Date): ActionDef | null {
+  const code = pickMission(player, now, (c) => {
+    const def = ACTION_INDEX.get(c);
+    if (!def || !isAllowedFor(def, player, s.village.act_number)) return false;
+    if (def.sundayOnly && !isSunday(now)) return false;
+    return missionFeasible(c, s.village);
+  });
+  return code ? ACTION_INDEX.get(code) ?? null : null;
+}
+
+/** Après une action réussie : passage de niveau, mission du jour, binôme (V5.2). */
+function applyDailyExtras(ctx: ActionContext, duoGroup: C.DuoGroup | undefined, levelBefore: number, mission: ActionDef | null): string {
+  const { s, v, actor, now, fx, def } = ctx;
+  let extra = '';
+  const life = ensureLife(v);
+  const today = dayKeyOf(now);
+  // Mission du jour (tirée sur l'état d'avant l'action : elle peut avoir consommé ses propres prérequis)
+  if (mission && mission.code === def.code && life.missions_done?.[actor.id]?.day !== today) {
+    life.missions_done = { ...(life.missions_done ?? {}), [actor.id]: { day: today, code: def.code } };
+    actor.skill_xp += C.MISSION_XP_REWARD;
+    v.morale_pct = gauge(v.morale_pct + C.MISSION_MORALE_REWARD);
+    extra += ` Mission du jour accomplie : +${C.MISSION_XP_REWARD} XP, moral +${C.MISSION_MORALE_REWARD} %.`;
+  }
+  // Binôme
+  if (duoGroup) {
+    const partners = ctx.duo;
+    const day = recordDuoAct(life, v, actor.id, duoGroup.id, now);
+    if (partners.length > 0) {
+      actor.skill_xp += C.DUO_XP;
+      const names = partners.map((id) => findPlayer(s, id)?.display_name ?? '?');
+      extra += ` Binôme avec ${names.join(' et ')} : rendement +${Math.round(C.DUO_BONUS * 100)} %, +${C.DUO_XP} XP.`;
+      if (!day.announced.includes(duoGroup.id)) {
+        day.announced.push(duoGroup.id);
+        for (const id of partners) {
+          const p = findPlayer(s, id);
+          if (p) p.skill_xp += C.DUO_XP;
+        }
+        pushEvent(fx, s, {
+          event_type: 'duo_bonus',
+          title: `${duoGroup.icon} Binôme : ${duoGroup.label}`,
+          body: `${actor.display_name} et ${names.join(' et ')} ont travaillé ensemble aujourd'hui (${def.label}).`,
+          data: { group: duoGroup.id, players: [actor.id, ...partners] },
+        });
+      }
+    }
+  }
+  // Passage de niveau
+  const levelAfter = skillLevel(actor.skill_xp);
+  if (levelAfter > levelBefore) {
+    pushEvent(fx, s, {
+      event_type: 'skill_level_up',
+      title: `Niveau ${levelAfter} de métier`,
+      body: `${actor.display_name} passe au niveau ${levelAfter} : +${Math.round(C.SKILL_LEVEL_BONUS[levelAfter - 1]! * 100)} % de rendement dans son métier${levelAfter >= C.SKILL_FORGE_DOUBLE_LEVEL && actor.role_code === 'smith_diplo' ? ', fournée double à la forge' : ''}.`,
+      data: { player_id: actor.id, level: levelAfter },
+    });
+    extra += ` Niveau ${levelAfter} atteint !`;
+  }
+  return extra;
+}
+
 export function actionsAvailableTo(s: GameSnapshot, player: Player): ActionDef[] {
   return ACTIONS.filter((a) => isAllowedFor(a, player, s.village.act_number));
 }
@@ -1476,7 +1557,10 @@ export function performAction(input: GameSnapshot, request: ActionRequest, now: 
     return { ok: true, status: 'pending_approval', error: null, narrative: `En attente de ${who}.`, snapshot: s, ap_spent: def.apCost, ...fx };
   }
 
-  const ctx: ActionContext = { s, v, now, rng, fx, req: request, actor, holder, viaDelegation, def };
+  const duoGroup = duoGroupOf(def.code);
+  const duo = duoGroup ? duoPartners(v, actor.id, duoGroup.id, now) : [];
+  const ctx: ActionContext = { s, v, now, rng, fx, req: request, actor, holder, viaDelegation, def, duo };
+  const mission = dailyMission(s, actor, now);
   let narrative: string;
   try {
     narrative = def.run(ctx);
@@ -1487,8 +1571,10 @@ export function performAction(input: GameSnapshot, request: ActionRequest, now: 
 
   const apSpent = executing ? 0 : def.apCost;
   holder.action_points = Math.max(0, holder.action_points - apSpent);
+  const levelBefore = skillLevel(actor.skill_xp);
   actor.skill_xp += 5 + apSpent * 5;
   if (executing) markGroupExecuted(s, executing);
+  narrative += applyDailyExtras(ctx, duoGroup, levelBefore, mission);
 
   const p = localParts(now);
   refreshDerived(s, now, calendarSeasonOf(p.month, p.day), fx);
