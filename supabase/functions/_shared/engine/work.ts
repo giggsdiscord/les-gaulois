@@ -30,6 +30,11 @@ import type {
 export const BUILDING_KINDS: readonly StructureKind[] = ['building', 'gite', 'school', 'jail', 'lab', 'church', 'forge', 'border_post'];
 /** Ouvrages livrés seulement après raccordement électrique validé par Tiphaine [GDD §2.1]. */
 export const NEEDS_POWER: readonly StructureKind[] = [...BUILDING_KINDS, 'mining_farm', 'dam', 'solar'];
+/** Livraison conditionnée au raccordement : nouveaux bâtiments (V5.4) selon leur type, sinon NEEDS_POWER. */
+export function needsPower(st: Pick<MapStructure, 'kind' | 'variant'>): boolean {
+  const type = st.kind === 'building' && st.variant ? C.BUILDING_TYPES.find((b) => b.id === st.variant) : undefined;
+  return type ? type.power : NEEDS_POWER.includes(st.kind);
+}
 /** État au-delà duquel une bâtisse abîmée redevient opérationnelle. */
 const REPAIRED_AT = 60;
 
@@ -39,7 +44,7 @@ export function advanceStructure(s: GameSnapshot, fx: EngineEffects, st: MapStru
   if (st.status === 'ruin' || st.status === 'cleared' || st.status === 'planned') st.status = 'in_progress';
   if (st.progress_pct < 100) return;
   st.condition_pct = Math.max(st.condition_pct, 80);
-  st.status = NEEDS_POWER.includes(st.kind) && !st.is_power_connected ? 'awaiting_power' : 'operational';
+  st.status = needsPower(st) && !st.is_power_connected ? 'awaiting_power' : 'operational';
   pushEvent(fx, s, {
     event_type: 'structure_completed',
     title: 'Chantier achevé',

@@ -4,7 +4,7 @@
  * bouton collé en bas et résultat affiché dans la fenêtre (avec « Refaire »).
  */
 import { useMemo, useState } from 'react';
-import { CATALOG, constants, findCollectiveProject, lifeOf, marketQuote, purchaseCost, type ActionDef, type VillageState } from '../engine.ts';
+import { buildingTypeOf, CATALOG, constants, findCollectiveProject, freeParcels, lifeOf, planBlocker, marketQuote, purchaseCost, type ActionDef, type VillageState } from '../engine.ts';
 import type { ActionInput, OpResponse } from '../api/types.ts';
 import { actionBlockReason, lockNotes, situationFor } from '../lib/actionHints.ts';
 import { AMOUNT_ACTIONS, QUANTITY_ACTIONS, STRUCTURE_ACTION_KINDS } from '../lib/game.ts';
@@ -94,6 +94,9 @@ export function ActionSheet({
   const [reason, setReason] = useState('');
   const [workPost, setWorkPost] = useState(typeof preset?.params?.post === 'string' ? preset.params.post : constants.WORK_POSTS[0]!.code);
   const [voteProject, setVoteProject] = useState(typeof preset?.params?.project === 'string' ? preset.params.project : '');
+  const parcels = freeParcels(data);
+  const [buildVariant, setBuildVariant] = useState(typeof preset?.params?.variant === 'string' ? preset.params.variant : '');
+  const [buildParcel, setBuildParcel] = useState(typeof preset?.params?.parcel === 'string' ? preset.params.parcel : '');
   const voteChoices = (lifeOf(data.village).collective_candidates ?? []).map((id) => findCollectiveProject(id)).filter((p) => p !== undefined);
   const [freeText, setFreeText] = useState('');
   const [partnerA, setPartnerA] = useState('');
@@ -109,7 +112,9 @@ export function ActionSheet({
   const candidates = data.migrants.filter((m) => m.status === 'candidate');
   const structures = useMemo(() => {
     const kinds = STRUCTURE_ACTION_KINDS[def.code];
-    return data.structures.filter((s) => (kinds ? kinds.includes(s.kind) : !LANDSCAPE.includes(s.kind)) && s.status !== 'demolished');
+    return data.structures.filter(
+      (s) => (kinds ? kinds.includes(s.kind) : !LANDSCAPE.includes(s.kind)) && s.status !== 'demolished' && !(def.code === 'improve_own_housing' && buildingTypeOf(s)),
+    );
   }, [data.structures, def.code]);
   const item = CATALOG.find((c) => c.id === catalogId);
   const cost = item ? purchaseCost(item, quantity, data.village as unknown as VillageState) : 0;
@@ -161,6 +166,11 @@ export function ActionSheet({
       const choice = voteProject || voteChoices[0]?.id;
       if (!choice) return 'Aucun projet à voter pour l\'instant.';
       input.params = { project: choice };
+    }
+    if (def.code === 'plan_building') {
+      const why = planBlocker(data, buildVariant, buildParcel);
+      if (why) return buildVariant && buildParcel ? why : 'Choisissez un bâtiment et une parcelle libre.';
+      input.params = { variant: buildVariant, parcel: buildParcel };
     }
     if (def.code === 'celebrate_marriage') {
       if (!partnerA || !partnerB) return 'Désignez les deux époux.';
@@ -300,6 +310,30 @@ export function ActionSheet({
               ))}
             </Select>
           </Field>
+        )}
+        {def.code === 'plan_building' && (
+          <>
+            <Field label="Bâtiment" hint={constants.BUILDING_TYPES.find((b) => b.id === buildVariant)?.effect}>
+              <Select value={buildVariant} onChange={(e) => setBuildVariant(e.target.value)}>
+                <option value="">— Choisir —</option>
+                {constants.BUILDING_TYPES.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.icon} {b.label} — {b.price_eur} €{b.river ? ' (bord de rivière)' : ''}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Parcelle libre" hint={buildVariant && buildParcel ? planBlocker(data, buildVariant, buildParcel) ?? 'Possible.' : 'Les parcelles libres sont aussi sur la carte (« + »).'}>
+              <Select value={buildParcel} onChange={(e) => setBuildParcel(e.target.value)}>
+                <option value="">— Choisir —</option>
+                {parcels.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}{p.river ? ' 🌊' : ''}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </>
         )}
         {def.code === 'vote_collective_project' && voteChoices.length > 0 && (
           <Field label="Projet pour la semaine prochaine" hint={voteChoices.find((p) => p.id === (voteProject || voteChoices[0]!.id))?.summary}>

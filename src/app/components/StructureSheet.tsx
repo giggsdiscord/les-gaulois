@@ -9,7 +9,8 @@ import type { Structure } from '../api/types.ts';
 import { actionBlockReason, situationFor } from '../lib/actionHints.ts';
 import { availableActions, STRUCTURE_ACTION_KINDS } from '../lib/game.ts';
 import { STRUCTURE_STATUS } from '../lib/labels.ts';
-import { KIND_ICON, KIND_LABEL, nextStepFor } from '../lib/mapView.ts';
+import { buildingTypeOf, needsPower } from '../engine.ts';
+import { nextStepFor, structureIcon, structureLabel } from '../lib/mapView.ts';
 import { useData, useNow } from '../state/GameContext.tsx';
 import { ActionRow } from './ActionSheet.tsx';
 import { Badge, Button, Card, Sheet } from './ui.tsx';
@@ -49,6 +50,7 @@ export function StructureSheet({ structure: s, onClose, onAct }: { structure: St
   const situation = situationFor(data, null, now);
   const mine = availableActions(data.me, v.act_number).filter((a) => {
     if (a.target !== 'structure') return false;
+    if (a.code === 'improve_own_housing' && buildingTypeOf(s)) return false;
     const kinds = STRUCTURE_ACTION_KINDS[a.code];
     return kinds ? kinds.includes(s.kind) : !['forest', 'river', 'square'].includes(s.kind);
   });
@@ -56,10 +58,10 @@ export function StructureSheet({ structure: s, onClose, onAct }: { structure: St
   const condition = s.kind === 'track' ? v.track_condition_pct : s.kind === 'pipe' ? v.water_network_condition_pct : s.condition_pct;
 
   return (
-    <Sheet open onClose={onClose} title={`${KIND_ICON[s.kind] ?? '📍'} ${s.name}`}>
+    <Sheet open onClose={onClose} title={`${structureIcon(s)} ${s.name}`}>
       <div className="space-y-4 pb-4">
         <div className="flex flex-wrap gap-1.5">
-          <Badge tone="wood">{KIND_LABEL[s.kind] ?? s.kind}</Badge>
+          <Badge tone="wood">{structureLabel(s)}</Badge>
           {!LANDSCAPE.includes(s.kind) && (
             <Badge tone={s.status === 'operational' ? 'moss' : s.status === 'ruin' || s.status === 'planned' ? 'neutral' : s.status === 'damaged' ? 'ember' : 'gold'}>{STRUCTURE_STATUS[s.status] ?? s.status}</Badge>
           )}
@@ -81,7 +83,7 @@ export function StructureSheet({ structure: s, onClose, onAct }: { structure: St
         {(isBuilding || ['pipe', 'track', 'livestock_pen', 'generator', 'solar', 'dam', 'power_line', 'watchtower', 'gate', 'mining_farm'].includes(s.kind)) && (
           <div className="grid grid-cols-2 gap-2">
             {s.beds_capacity > 0 && <Fact label={s.kind === 'gite' ? 'Lits du gîte' : 'Lits'} value={`${s.beds_capacity}`} />}
-            {isBuilding && <Fact label="Courant" value={s.is_power_connected ? '⚡ Raccordée' : v.energy_tier >= 2 ? 'Non raccordée' : 'Pas d\'électricité'} tone={s.status === 'awaiting_power' ? 'ember' : s.is_power_connected ? 'moss' : undefined} />}
+            {isBuilding && <Fact label="Courant" value={buildingTypeOf(s) && !needsPower(s) ? 'Pas besoin' : s.is_power_connected ? '⚡ Raccordée' : v.energy_tier >= 2 ? 'Non raccordée' : 'Pas d\'électricité'} tone={s.status === 'awaiting_power' ? 'ember' : s.is_power_connected ? 'moss' : undefined} />}
             {isBuilding && <Fact label="Permis (PLU)" value={s.plu_approved ? 'Accordé' : 'À obtenir'} tone={s.plu_approved ? 'moss' : undefined} />}
             {s.kind === 'gite' && <Fact label="Gîte" value={v.gite_open ? 'Ouvert' : 'Fermé'} tone={v.gite_open ? 'moss' : undefined} />}
           </div>

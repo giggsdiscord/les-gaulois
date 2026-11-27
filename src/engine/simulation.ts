@@ -37,6 +37,7 @@ import {
 import { addictionDrift, applyInjury, computeDailyAp, isInWithdrawal } from './health.ts';
 import { checkActGoals } from './goals.ts';
 import { closeCollectiveWeek, startWeeklyProject } from './collective.ts';
+import { hasBuilding, processBuildings } from './buildings.ts';
 import { processElections } from './elections.ts';
 import { lifeOf, processHeating, resetSeasonLife } from './life.ts';
 import { clamp, deepClone, gauge, money, stepToward, stock } from './math.ts';
@@ -67,6 +68,7 @@ function closeDay(s: GameSnapshot, fx: EngineEffects, endedKey: string, midnight
   processResidentWork(s, fx, season, midnight);
   updateFood(s, fx, rng, season);
   processHeating(s, fx);
+  processBuildings(s, fx, season);
   updateToolsAndTrack(s, rng);
   updateIdeologyAndFriction(s, fx, rng.fork('society'), midnight);
   updateSubstancesAndBlackMarket(s, fx, rng.fork('substances'));
@@ -128,7 +130,8 @@ function updateWaterAndSanitation(s: GameSnapshot, fx: EngineEffects, rng: Rng, 
     v.water_quality_pct = gauge(v.water_quality_pct + 1);
   }
 
-  // Épidémies (incubation cachée, visible par Tanguy) [GDD §3.1]
+  // Épidémies (incubation cachée, visible par Tanguy) [GDD §3.1] ; le lavoir (V5.4) divise le risque par deux
+  const washFactor = hasBuilding(s, 'washhouse') ? C.WASHHOUSE_EPIDEMIC_FACTOR : 1;
   if (v.epidemic_incubation_days > 0) {
     v.epidemic_incubation_days -= 1;
     if (v.epidemic_incubation_days === 0) {
@@ -139,16 +142,16 @@ function updateWaterAndSanitation(s: GameSnapshot, fx: EngineEffects, rng: Rng, 
         body: 'Gastro-entérite généralisée : Tango et Brunel sont débordés.',
       });
     }
-  } else if (v.water_quality_pct < 40 && !isAfter(v.epidemic_until, midnight) && rng.chance(20)) {
+  } else if (v.water_quality_pct < 40 && !isAfter(v.epidemic_until, midnight) && rng.chance(20 * washFactor)) {
     v.epidemic_incubation_days = C.EPIDEMIC_INCUBATION_DAYS;
   }
   if (isAfter(v.epidemic_until, midnight)) {
     v.morale_pct = gauge(v.morale_pct - 3);
     for (const p of activePlayers(s)) {
-      if (p.injury_type === null && rng.chance(C.EPIDEMIC_INFECTION_RISK_PCT)) applyInjury(p, 'infectious', midnight);
+      if (p.injury_type === null && rng.chance(C.EPIDEMIC_INFECTION_RISK_PCT * washFactor)) applyInjury(p, 'infectious', midnight);
     }
     for (const m of residents(s)) {
-      if (m.injury_type === null && rng.chance(C.EPIDEMIC_INFECTION_RISK_PCT)) m.injury_type = 'infectious';
+      if (m.injury_type === null && rng.chance(C.EPIDEMIC_INFECTION_RISK_PCT * washFactor)) m.injury_type = 'infectious';
     }
   }
 }

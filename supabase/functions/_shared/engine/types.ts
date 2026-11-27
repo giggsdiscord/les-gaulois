@@ -187,6 +187,19 @@ export interface VillageLife {
   election_last?: ElectionResult | null;
   /** Mandats issus des élections (V5.3) : portefeuille → mandat. */
   mandates?: Partial<Record<Portfolio, Mandate>>;
+  /** Parcelles bâties (V5.4) : parcelle → id de l'ouvrage (libre si l'ouvrage est démoli). */
+  parcels?: Record<string, string>;
+  /** Ce que les nouveaux bâtiments ont donné la nuit dernière (V5.4). */
+  buildings_last?: BuildingsNight | null;
+}
+
+/** Bilan nocturne des nouveaux bâtiments (V5.4). */
+export interface BuildingsNight {
+  rations: number;
+  wood: number;
+  eur: number;
+  /** Bâtiments en service ayant produit quelque chose (variantes). */
+  active: string[];
 }
 
 /** Élection vivante d'un portefeuille (V5.3) : candidatures, débat, vote. */
@@ -425,6 +438,13 @@ export interface MapStructure {
   variant?: string | null;
   /** Niveau d'amélioration (1 à 5). */
   upgrade_level?: number;
+  /** Coordonnées sur la carte (colonnes SQL lues par l'interface ; posées par le moteur pour un nouveau bâtiment). */
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  path_points?: number[][] | null;
+  notes?: string | null;
 }
 
 export interface Union {

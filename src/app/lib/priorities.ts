@@ -27,6 +27,7 @@ import {
   type GameSnapshot,
 } from '../engine.ts';
 import { actGoalsView, goalForPriority, type ActGoalsView } from './actGoals.ts';
+import { buildingsOverview } from './buildings.ts';
 import { collectiveView } from './collective.ts';
 import { electionView } from './election.ts';
 import { MISSION_REWARD_TEXT } from './jobLevel.ts';
@@ -355,6 +356,23 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
         'Votez aussi pour le chantier de la semaine prochaine (accueil ou Agora).',
       ],
       gain: col.def.summary,
+    });
+  }
+  // Nouveaux bâtiments (V5.4) : rien en projet, une parcelle libre et de quoi payer un petit plan
+  const builds = buildingsOverview(data, 'winter');
+  if (builds.canPlan && builds.openProjects === 0 && v.treasury_eur >= 1500) {
+    const cheap = C.BUILDING_TYPES.filter((b) => !builds.built.some((s) => s.variant === b.id)).sort((a, b) => a.price_eur - b.price_eur).slice(0, 3);
+    P.add({
+      key: 'build:plan', emoji: '🏗️', title: 'Bâtir sur une parcelle libre', urgent: false, score: 34,
+      short: `${builds.freeParcels} ${plural(builds.freeParcels, 'parcelle libre', 'parcelles libres')} : four, serre, poulailler… nourrissent le hameau.`,
+      why: 'Chaque nouveau bâtiment en service donne son effet toutes les nuits (rations, moral, santé, bois…). Le plan coûte 1 PA et son prix ; le chantier se fait ensuite par la rénovation.',
+      actionCode: 'plan_building',
+      steps: [
+        `Les moins chers : ${cheap.map((b) => `${b.icon} ${b.label} (${b.price_eur} €)`).join(', ')}.`,
+        'Touchez un « + » sur la carte pour voir ce que chaque parcelle peut accueillir (moulin et lavoir : bord de rivière).',
+        'Ensuite : « Rénover / construire » (300 €, 5 pierres, 5 bois par séance, accord PLU de Tiphaine).',
+      ],
+      gain: 'Un effet permanent, chaque nuit.',
     });
   }
   // Élection vivante d'un portefeuille (V5.3) : voter, se présenter, défendre son programme

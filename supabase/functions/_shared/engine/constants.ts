@@ -619,3 +619,92 @@ export const ELECTION_WINNER_XP = 10; // [GDD §2.2]
 export const ELECTION_TURNOUT_MIN = 0.5; // [GDD §2.2] participation qui donne le bonus de moral
 export const ELECTION_TURNOUT_MORALE = 2; // [GDD §2.2]
 export const ELECTION_SPEECH_MORALE = 1; // [GDD §2.2] la 1re prise de parole du jour anime la place
+
+// ---------------------------------------------------------------------------
+// Nouveaux bâtiments & parcelles libres (V5.4) [GDD §5.6]
+// ---------------------------------------------------------------------------
+/** Type fin d'un nouveau bâtiment (`map_structures.variant`, kind = 'building'). */
+export type BuildingVariant =
+  | 'bakery' | 'cheese_dairy' | 'cold_room' | 'sawmill' | 'water_mill' | 'washhouse'
+  | 'infirmary' | 'henhouse' | 'beehives' | 'greenhouse' | 'village_bar' | 'shed';
+
+export interface BuildingTypeDef {
+  id: BuildingVariant;
+  label: string;
+  icon: string;
+  /** Prix du plan (terrain, permis, équipement), payé par la caisse au moment du plan. */
+  price_eur: number;
+  /** Vitesse du chantier : multiplie l'avancement de chaque séance de rénovation (12 points). */
+  ease: number;
+  /** Livré seulement après raccordement électrique. */
+  power: boolean;
+  /** Ne se bâtit qu'en bord de rivière. */
+  river: boolean;
+  /** Effet en clair, une fois en service. */
+  effect: string;
+}
+
+export const BUILDING_TYPES: readonly BuildingTypeDef[] = [
+  { id: 'bakery', label: 'Four à pain', icon: '🍞', price_eur: 600, ease: 1.5, power: false, river: false, effect: '+5 rations par nuit (+3 de plus avec le moulin), pour 1 stère de bois.' },
+  { id: 'cheese_dairy', label: 'Fromagerie', icon: '🧀', price_eur: 900, ease: 1.2, power: false, river: false, effect: '+3 rations par nuit s\'il y a au moins 2 bêtes à l\'enclos.' },
+  { id: 'cold_room', label: 'Chambre froide', icon: '❄️', price_eur: 1200, ease: 1.2, power: true, river: false, effect: '+2 rations par nuit (moins de gâchis) ; électricité requise.' },
+  { id: 'sawmill', label: 'Scierie', icon: '🪚', price_eur: 1000, ease: 1, power: true, river: false, effect: '+3 stères à chaque coupe de bois ; électricité requise.' },
+  { id: 'water_mill', label: 'Moulin sur la rivière', icon: '🌾', price_eur: 1100, ease: 0.8, power: false, river: true, effect: '+3 rations par nuit (farine) ; le four à pain en donne 3 de plus. Bord de rivière.' },
+  { id: 'washhouse', label: 'Lavoir', icon: '🧺', price_eur: 400, ease: 1.5, power: false, river: true, effect: 'Risque d\'épidémie divisé par deux (départ et contagion). Bord de rivière.' },
+  { id: 'infirmary', label: 'Infirmerie', icon: '🩺', price_eur: 1300, ease: 1, power: false, river: false, effect: '+3 de santé par nuit pour chaque joueur blessé ou malade.' },
+  { id: 'henhouse', label: 'Poulailler', icon: '🐔', price_eur: 250, ease: 2.5, power: false, river: false, effect: '+3 rations par nuit (œufs).' },
+  { id: 'beehives', label: 'Ruches', icon: '🐝', price_eur: 200, ease: 3, power: false, river: false, effect: '+1 ration par nuit (miel) et écologie +0,2 par nuit.' },
+  { id: 'greenhouse', label: 'Serre', icon: '🪴', price_eur: 700, ease: 1.5, power: false, river: false, effect: '+4 rations par nuit en automne et en hiver (légumes d\'hiver), +1 le reste de l\'année.' },
+  { id: 'village_bar', label: 'Bar du hameau', icon: '🍺', price_eur: 800, ease: 1.2, power: false, river: false, effect: 'Moral +1 par nuit (jusqu\'à 85 %), +12 € de recettes, consommation d\'alcool +0,3 %.' },
+  { id: 'shed', label: 'Hangar', icon: '🏚️', price_eur: 500, ease: 1.5, power: false, river: false, effect: 'Outils à l\'abri : usure des outils −1 par nuit.' },
+];
+
+export interface ParcelDef {
+  id: string;
+  name: string;
+  /** Coordonnées sur la carte (viewBox 1000 × 700). */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Bord de rivière (moulin, lavoir). */
+  river: boolean;
+}
+
+/** Parcelles libres du hameau, où l'on peut bâtir un nouveau bâtiment [GDD §5.6]. */
+export const PARCELS: readonly ParcelDef[] = [
+  { id: 'era_baixa', name: 'Era Baixa', x: 135, y: 245, width: 48, height: 34, river: false },
+  { id: 'camp_pla', name: 'Camp Pla', x: 360, y: 180, width: 50, height: 34, river: false },
+  { id: 'cruilla', name: 'La Cruïlla', x: 220, y: 420, width: 50, height: 34, river: false },
+  { id: 'feixes', name: 'Les Feixes', x: 400, y: 615, width: 50, height: 32, river: false },
+  { id: 'camp_sud', name: 'Camp del Sud', x: 260, y: 610, width: 50, height: 34, river: false },
+  { id: 'horts_baixos', name: 'Horts Baixos', x: 480, y: 560, width: 50, height: 34, river: false },
+  { id: 'serrat', name: 'El Serrat', x: 560, y: 615, width: 50, height: 32, river: false },
+  { id: 'coll', name: 'El Coll', x: 700, y: 232, width: 44, height: 32, river: false },
+  { id: 'riba', name: 'La Riba', x: 732, y: 300, width: 44, height: 34, river: true },
+  { id: 'gual', name: 'El Gual', x: 730, y: 615, width: 44, height: 32, river: true },
+  { id: 'font_alta', name: 'Font Alta', x: 852, y: 240, width: 44, height: 32, river: true },
+];
+
+export const BUILDING_MAX_OPEN_PROJECTS = 2; // [GDD §5.6] nouveaux bâtiments en projet ou en chantier en même temps
+export const BUILDING_BASE_PROGRESS = 12; // [GDD §5.6] points d'avancement d'une séance de rénovation (× facilité du bâtiment)
+export const BAKERY_RATIONS = 5; // [GDD §5.6]
+export const BAKERY_WOOD = 1; // [GDD §5.6] stère brûlé par nuit de cuisson
+export const MILL_RATIONS = 3; // [GDD §5.6]
+export const MILL_BAKERY_BONUS = 3; // [GDD §5.6]
+export const CHEESE_RATIONS = 3; // [GDD §5.6]
+export const CHEESE_MIN_LIVESTOCK = 2; // [GDD §5.6]
+export const COLD_ROOM_RATIONS = 2; // [GDD §5.6]
+export const SAWMILL_WOOD_BONUS = 3; // [GDD §5.6] stères de plus par coupe
+export const WASHHOUSE_EPIDEMIC_FACTOR = 0.5; // [GDD §5.6]
+export const INFIRMARY_HEALTH = 3; // [GDD §5.6]
+export const HENHOUSE_RATIONS = 3; // [GDD §5.6]
+export const BEEHIVES_RATIONS = 1; // [GDD §5.6]
+export const BEEHIVES_ECOLOGY = 0.2; // [GDD §5.6]
+export const GREENHOUSE_RATIONS_COLD = 4; // [GDD §5.6] automne et hiver
+export const GREENHOUSE_RATIONS_WARM = 1; // [GDD §5.6]
+export const BAR_MORALE = 1; // [GDD §5.6]
+export const BAR_MORALE_CAP = 85; // [GDD §5.6]
+export const BAR_INCOME_EUR = 12; // [GDD §5.6]
+export const BAR_ALCOHOL = 0.3; // [GDD §5.6]
+export const SHED_TOOLS_WEAR = 1; // [GDD §5.6]

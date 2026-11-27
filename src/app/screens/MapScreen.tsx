@@ -11,6 +11,7 @@ import { TEMPTATION_REOPEN_EVENT } from '../components/Modals.tsx';
 import { CollectiveCard } from '../components/CollectiveCard.tsx';
 import { ElectionCard } from '../components/ElectionCard.tsx';
 import { PriorityCard } from '../components/PriorityCard.tsx';
+import { ParcelSheet } from '../components/ParcelSheet.tsx';
 import { StructureSheet } from '../components/StructureSheet.tsx';
 import { Card, Stat, cx } from '../components/ui.tsx';
 import { VillageMap } from '../components/VillageMap.tsx';
@@ -70,6 +71,7 @@ export function MapScreen() {
   const data = useData();
   const now = useNow(60_000);
   const [selected, setSelected] = useState<Structure | null>(null);
+  const [parcel, setParcel] = useState<string | null>(null);
   const [action, setAction] = useState<ActionDef | null>(null);
   const v = data.village;
   const pop = population(data);
@@ -94,12 +96,13 @@ export function MapScreen() {
         <Stat label="Piste" value={`${Math.round(v.track_condition_pct)} %`} sub={v.track_condition_pct < 40 ? 'surcoût +40 %' : 'praticable'} tone={v.track_condition_pct < 40 ? 'ember' : 'moss'} />
       </div>
 
-      <VillageMap structures={data.structures} village={v} priorityIds={priorityIds} selectedId={current?.id ?? null} onSelect={setSelected} />
+      <VillageMap structures={data.structures} village={v} priorityIds={priorityIds} selectedId={current?.id ?? null} onSelect={setSelected} onParcel={setParcel} />
 
       <Card title="Météo réelle" subtitle={v.real_news_headline ?? undefined}>
         <p className="text-sm text-ink">{v.real_weather_summary}</p>
       </Card>
 
+      {parcel && <ParcelSheet parcelId={parcel} onClose={() => setParcel(null)} />}
       {current && !action && <StructureSheet structure={current} onClose={() => setSelected(null)} onAct={setAction} />}
       {current && action && (
         <ActionSheet

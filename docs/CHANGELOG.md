@@ -1,5 +1,10 @@
 # Historique des versions du GDD
 
+### V5.4 — 27/11/2026 — Nouveaux bâtiments & parcelles libres
+- **Douze nouveaux bâtiments** (§5.6) : four à pain, fromagerie, chambre froide, scierie, moulin sur la rivière, lavoir, infirmerie, poulailler, ruches, serre, bar du hameau, hangar ; chacun donne son effet chaque nuit une fois en service (rations, santé, moral et recettes, outils, bois à la coupe, épidémies divisées par deux).
+- **Choix d'une parcelle libre sur la carte** : 11 parcelles (3 en bord de rivière pour le moulin et le lavoir) ; on touche le « + », on choisit le bâtiment, la caisse paie le plan (1 PA) ; le chantier avance ensuite par la rénovation, plus vite pour les petits bâtiments. Deux projets à la fois, un bâtiment de chaque sorte.
+- Carte : icône, toit et libellé propres à chaque bâtiment ; Réserves du Trésor et « À faire en priorité » à jour. Aucune migration (`kind = 'building'` + `variant`, `village_state.life.parcels`) ; 18 nouveaux tests Vitest (dont l'insertion réelle par `engine_commit`).
+
 ### V5.3 — 27/11/2026 — Élections vivantes des portefeuilles
 - **Élections vivantes** (§2.2) : tant qu'une place 8 à 10 est vacante, ses portefeuilles débloqués sont mis en jeu un à un (Défense, Intérieur, Douanes dès l'Acte II ; Chancellerie, Médias à l'Acte III).
 - **Candidatures avec programme** (3 jours, 1 PA), **débat à la Taverne** (1 intervention par jour et par candidat, 1 PA), **vote secret** (2 jours, 0 PA, pas pour soi) ; dépouillement de nuit, égalité départagée par la présence au débat.

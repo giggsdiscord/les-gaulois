@@ -3,7 +3,7 @@
  * 1000 × 700), icônes et calques des ouvrages, regroupement pour la liste, et « prochaine étape »
  * de chaque ouvrage (quoi faire, qui peut le faire). Testé dans tests/app/mapView.test.ts.
  */
-import { getAction, type ActionDef } from '../engine.ts';
+import { buildingTypeOf, getAction, needsPower, type ActionDef } from '../engine.ts';
 import type { GameData, Structure } from '../api/types.ts';
 import { STRUCTURE_ACTION_KINDS } from './game.ts';
 import { actorsOf } from './priorities.ts';
@@ -89,6 +89,15 @@ export const KIND_LABEL: Record<string, string> = {
   square: 'Place du village', river: 'Rivière', forest: 'Forêt', lab: 'Laboratoire', border_post: 'Poste-frontière',
 };
 
+/** Icône d'un ouvrage : celle du nouveau bâtiment (V5.4) s'il en est un, sinon celle de son type. */
+export function structureIcon(s: Pick<Structure, 'kind' | 'variant'>): string {
+  return buildingTypeOf(s)?.icon ?? KIND_ICON[s.kind] ?? '📍';
+}
+
+export function structureLabel(s: Pick<Structure, 'kind' | 'variant'>): string {
+  return buildingTypeOf(s)?.label ?? KIND_LABEL[s.kind] ?? s.kind;
+}
+
 /** Ouvrages représentés comme des tracés ou des surfaces (pas de pastille). */
 export const LANDSCAPE_KINDS = ['forest', 'river', 'track', 'pipe', 'power_line'];
 
@@ -118,7 +127,7 @@ export function inLayer(s: Structure, layer: LayerId, priorityIds: ReadonlySet<s
     case 'todo':
       return needsAttention(s, priorityIds);
     case 'housing':
-      return s.kind === 'building' || s.kind === 'gite';
+      return (s.kind === 'building' && !buildingTypeOf(s)) || s.kind === 'gite';
     case 'works':
       return ['ruin', 'cleared', 'in_progress', 'damaged', 'awaiting_power', 'planned'].includes(s.status) && !LANDSCAPE_KINDS.includes(s.kind);
     case 'energy':
@@ -169,9 +178,9 @@ type StepData = Pick<GameData, 'me' | 'players' | 'village'>;
 
 const BUILDING_KINDS = ['building', 'gite', 'school', 'jail', 'lab', 'church', 'forge', 'border_post'];
 
-/** Séances de rénovation restantes (12 points par séance, selon la productivité du village). */
-export function sessionsLeft(s: Pick<Structure, 'progress_pct'>, productivityPct: number): number {
-  const perSession = Math.max(1, Math.round((12 * productivityPct) / 100));
+/** Séances de rénovation restantes (12 points par séance × facilité du bâtiment, selon la productivité du village). */
+export function sessionsLeft(s: Pick<Structure, 'progress_pct'>, productivityPct: number, ease = 1): number {
+  const perSession = Math.max(1, Math.round((12 * ease * productivityPct) / 100));
   return Math.max(1, Math.ceil((100 - s.progress_pct) / perSession));
 }
 
@@ -187,6 +196,7 @@ export function nextStepFor(s: Structure, data: StepData): NextStep {
 
   if (s.eco_veto_active) return step('Veto écologique en cours : le chantier est suspendu tant qu\'Ely ne le lève pas.', 'lift_eco_veto');
 
+  const type = buildingTypeOf(s);
   if (BUILDING_KINDS.includes(s.kind)) {
     if (s.status === 'awaiting_power') {
       return v.energy_tier >= 2
@@ -195,10 +205,12 @@ export function nextStepFor(s: Structure, data: StepData): NextStep {
     }
     if (s.status === 'damaged') return step(`Endommagée (état ${s.condition_pct} %) : réparer (300 € de matériaux par séance) jusqu'à 60 % d'état.`, 'renovate_building');
     if (['ruin', 'cleared', 'in_progress', 'planned'].includes(s.status)) {
-      const n = sessionsLeft(s, v.productivity_modifier_pct);
-      const start = s.status === 'ruin' ? 'Rénover (on peut d\'abord déblayer les gravats pour récupérer de la pierre)' : 'Poursuivre le chantier';
-      return step(`${start} : environ ${n} séance${n > 1 ? 's' : ''} de 300 €, 5 pierres et 5 bois chacune${s.plu_approved ? '' : ', avec l\'accord PLU de Tiphaine'}.`, 'renovate_building');
+      const n = sessionsLeft(s, v.productivity_modifier_pct, type?.ease ?? 1);
+      const start = s.status === 'ruin' ? 'Rénover (on peut d\'abord déblayer les gravats pour récupérer de la pierre)' : type && s.status === 'planned' ? 'Lancer le chantier' : 'Poursuivre le chantier';
+      const power = type && needsPower(s) ? ' Il faudra ensuite le raccorder au courant.' : '';
+      return step(`${start} : environ ${n} séance${n > 1 ? 's' : ''} de 300 €, 5 pierres et 5 bois chacune${s.plu_approved ? '' : ', avec l\'accord PLU de Tiphaine'}.${power}`, 'renovate_building');
     }
+    if (type) return step(`En service : ${type.effect}`, type.id === 'sawmill' ? 'cut_wood' : type.id === 'cheese_dairy' && v.livestock_count < 2 ? 'buy_livestock' : null);
     if (s.kind === 'gite' && !v.gite_open) return step('Le gîte est prêt : l\'ouvrir rapporte 800 à 2 500 € par semaine.', 'open_gite');
     if (s.kind === 'church') return step('Messe du dimanche : moral du village +12 %.', 'sunday_mass');
     if (s.kind === 'forge') return step('Forger des outils : un par travailleur évite −35 % de rendement.', 'forge_tools');

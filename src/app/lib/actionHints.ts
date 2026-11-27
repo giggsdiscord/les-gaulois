@@ -3,7 +3,7 @@
  * recherche et actions récentes. Pur (aucun DOM) : testé dans tests/app/actionHints.test.ts.
  * La validation qui fait foi reste celle du moteur (performAction).
  */
-import { currentCollective, forestBan, getAction, isAfter, isSunday, lifeOf, type ActionDef } from '../engine.ts';
+import { constants as C, currentCollective, forestBan, freeParcels, openBuildingProjects, getAction, isAfter, isSunday, lifeOf, type ActionDef } from '../engine.ts';
 import type { GameData, PublicPlayer } from '../api/types.ts';
 import { electionView } from './election.ts';
 
@@ -20,12 +20,14 @@ export interface ActionSituation {
   /** Chantier collectif de la semaine (V5.0) : absent, ouvert ou achevé ; projets soumis au vote. */
   collective?: 'none' | 'open' | 'done';
   collectiveVotable?: boolean;
+  /** Nouveaux bâtiments (V5.4) : pourquoi aucun plan n'est possible (null = possible). */
+  buildBlocked?: string | null;
   /** Élection vivante (V5.3) : gestes possibles maintenant. */
   election?: { open: boolean; canStand: boolean; canSpeak: boolean; canVote: boolean; phase: string | null };
 }
 
 /** Situation du joueur qui agit, pour lui-même (`holderId` null) ou pour un poste délégué. */
-export function situationFor(data: Pick<GameData, 'me' | 'players' | 'village'>, holderId: string | null, now: Date): ActionSituation {
+export function situationFor(data: Pick<GameData, 'me' | 'players' | 'village'> & Partial<Pick<GameData, 'structures'>>, holderId: string | null, now: Date): ActionSituation {
   const me = data.me;
   const holder = (holderId ? data.players.find((p) => p.id === holderId) : undefined) ?? me;
   return {
@@ -42,6 +44,13 @@ export function situationFor(data: Pick<GameData, 'me' | 'players' | 'village'>,
     forestBanned: forestBan(data.village) !== null,
     collective: collectiveState(data.village),
     collectiveVotable: (lifeOf(data.village).collective_candidates ?? []).length > 0,
+    buildBlocked: !data.structures
+      ? null
+      : freeParcels({ structures: data.structures, village: data.village }).length === 0
+        ? 'Plus aucune parcelle libre.'
+        : openBuildingProjects({ structures: data.structures }).length >= C.BUILDING_MAX_OPEN_PROJECTS
+          ? 'Deux nouveaux bâtiments déjà en projet : finissez-en un.'
+          : null,
     election: electionSituation(data, holder.id === me.id, now),
   };
 }
@@ -61,6 +70,7 @@ export function actionBlockReason(def: ActionDef, s: ActionSituation): string | 
   if (def.code === 'contribute_collective' && s.collective === 'none') return "Le premier chantier commun s'ouvrira cette nuit.";
   if (def.code === 'contribute_collective' && s.collective === 'done') return 'Chantier de la semaine achevé : rendez-vous lundi.';
   if (def.code === 'vote_collective_project' && s.collectiveVotable === false) return "Aucun projet à voter pour l'instant.";
+  if (def.code === 'plan_building' && s.buildBlocked) return s.buildBlocked;
   // Élection vivante d'un portefeuille (V5.3)
   if (s.election && (def.code === 'run_for_office' || def.code === 'campaign_speech' || def.code === 'vote_election')) {
     const e = s.election;

@@ -8,6 +8,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { PublicVillage, Structure } from '../api/types.ts';
+import { buildingTypeOf, freeParcels, type constants } from '../engine.ts';
 import { useBackToClose } from '../lib/backClose.ts';
 import { STRUCTURE_STATUS } from '../lib/labels.ts';
 import {
@@ -17,8 +18,8 @@ import {
   fitView,
   groupStructures,
   inLayer,
-  KIND_ICON,
-  KIND_LABEL,
+  structureIcon,
+  structureLabel,
   LANDSCAPE_KINDS,
   LAYERS,
   MAP_H,
@@ -81,7 +82,12 @@ interface CanvasProps {
   /** Rayon des pastilles, en pixels d'écran. */
   pinPx: number;
   showLabels: boolean;
+  /** Parcelles libres (V5.4), touchables pour y bâtir. */
+  parcels: readonly constants.ParcelDef[];
 }
+
+/** Préfixe des parcelles dans data-sid (le reste est l'identifiant de la parcelle). */
+const PARCEL_SID = 'parcel:';
 
 function Defs({ id }: { id: string }) {
   return (
@@ -145,6 +151,22 @@ const ROOFS: Record<string, [string, string]> = {
   jail: ['#a19a90', '#7f786f'],
   lab: ['#7f9470', '#5f7352'],
   border_post: ['#8a7a63', '#6b5d4a'],
+};
+
+/** Toits des nouveaux bâtiments (V5.4), par variante. */
+const VARIANT_ROOFS: Record<string, [string, string]> = {
+  bakery: ['#b5633a', '#8d4726'],
+  cheese_dairy: ['#d9b45a', '#b08c3a'],
+  cold_room: ['#9fb9c8', '#7896a8'],
+  sawmill: ['#8b6a45', '#6a4f32'],
+  water_mill: ['#a0805a', '#7c6143'],
+  washhouse: ['#8fb3b8', '#6c9196'],
+  infirmary: ['#e8e2d6', '#c9c0b0'],
+  henhouse: ['#c99a5b', '#a3793f'],
+  beehives: ['#e2b93b', '#bf9623'],
+  greenhouse: ['#cfe6d2', '#a9cdb0'],
+  village_bar: ['#a2453a', '#7d3029'],
+  shed: ['#7f7a70', '#615c53'],
 };
 
 /** Bâtisse ou ouvrage vu du ciel, selon son état. */
@@ -226,7 +248,8 @@ function Footprint({ s, id }: { s: Structure; id: string }) {
       </g>
     );
   }
-  const [light, dark] = ROOFS[s.kind] ?? ROOFS.building!;
+  const variant = buildingTypeOf(s)?.id;
+  const [light, dark] = (variant ? VARIANT_ROOFS[variant] : undefined) ?? ROOFS[s.kind] ?? ROOFS.building!;
   const horizontal = w >= h;
   const roofDone = s.status === 'in_progress' ? Math.max(0, Math.min(1, s.progress_pct / 100)) : 1;
   const half = horizontal ? (
@@ -294,7 +317,7 @@ function Pin({ s, ppu, r, selected, priority, label }: { s: Structure; ppu: numb
         strokeDasharray={s.status === 'planned' ? '4 3' : undefined}
       />
       <text y={radius * 0.38} fontSize={radius * 1.05} textAnchor="middle" style={{ pointerEvents: 'none' }}>
-        {KIND_ICON[s.kind] ?? '📍'}
+        {structureIcon(s)}
       </text>
       {badges.map(([icon, color], i) => (
         <g key={icon} transform={`translate(${radius * 0.8 - i * 13} ${-radius * 0.8})`}>
@@ -330,7 +353,7 @@ function Pin({ s, ppu, r, selected, priority, label }: { s: Structure; ppu: numb
   );
 }
 
-function MapCanvas({ structures, village: v, view, aspect, ppu, layer, priorityIds, selectedId, pinPx, showLabels }: CanvasProps) {
+function MapCanvas({ structures, village: v, view, aspect, ppu, layer, priorityIds, selectedId, pinPx, showLabels, parcels }: CanvasProps) {
   const id = `vm${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const visible = structures.filter((s) => s.status !== 'demolished');
   const dim = (s: Structure) => (inLayer(s, layer, priorityIds) ? 1 : 0.22);
@@ -398,6 +421,25 @@ function MapCanvas({ structures, village: v, view, aspect, ppu, layer, priorityI
           <Footprint s={s} id={id} />
         </g>
       ))}
+
+      {(layer === 'all' || layer === 'works') &&
+        parcels.map((p) => (
+          <g key={p.id} data-sid={PARCEL_SID + p.id} role="button" aria-label={'Parcelle libre ' + p.name} className="cursor-pointer">
+            <rect x={p.x} y={p.y} width={p.width} height={p.height} rx={4} fill="rgba(255,250,235,0.55)" stroke="#6f8f3a" strokeWidth={1.6} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+            <g transform={'translate(' + (p.x + p.width / 2) + ' ' + (p.y + p.height / 2) + ') scale(' + 1 / ppu + ')'}>
+              <circle r={pinPx * 0.75 + 8} fill="transparent" />
+              <circle r={pinPx * 0.75} fill="#fffaf0" stroke="#6f8f3a" strokeWidth={2} strokeDasharray="3 3" />
+              <text y={pinPx * 0.3} fontSize={pinPx} fontWeight={700} textAnchor="middle" fill="#4d6b22" style={{ pointerEvents: 'none' }}>
+                +
+              </text>
+              {showLabels && (
+                <text y={pinPx * 0.75 + 13} fontSize={11} fontWeight={600} textAnchor="middle" fill="#4d6b22" stroke="#fbf7ef" strokeWidth={3.5} style={{ paintOrder: 'stroke', pointerEvents: 'none' }}>
+                  {p.name}
+                </text>
+              )}
+            </g>
+          </g>
+        ))}
 
       {v.real_snow_cm > 0 && <rect width={MAP_W} height={MAP_H} fill={`url(#${id}-snow)`} opacity={0.6} style={{ pointerEvents: 'none' }} />}
       {v.real_snow_cm <= 0 && v.real_precip_mm > 2 && <rect width={MAP_W} height={MAP_H} fill={`url(#${id}-rain)`} opacity={0.35} style={{ pointerEvents: 'none' }} />}
@@ -473,6 +515,7 @@ interface ExplorerProps {
   layer: LayerId;
   onLayer: (l: LayerId) => void;
   onSelect: (s: Structure) => void;
+  onParcel: (parcelId: string) => void;
   onClose: () => void;
 }
 
@@ -509,12 +552,12 @@ function StructureList({ structures, priorityIds, onSelect, onLocate }: { struct
               <li key={s.id} className="flex items-center">
                 <button onClick={() => onSelect(s)} className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left active:bg-parchment-100">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 bg-white text-lg" style={{ borderColor: STATUS_RING[s.status] ?? '#4d7c0f' }} aria-hidden="true">
-                    {KIND_ICON[s.kind] ?? '📍'}
+                    {structureIcon(s)}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold text-ink">{s.name.replace(/\s*\(.*\)$/, '')}</span>
                     <span className="block text-xs text-ink-soft">
-                      {KIND_LABEL[s.kind] ?? s.kind} · {STRUCTURE_STATUS[s.status] ?? s.status}
+                      {structureLabel(s)} · {STRUCTURE_STATUS[s.status] ?? s.status}
                       {s.beds_capacity > 0 ? ` · ${s.beds_capacity} lits` : ''}
                       {s.status === 'awaiting_power' ? ' · ⚡' : ''}
                       {s.leak_alert ? ' · 💧 fuite' : ''}
@@ -538,7 +581,8 @@ function StructureList({ structures, priorityIds, onSelect, onLocate }: { struct
   );
 }
 
-function Explorer({ structures, village, priorityIds, selectedId, layer, onLayer, onSelect, onClose }: ExplorerProps) {
+function Explorer({ structures, village, priorityIds, selectedId, layer, onLayer, onSelect, onParcel, onClose }: ExplorerProps) {
+  const parcels = useMemo(() => freeParcels({ structures, village }), [structures, village]);
   useBackToClose(true, onClose);
   const [areaRef, size] = useSize<HTMLDivElement>();
   const aspect = size.w > 0 ? size.h / size.w : 1.6;
@@ -645,7 +689,9 @@ function Explorer({ structures, village, priorityIds, selectedId, layer, onLayer
       return;
     }
     gesture.current.lastTap = now;
-    const s = structures.find((x) => x.id === gesture.current.sid);
+    const sid = gesture.current.sid;
+    if (sid?.startsWith(PARCEL_SID)) return onParcel(sid.slice(PARCEL_SID.length));
+    const s = structures.find((x) => x.id === sid);
     if (s) onSelect(s);
   };
 
@@ -696,6 +742,7 @@ function Explorer({ structures, village, priorityIds, selectedId, layer, onLayer
               selectedId={selectedId}
               pinPx={15}
               showLabels={ppu >= 0.55}
+              parcels={parcels}
             />
           )}
           <div className="pointer-events-none absolute left-3 top-3 flex flex-col items-start gap-2">
@@ -740,9 +787,11 @@ export interface VillageMapProps {
   priorityIds: ReadonlySet<string>;
   selectedId: string | null;
   onSelect: (s: Structure) => void;
+  onParcel: (parcelId: string) => void;
 }
 
-export function VillageMap({ structures, village, priorityIds, selectedId, onSelect }: VillageMapProps) {
+export function VillageMap({ structures, village, priorityIds, selectedId, onSelect, onParcel }: VillageMapProps) {
+  const parcels = useMemo(() => freeParcels({ structures, village }), [structures, village]);
   const [ref, size] = useSize<HTMLDivElement>();
   const [layer, setLayer] = useState<LayerId>('all');
   const [explore, setExplore] = useState(false);
@@ -755,6 +804,7 @@ export function VillageMap({ structures, village, priorityIds, selectedId, onSel
 
   const onClick = (e: ReactMouseEvent<HTMLDivElement>) => {
     const sid = (e.target as Element).closest('[data-sid]')?.getAttribute('data-sid');
+    if (sid?.startsWith(PARCEL_SID)) return onParcel(sid.slice(PARCEL_SID.length));
     const s = sid ? structures.find((x) => x.id === sid) : undefined;
     if (s && !LANDSCAPE_KINDS.includes(s.kind)) onSelect(s);
     else setExplore(true);
@@ -783,6 +833,7 @@ export function VillageMap({ structures, village, priorityIds, selectedId, onSel
           selectedId={selectedId}
           pinPx={11}
           showLabels={false}
+          parcels={parcels}
         />
         <div className="pointer-events-none absolute left-2 top-2 flex gap-1.5">
           <WeatherChip v={village} />
@@ -798,7 +849,7 @@ export function VillageMap({ structures, village, priorityIds, selectedId, onSel
           ⛶ Explorer
         </button>
       </div>
-      <p className="px-1 text-xs text-ink-soft">Touchez une pastille pour sa fiche, ou « Explorer » pour zoomer, vous déplacer et voir la liste.</p>
+      <p className="px-1 text-xs text-ink-soft">Touchez une pastille pour sa fiche, un « + » pour bâtir sur une parcelle libre, ou « Explorer » pour zoomer, vous déplacer et voir la liste.</p>
       {explore && (
         <Explorer
           structures={structures}
@@ -808,6 +859,7 @@ export function VillageMap({ structures, village, priorityIds, selectedId, onSel
           layer={layer}
           onLayer={setLayer}
           onSelect={onSelect}
+          onParcel={onParcel}
           onClose={() => setExplore(false)}
         />
       )}

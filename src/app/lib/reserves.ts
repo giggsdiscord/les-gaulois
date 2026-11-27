@@ -19,6 +19,7 @@ import {
   heatingNeed,
   lifeOf,
   marketQuote,
+  planBuildingsNight,
   planResidentWork,
   purchaseCost,
   type CalendarSeason,
@@ -122,7 +123,8 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
   // --- Rations ---------------------------------------------------------------
   const consumption = dailyFoodConsumption(s);
   const herd = v.livestock_count * C.LIVESTOCK_RATIONS_PER_HEAD_DAY;
-  const foodNet = harvest.rations + herd + work.rations - consumption;
+  const builds = planBuildingsNight(s, season);
+  const foodNet = harvest.rations + herd + work.rations + builds.rations - consumption;
   const foodDays = foodNet < 0 ? Math.floor(v.food_rations / -foodNet) : null;
   lines.push({
     key: 'food', emoji: '🥖', label: 'Rations', amount: v.food_rations, display: num(Math.floor(v.food_rations)),
@@ -132,6 +134,7 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
       `Potager : +${num(round1(harvest.rations))} par jour (${SEASON[season]}${water.gardenSupplyRatio < 1 ? `, arrosé à ${Math.round(water.gardenSupplyRatio * 100)} % faute d'eau` : ''}).`,
       `Cheptel : +${num(round1(herd))} par jour (${v.livestock_count} ${v.livestock_count > 1 ? 'bêtes' : 'bête'} × ${num(C.LIVESTOCK_RATIONS_PER_HEAD_DAY)}).`,
       ...(work.rations > 0 ? [`Résidents au potager et au pâturage : +${num(round1(work.rations))} par nuit.`] : []),
+      ...(builds.rations > 0 ? [`Nouveaux bâtiments (four, serre, poulailler…) : +${num(round1(builds.rations))} par nuit.`] : []),
       foodDays !== null ? `Au rythme actuel, la réserve tient environ ${foodDays} ${foodDays > 1 ? 'jours' : 'jour'}. À zéro : faim, santé et moral en chute.` : 'La production couvre la consommation : la réserve ne baisse pas.',
     ],
     uses: [
@@ -147,6 +150,7 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
       buy('andorre_conserves'),
       assign('garden', 'Mettre un résident au potager', `Chaque nuit, environ ${num(round1(C.RESIDENT_GARDEN_RATIONS * C.SEASON_HARVEST_COEFF[season]))} ration(s) en ${SEASON[season]} (bien plus pour un maraîcher) ; un jardinier par ${C.RESIDENT_GARDEN_M2_PER_WORKER} m².`),
       act('expand_garden', 'Agrandir le potager', '+100 m² : plus de récolte chaque jour, pour toujours (150 €).'),
+      act('plan_building', 'Bâtir un four, une serre, un poulailler…', 'Sur une parcelle libre de la carte : des rations chaque nuit, pour toujours.'),
     ),
   });
 
@@ -201,7 +205,7 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
   };
   const heat = heatingNeed(s);
   const cuts = lifeOf(v).wood_cuts ?? 0;
-  const woodNet = round1(work.wood - heat.wood);
+  const woodNet = round1(work.wood - heat.wood - builds.wood);
   const woodDays = woodNet < 0 ? Math.floor(v.wood_stock / -woodNet) : null;
   lines.push({
     key: 'wood', emoji: '🪵', label: 'Bois', amount: v.wood_stock, display: num(v.wood_stock),
@@ -213,6 +217,7 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
       heat.wood > 0
         ? `Chauffage : ${heat.buildings} ${heat.buildings > 1 ? 'bâtisses habitées' : 'bâtisse habitée'} × ${heat.perBuilding} = −${heat.wood} stères par nuit (minimale réelle ${Math.round(heat.tempMin)} °C${v.energy_tier >= 4 ? ', moitié moins grâce au palier 4' : ''}). ${woodDays !== null ? `Au rythme actuel${work.wood > 0 ? ' (bûcherons compris)' : ''}, la réserve tient environ ${woodDays} nuit${woodDays === 1 ? '' : 's'}.` : 'Les bûcherons résidents couvrent le chauffage.'}`
         : `Pas de chauffage cette nuit (minimale réelle ${Math.round(heat.tempMin)} °C) : on chauffe sous 10 °C (1 stère par bâtisse habitée), sous 5 °C (2) et sous 0 °C (3).`,
+      ...(builds.wood > 0 ? [`Four à pain : −${builds.wood} stère par nuit de cuisson.`] : []),
       `Sans bois une nuit de froid : moral −${C.HEATING_COLD_MORALE} % et santé −${C.HEATING_COLD_HEALTH} pour chaque fondateur.`,
       ...(work.wood > 0 ? [`Bûcherons résidents : +${num(round1(work.wood))} stères par nuit.`] : []),
       `Coupes cette semaine : ${num(cuts)} / ${C.WOOD_CUT_SUSTAINABLE} soutenables (au-delà, la forêt souffre et les agents rurals peuvent verbaliser ; une nuit de bûcheron résident compte pour ${num(C.RESIDENT_FOREST_CUT_SHARE)} coupe).`,

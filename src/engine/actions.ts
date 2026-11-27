@@ -12,6 +12,7 @@ import { applyInjury, healInjury, injuryRiskPct, isDetained } from './health.ts'
 import { applyMarketSale, ensureLife, marketQuote } from './life.ts';
 import { advanceStructure, BUILDING_KINDS, findWorkPost, forestBan, residentSkill } from './work.ts';
 import { contributeToCollective, currentCollective, findCollectiveProject } from './collective.ts';
+import { buildingTypeOf, findBuildingType, findParcel, hasBuilding, planBlocker, planBuilding } from './buildings.ts';
 import { castElectionVote, speakAtDebate, standForElection } from './elections.ts';
 import { checkLocks, markGroupExecuted } from './locks.ts';
 import { clamp, deepClone, gauge, money, round2, stock } from './math.ts';
@@ -90,6 +91,8 @@ export interface ActionDef {
   target: TargetKind;
   /** Dépense estimée sur la caisse commune (verrou budgétaire > 500 €). */
   cost?: (s: GameSnapshot, req: ActionRequest) => number;
+  /** Refus immédiat (avant les verrous PLU / budget) : évite d'attendre une validation pour rien. */
+  precheck?: (s: GameSnapshot, req: ActionRequest) => string | null;
   run: (ctx: ActionContext) => string;
 }
 
@@ -334,7 +337,7 @@ export const ACTIONS: readonly ActionDef[] = [
       const life = ensureLife(ctx.v);
       const cuts = round2((life.wood_cuts ?? 0) + 1);
       life.wood_cuts = cuts;
-      const wood = Math.max(1, Math.round(C.WOOD_CUT_BASE * factor(ctx)));
+      const wood = Math.max(1, Math.round(C.WOOD_CUT_BASE * factor(ctx))) + (hasBuilding(ctx.s, 'sawmill') ? C.SAWMILL_WOOD_BONUS : 0);
       ctx.v.wood_stock = stock(ctx.v.wood_stock + wood);
       let note = '';
       if (cuts > C.WOOD_CUT_SUSTAINABLE) {
@@ -483,13 +486,36 @@ export const ACTIONS: readonly ActionDef[] = [
     code: 'improve_own_housing', label: 'Améliorer mon logement (fonds privés)', description: '1 500 € privés ; requiert l\'accord PLU de Tiphaine.', anyone: true, apCost: 1, requiresPlu: true, delegable: false, physical: true, target: 'structure',
     run: (ctx) => {
       const st = targetStructure(ctx, ['building']);
-      ensure(st.status === 'operational', 'Seule une bâtisse habitable peut être améliorée.');
+      ensure(st.status === 'operational' && !buildingTypeOf(st), 'Seule une bâtisse habitable peut être améliorée.');
       spendPrivate(ctx, ctx.actor, 1500, `Amélioration du logement — ${st.name}`, 'housing');
       st.condition_pct = Math.min(100, st.condition_pct + 10);
       st.owner_player_id = st.owner_player_id ?? ctx.actor.id;
       ctx.actor.morale_pct = Math.round(clamp(ctx.actor.morale_pct + 10, 0, 100));
       ctx.actor.mental_health_pct = Math.round(clamp(ctx.actor.mental_health_pct + 5, 0, 100));
       return `Votre logement à ${st.name} gagne en confort.${physicalRisk(ctx)}`;
+    },
+  },
+  {
+    code: 'plan_building', label: 'Bâtir sur une parcelle libre', description: 'Choisir un nouveau bâtiment (four à pain, fromagerie, lavoir, serre…) et la parcelle où le poser ; la caisse paie le plan, puis le chantier avance par la rénovation.', anyone: true, apCost: 1, pole: 'civil_eng', target: 'none',
+    cost: (_s, req) => findBuildingType(req.params?.variant)?.price_eur ?? 0,
+    precheck: (s, req) => planBlocker(s, req.params?.variant, req.params?.parcel),
+    run: (ctx) => {
+      const variant = ctx.req.params?.variant;
+      const parcelId = ctx.req.params?.parcel;
+      const blocker = planBlocker(ctx.s, variant, parcelId);
+      ensure(!blocker, blocker ?? '');
+      const type = findBuildingType(variant)!;
+      const parcel = findParcel(parcelId)!;
+      spendTreasury(ctx, type.price_eur, `Plan du bâtiment — ${type.label} (${parcel.name})`, 'construction');
+      const st = asAction(() => planBuilding(ctx.s, ctx.holder, variant, parcelId, ctx.rng.fork('plan')));
+      pushEvent(ctx.fx, ctx.s, {
+        event_type: 'building_planned',
+        title: 'Nouveau bâtiment en projet',
+        body: `${ctx.actor.display_name} pose le plan : ${type.icon} ${type.label} sur la parcelle « ${parcel.name} ».`,
+        data: { structure_id: st.id, variant: type.id, parcel: parcel.id },
+      });
+      const plu = st.plu_approved ? '' : ' Il faudra l\'accord PLU de Tiphaine au premier coup de pioche.';
+      return `Plan posé : ${type.label} sur « ${parcel.name} » (${type.price_eur} €). Faites avancer le chantier par « Rénover / construire ».${plu}`;
     },
   },
   {
@@ -506,8 +532,8 @@ export const ACTIONS: readonly ActionDef[] = [
         if (st.condition_pct >= 60) st.status = 'operational';
         return `Réparations à ${st.name} : état ${st.condition_pct} %.${physicalRisk(ctx)}`;
       }
-      const bonus = ctx.holder.role_code === 'civil_eng' ? 1.2 : 1;
-      const gain = progressStructure(ctx, st, 12 * bonus);
+      const bonus = (ctx.holder.role_code === 'civil_eng' ? 1.2 : 1) * (buildingTypeOf(st)?.ease ?? 1);
+      const gain = progressStructure(ctx, st, C.BUILDING_BASE_PROGRESS * bonus);
       return `Chantier ${st.name} : +${gain} % (avancement ${st.progress_pct} %).${physicalRisk(ctx)}`;
     },
   },
@@ -1558,6 +1584,8 @@ export function performAction(input: GameSnapshot, request: ActionRequest, now: 
   const rng = createRng(`${v.id}:act:${v.revision}:${request.actor_id}:${request.action_code}:${now.toISOString()}`);
   const structure = request.target_structure_id ? s.structures.find((st) => st.id === request.target_structure_id) : undefined;
   const costEur = def.cost ? def.cost(s, request) : 0;
+  const early = def.precheck?.(s, request);
+  if (early) return refused(input, early);
 
   const lock = checkLocks(
     s,
