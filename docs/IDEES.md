@@ -26,7 +26,7 @@ Liste demandée par l'utilisateur le 26/11/2026 : **toutes ces idées sont à r�
 | V5.7 | **Résidents avec une personnalité** : prénom, humeur, relations, petites histoires dans la Gazette | ✅ `42a73ad` |
 | V5.8 | **Relations avec les voisins** : jauges Organyà, mairie (Ayuntamiento), Mossos ; petites missions (« le maire d’Organyà demande de déneiger la route ») | ✅ `a7c2eab` |
 | V5.9 | **Visiteurs imprévus** à qui répondre vite : randonneur perdu, journaliste, inspecteur, vendeur ambulant | ✅ `b47fa7d` |
-| V6.0 | **Bilan de la semaine** dans la Gazette du dimanche (qui a fait quoi, records, « habitant de la semaine ») et **frise datée** des grandes étapes du hameau | À faire |
+| V6.0 | **Bilan de la semaine** dans la Gazette du dimanche (qui a fait quoi, records, « habitant de la semaine ») et **frise datée** des grandes étapes du hameau | ✅ `f3675c7` |
 | V6.1 | **Plus d’argent et production automatique** (demandé par l’utilisateur le 27/11/2026) : nouvelles sources de revenus (ventes régulières, commandes, services payants…) et automatisation de la production d’argent ou de ressources (installations, résidents ou contrats qui produisent seuls chaque nuit, avec un coût d’installation et d’entretien pour garder l’équilibre) | À faire |
 
 Les versions suivent le protocole de `CLAUDE.md` (+0,1 à chaque fois ; après V4.9 vient V5.0).
@@ -51,7 +51,7 @@ L'utilisateur a demandé de **bien noter toutes ces idées** : rien ne doit êtr
 - Objectifs d'Acte en liste à cocher : pour l'Acte I par exemple, électricité, 20 lits, 300 m² de potager, gîte ouvert. Chaque étape cochée donne une récompense, et c'est plus parlant qu'un pourcentage d'autonomie. [✅ V5.1]
 - Chantier collectif de la semaine, voté à l'Agora : chacun peut y mettre des PA, une barre de progression est commune à tous, et un bonus tombe s'il est fini avant dimanche. [✅ V5.0]
 - Niveaux de métier visibles : le moteur compte déjà l'expérience. Les niveaux 2, 3 ou 4 débloqueraient des bonus, par exemple +20 % sur les chantiers de Tiphaine ou une fournée double à la forge de Julio. [✅ V5.2]
-- Frise du hameau : l'historique daté des grandes étapes, comme « groupe électrogène installé le… ». [V6.0]
+- Frise du hameau : l'historique daté des grandes étapes, comme « groupe électrogène installé le… ». [✅ V6.0 `f3675c7`]
 
 **Ressources et économie**
 - Marché du samedi à Organyà : vendre tomates, conserves, bois et fromage. L'argent viendrait alors du travail, pas seulement de la chance. [✅ V4.8 ; ✅ fromage et ratafia V5.6 `74f4a26`]
@@ -78,7 +78,7 @@ L'utilisateur a demandé de **bien noter toutes ces idées** : rien ne doit êtr
 - Résidents avec une personnalité : prénom, humeur, relations, petites histoires dans la Gazette. [✅ V5.7 `42a73ad`]
 - Relations avec les voisins : une jauge pour Organyà, une pour la mairie, une pour les Mossos, et de petites missions comme « le maire d'Organyà demande de déneiger la route ». [✅ V5.8 `a7c2eab`]
 - Visiteurs imprévus à qui répondre vite : randonneur perdu, journaliste, inspecteur, vendeur ambulant. [✅ V5.9 `b47fa7d`]
-- Bilan de la semaine dans la Gazette du dimanche : qui a fait quoi, les records, l'« habitant de la semaine ». [V6.0]
+- Bilan de la semaine dans la Gazette du dimanche : qui a fait quoi, les records, l'« habitant de la semaine ». [✅ V6.0 `f3675c7`]
 - Gagner plus d’argent et automatiser la production d’argent ou de ressources : nouvelles sources de revenus et installations ou contrats qui produisent seuls chaque nuit (ajoutée par l’utilisateur le 27/11/2026). [V6.1]
 
 **Top 5 retenu en premier** (meilleur plaisir pour un effort raisonnable) : 1. marché du samedi avec de vrais usages pour les tomates et le bois [✅ V4.8] ; 2. travail des résidents [✅ V4.9] ; 3. chantier collectif de la semaine [✅ V5.0] ; 4. objectifs d'Acte à cocher avec récompenses [✅ V5.1] ; 5. ambitions secrètes [❌ retirée le 27/11/2026]. Le chauffage au bois en hiver, plus petit, a accompagné le premier [✅ V4.8].
