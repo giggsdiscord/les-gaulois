@@ -638,6 +638,39 @@ export const VISITOR_DUE_HOUR = 21; // [GDD §5.10]
 export const VISITOR_GAP = 1; // [GDD §5.10]
 
 // ---------------------------------------------------------------------------
+// Bilan de la semaine & frise du hameau [GDD §5.11, V6.0]
+/** Points du score de la semaine : par PA dépensé, par action, mission du jour, coup de main, binôme. */
+export const WEEK_SCORE = { ap: 2, action: 1, mission: 3, help: 2, duo: 1 } as const; // [GDD §5.11]
+/** Actions comptées comme « coups de main » au hameau. */
+export const WEEK_HELP_ACTIONS: string[] = ['contribute_collective', 'help_neighbors', 'answer_visitor', 'cheer_resident']; // [GDD §5.11]
+/** Récompense de l'habitant de la semaine : XP de métier et moral du hameau. */
+export const WEEK_HERO_XP = 30; // [GDD §5.11]
+export const WEEK_HERO_MORALE = 1; // [GDD §5.11]
+/** Nombre d'habitants cités dans le classement du bilan. */
+export const WEEK_PODIUM = 3; // [GDD §5.11]
+/** Étapes gardées dans la frise (les plus anciennes s'effacent). */
+export const TIMELINE_MAX = 60; // [GDD §5.11]
+/** Événements du moteur qui entrent dans la frise, avec leur icône. */
+export const TIMELINE_EVENTS: Record<string, string> = {
+  structure_completed: '🏗️',
+  building_upgraded: '⬆️',
+  gite_opened: '🛏️',
+  energy_tier: '⚡',
+  act_changed: '📜',
+  act_goal_done: '🎯',
+  act_goals_complete: '🏅',
+  collective_completed: '🤝',
+  election_result: '🗳️',
+  neighbor_mission_done: '🏘️',
+  migrant_admitted: '🧳',
+  naturalization: '🪪',
+  birth: '👶',
+  marriage: '💍',
+  independence: '🏰',
+  putsch_success: '⚔️',
+}; // [GDD §5.11]
+
+// ---------------------------------------------------------------------------
 // Chantier collectif de la semaine [GDD §5.5, V5.0]
 // ---------------------------------------------------------------------------
 export type CollectiveProjectId = 'woodpile' | 'track_day' | 'water_works' | 'garden_extension' | 'site_rush' | 'village_feast';

@@ -213,6 +213,82 @@ export interface VillageLife {
   visitor_last?: VisitorResult | null;
   /** Pas de nouveau visiteur avant ce jour local (AAAA-MM-JJ). */
   visitor_next_day?: string | null;
+  /** Compteurs de la semaine en cours (V6.0), remis à zéro au bilan du lundi. */
+  week_stats?: WeekStats | null;
+  /** Dernier bilan de la semaine (V6.0). */
+  week_last?: WeekReview | null;
+  /** Records du hameau (V6.0). */
+  records?: VillageRecords;
+  /** Frise datée des grandes étapes du hameau (V6.0), de la plus ancienne à la plus récente. */
+  timeline?: TimelineEntry[];
+}
+
+/** Ce qu'un joueur a fait pendant la semaine (V6.0). */
+export interface PlayerWeek {
+  actions: number;
+  ap: number;
+  missions: number;
+  helps: number;
+  duos: number;
+  /** Actions faites, par code. */
+  codes: Record<string, number>;
+}
+
+export interface WeekStats {
+  /** Premier jour local compté (AAAA-MM-JJ). */
+  since: string;
+  players: Record<string, PlayerWeek>;
+}
+
+export interface WeekRank {
+  player_id: string;
+  name: string;
+  actions: number;
+  ap: number;
+  missions: number;
+  helps: number;
+  score: number;
+  /** Action la plus faite (code). */
+  favorite: string | null;
+}
+
+export interface WeekReview {
+  /** Numéro de la semaine de jeu (saison) close. */
+  week: number;
+  from: string;
+  to: string;
+  total_actions: number;
+  total_ap: number;
+  ranking: WeekRank[];
+  hero_id: string | null;
+  /** Records battus cette semaine (phrases). */
+  records: string[];
+}
+
+export interface VillageRecord {
+  value: number;
+  week: number;
+  player_id?: string;
+  name?: string;
+}
+
+export interface VillageRecords {
+  /** Plus de PA dépensés par un joueur en une semaine. */
+  week_ap?: VillageRecord;
+  /** Plus d'actions du hameau en une semaine. */
+  week_actions?: VillageRecord;
+  /** Plus de coups de main d'un joueur en une semaine. */
+  week_helps?: VillageRecord;
+}
+
+/** Étape de la frise du hameau (V6.0). */
+export interface TimelineEntry {
+  /** Jour local (AAAA-MM-JJ). */
+  day: string;
+  /** Type d'événement du moteur. */
+  kind: string;
+  icon: string;
+  title: string;
 }
 
 /** Visiteur imprévu (V5.9). */

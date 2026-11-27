@@ -222,4 +222,15 @@ describe('Nuit : monde réel, Gazette, migrants, tentations', () => {
     expect(payload.ai_calls?.length).toBe(1 + 2 + 7);
     expect(payload.tavern_messages?.some((t) => t.content.startsWith('📰'))).toBe(true);
   });
+
+  it('la Gazette du lundi publie le bilan de la semaine (V6.0)', async () => {
+    const st = state();
+    st.snapshot.village.last_tick_at = '2026-11-29T12:00:00.000Z';
+    st.snapshot.village.life = { week_stats: { since: '2026-11-23', players: { [ELY]: { actions: 4, ap: 5, missions: 1, helps: 1, duos: 0, codes: { cut_wood: 4 } } } } };
+    const gs = session(st, '2026-11-29T23:10:00Z');
+    const gazette = await gs.writeGazette('2026-11-30', []);
+    const section = gazette.sections.find((x) => x.title === 'Bilan de la semaine');
+    expect(section?.items[0]).toMatch(/habitant de la semaine$/);
+    expect(section?.items[1]).toContain('4 actions et 5 PA');
+  });
 });

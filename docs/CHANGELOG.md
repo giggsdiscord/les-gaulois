@@ -1,5 +1,11 @@
 # Historique des versions du GDD
 
+### V6.0 — 27/11/2026 — Bilan de la semaine & frise du hameau
+- **Score de la semaine** (§5.11) : chaque action réussie compte (2 pts par PA, 1 par action, 3 par mission du jour, 2 par coup de main — chantier, voisins, visiteur, résident —, 1 par binôme).
+- **Bilan du lundi** : classement, **habitant de la semaine** (+30 XP de métier, moral +1 %), **records** du hameau ; événement « Bilan de la semaine : … » et section de la Gazette (et de l’édition de secours).
+- **Frise du hameau** : les grandes étapes (chantiers livrés, objectifs d’Acte, élections, chantiers collectifs, naissances, arrivées…) datées, 60 au plus.
+- Onglet Gazette : cartes « Bilan de la semaine » et « Frise du hameau ». Aucune migration (`village_state.life.week_stats` / `week_last` / `records` / `timeline`) ; 14 nouveaux tests Vitest.
+
 ### V5.9 — 27/11/2026 — Visiteurs imprévus
 - **Un visiteur certaines nuits** (§5.10, 35 % après une nuit de pause) : randonneur perdu, journaliste, inspecteur de la mairie ou vendeur ambulant.
 - **Répondre avant 21 h** : action « Répondre au visiteur » (1 PA, parfois des ressources), deux choix par visiteur ; effets sur la caisse, le moral, la notoriété, la pression administrative et les jauges des voisins (V5.8).

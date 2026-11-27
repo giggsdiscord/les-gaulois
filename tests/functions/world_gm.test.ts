@@ -196,4 +196,10 @@ describe('Maître du Jeu IA', () => {
     const r = fallbackResponse({ kind: 'gazette', date: '2026-11-28', events: [{ title: 'Chantier achevé', body: '« Four » est livré.' }, visit], scandals: [] }, CTX, 's');
     expect(r.narrative_text).toContain('De passage : 🧐 Un inspecteur');
   });
+
+  it('Gazette de secours : le bilan de la semaine (V6.0) paraît sans IA', () => {
+    const week = { title: 'Bilan de la semaine : Ely, habitant de la semaine', body: '12 actions et 14 PA cette semaine. 1. Ely (5 actions, 6 PA).' };
+    const r = fallbackResponse({ kind: 'gazette', date: '2026-11-30', events: [{ title: 'Chantier achevé', body: '« Four » est livré.' }, week], scandals: [] }, CTX, 's');
+    expect(r.narrative_text).toContain('Bilan de la semaine : 12 actions et 14 PA');
+  });
 });

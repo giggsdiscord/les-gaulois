@@ -14,6 +14,7 @@ import { advanceStructure, BUILDING_KINDS, findWorkPost, forestBan, residentSkil
 import { cheerBlocker, cheerResident, firstName, temperOf } from './personality.ts';
 import { adjustNeighbor, helpNeighbors, missionCostText, neighborHelpBlocker } from './neighbors.ts';
 import { answerVisitor, visitorBlocker } from './visitors.ts';
+import { recordWeekAction } from './chronicle.ts';
 import { contributeToCollective, currentCollective, findCollectiveProject } from './collective.ts';
 import { buildingTypeOf, findBuildingType, findParcel, hasBuilding, planBlocker, planBuilding } from './buildings.ts';
 import { applyUpgrade, maintainBlocker, nextUpgrade, UPGRADABLE_KINDS, upgradeBlocker, upgradeGains, WEARING_KINDS } from './upkeep.ts';
@@ -1739,7 +1740,14 @@ export function performAction(input: GameSnapshot, request: ActionRequest, now: 
   const levelBefore = skillLevel(actor.skill_xp);
   actor.skill_xp += 5 + apSpent * 5;
   if (executing) markGroupExecuted(s, executing);
+  const today = dayKeyOf(now);
+  const missionBefore = ensureLife(v).missions_done?.[actor.id]?.day === today;
   narrative += applyDailyExtras(ctx, duoGroup, levelBefore, mission);
+  // Bilan de la semaine (V6.0) : compteurs de l'acteur
+  recordWeekAction(v, actor.id, def.code, apSpent, {
+    mission: !missionBefore && ensureLife(v).missions_done?.[actor.id]?.day === today,
+    duo: duo.length > 0,
+  }, today);
 
   const p = localParts(now);
   refreshDerived(s, now, calendarSeasonOf(p.month, p.day), fx);

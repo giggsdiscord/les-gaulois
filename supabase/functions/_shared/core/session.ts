@@ -101,6 +101,8 @@ const STORY_PREFIX = 'Petite histoire : ';
 const NEIGHBOR_PREFIX = 'Voisins : ';
 /** Titre des événements de visite (V5.9, `VISITOR_EVENT_PREFIX` du moteur). */
 const VISITOR_PREFIX = 'Visiteur : ';
+/** Titre du bilan hebdomadaire (V6.0, `WEEK_REVIEW_PREFIX` du moteur). */
+const WEEK_PREFIX = 'Bilan de la semaine : ';
 const fail = (error: string): OpResult => ({ ok: false, error });
 
 const ACTION_INPUT_KEYS = [
@@ -666,6 +668,8 @@ export class GameSession {
       headline: g.response.gazette_headline || 'La Gazette du hameau',
       body_markdown: g.response.narrative_text,
       sections: [
+        // Bilan de la semaine (V6.0) : publié dans la Gazette de la nuit du dimanche au lundi
+        { title: 'Bilan de la semaine', items: events.filter((e) => e.title.startsWith(WEEK_PREFIX)).slice(-1).flatMap((e) => [e.title.slice(WEEK_PREFIX.length).replace(/^./, (c) => c.toUpperCase()), e.body]) },
         { title: 'Faits du jour', items: events.slice(-12).map((e) => e.title) },
         // Petite histoire des résidents (V5.7) : écrite par le moteur, publiée même sans IA
         { title: 'Petite histoire du hameau', items: events.filter((e) => e.title.startsWith(STORY_PREFIX)).slice(-1).map((e) => `${e.title.slice(STORY_PREFIX.length)} — ${e.body}`) },

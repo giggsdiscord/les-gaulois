@@ -5,6 +5,7 @@ import { navigate, useRoute } from '../lib/router.ts';
 import { useUnread } from '../state/UnreadContext.tsx';
 import { Avatar, Badge, Button, Card, Empty, SectionTitle, Segmented, Tabs, TextArea, cx } from '../components/ui.tsx';
 import { ElectionCard } from '../components/ElectionCard.tsx';
+import { TimelineCard, WeekReviewCard } from '../components/ChronicleCard.tsx';
 import { isMajorEvent, splitPublicEvents } from '../lib/events.ts';
 import { dateLong, relative, timeShort } from '../lib/format.ts';
 import { CHANNEL_LABEL } from '../lib/labels.ts';
@@ -111,6 +112,8 @@ function Gazette() {
   return (
     <div className="space-y-4">
       {latest ? <Edition e={latest} latest /> : <Empty>La première édition paraîtra cette nuit.</Empty>}
+      <WeekReviewCard />
+      <TimelineCard />
       <Card title="Le monde réel autour du hameau">
         <p className="text-sm">
           🌦️ {v.real_weather_summary} — {Math.round(v.real_temp_min_c)}° / {Math.round(v.real_temp_c)}°C{v.real_precip_mm > 0 ? `, ${v.real_precip_mm} mm` : ''}

@@ -50,6 +50,7 @@ import { createRng, type Rng } from './rng.ts';
 import { processResidentWork } from './work.ts';
 import { processNeighbors } from './neighbors.ts';
 import { processVisitors } from './visitors.ts';
+import { closeWeekReview, recordMilestones } from './chronicle.ts';
 import { pickPutschLeader, putschConditions, updateIdeologyAndFriction, updateSubstancesAndBlackMarket } from './society.ts';
 import type { CalendarSeason, EngineEffects, GameSnapshot } from './types.ts';
 
@@ -87,11 +88,13 @@ function closeDay(s: GameSnapshot, fx: EngineEffects, endedKey: string, midnight
   processNeighbors(s, fx, endedKey, season, createRng(`${v.id}:neighbors:${endedKey}`));
   // Visiteurs imprévus (V5.9) : visite sans réponse, puis peut-être un nouveau visiteur
   processVisitors(s, fx, endedKey, createRng(`${v.id}:visitors:${endedKey}`));
-  refreshDerived(s, midnight, season, fx);
+  refreshDerived(s, midnight, season, fx, endedKey);
   // Premier chantier collectif (V5.0) : ouvert dès la première nuit, sauf le lundi (closeSeason s'en charge)
   if (!lifeOf(v).collective && localParts(midnight).weekday !== 1) startWeeklyProject(s, fx, rng.fork('collective'), midnight);
   // Élections vivantes des portefeuilles (V5.3)
   processElections(s, fx, endedKey, midnight);
+  // Frise du hameau (V6.0) : étapes de la nuit, datées du jour écoulé
+  recordMilestones(s, fx, endedKey);
   v.game_day += 1;
 }
 
@@ -279,7 +282,7 @@ function updateMoraleAndDiplomacy(s: GameSnapshot, midnight: Date): void {
 }
 
 /** Recalcule les grandeurs dérivées (productivité, insécurité, autonomie, Acte). */
-export function refreshDerived(s: GameSnapshot, now: Date, season: CalendarSeason, fx: EngineEffects): void {
+export function refreshDerived(s: GameSnapshot, now: Date, season: CalendarSeason, fx: EngineEffects, day: string = dayKey(now)): void {
   const v = s.village;
   v.housing_capacity = computeHousingCapacity(s);
   v.productivity_modifier_pct = computeProductivity(s).total;
@@ -287,6 +290,8 @@ export function refreshDerived(s: GameSnapshot, now: Date, season: CalendarSeaso
   updateAutonomyAndAct(s, now, season, fx);
   // Objectifs d'Acte (V5.1) : une étape cochée verse sa récompense (dette, moral) -> autonomie recalculée
   if (checkActGoals(s, fx, now).length > 0) updateAutonomyAndAct(s, now, season, fx);
+  // Frise du hameau (V6.0) : les grandes étapes sont datées au fil de l'eau
+  recordMilestones(s, fx, day);
 }
 
 function updateAutonomyAndAct(s: GameSnapshot, _now: Date, season: CalendarSeason, fx: EngineEffects): void {
@@ -441,6 +446,10 @@ function closeSeason(s: GameSnapshot, fx: EngineEffects, midnight: Date): void {
     },
   });
 
+  // Bilan de la semaine (V6.0) : classement, habitant de la semaine, records (avant la remise à zéro)
+  const endedKey = addDaysToKey(dayKey(midnight), -1);
+  closeWeekReview(s, fx, endedKey);
+
   // Remise à zéro hebdomadaire
   for (const p of s.players) {
     p.veto_tokens = (C.VETO_ROLES as string[]).includes(p.role_code) && p.is_active_slot ? 1 : 0;
@@ -454,6 +463,7 @@ function closeSeason(s: GameSnapshot, fx: EngineEffects, midnight: Date): void {
   v.new_adults_this_season = 0;
   resetSeasonLife(v);
   closeCollectiveWeek(s, fx, rng.fork('collective'), midnight);
+  recordMilestones(s, fx, endedKey);
   v.season_number += 1;
 }
 
