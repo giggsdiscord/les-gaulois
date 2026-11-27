@@ -13,6 +13,7 @@
 import * as C from './constants.ts';
 import { pushLedger } from './effects.ts';
 import { ensureLife, lifeOf } from './life.ts';
+import { permitBlocker } from './neighbors.ts';
 import { outputFactor } from './upkeep.ts';
 import { gauge, money, round2, stock } from './math.ts';
 import { activePlayers } from './population.ts';
@@ -69,6 +70,8 @@ export function planBlocker(s: StructuresView, variant: unknown, parcelId: unkno
   if (parcelOccupant(s, parcel.id)) return `La parcelle « ${parcel.name} » est déjà prise.`;
   if (existingBuilding(s, type.id)) return `Le hameau a déjà son ${type.label.toLowerCase()}.`;
   if (type.river && !parcel.river) return `${type.label} : seulement sur une parcelle en bord de rivière.`;
+  const permit = permitBlocker(s.village);
+  if (permit) return permit;
   if (openBuildingProjects(s).length >= C.BUILDING_MAX_OPEN_PROJECTS) {
     return `Déjà ${C.BUILDING_MAX_OPEN_PROJECTS} nouveaux bâtiments en projet : finissez-en un d'abord.`;
   }

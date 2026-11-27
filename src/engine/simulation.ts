@@ -42,11 +42,12 @@ import { checkActGoals } from './goals.ts';
 import { closeCollectiveWeek, startWeeklyProject } from './collective.ts';
 import { hasBuilding, processBuildings } from './buildings.ts';
 import { processElections } from './elections.ts';
-import { lifeOf, processHeating, resetSeasonLife } from './life.ts';
+import { lifeOf, neighborGauge, processHeating, resetSeasonLife } from './life.ts';
 import { clamp, deepClone, gauge, money, stepToward, stock } from './math.ts';
 import { activePlayers, computeHousingCapacity, countPopulation, residents, structureByCode } from './population.ts';
 import { createRng, type Rng } from './rng.ts';
 import { processResidentWork } from './work.ts';
+import { processNeighbors } from './neighbors.ts';
 import { pickPutschLeader, putschConditions, updateIdeologyAndFriction, updateSubstancesAndBlackMarket } from './society.ts';
 import type { CalendarSeason, EngineEffects, GameSnapshot } from './types.ts';
 
@@ -80,6 +81,8 @@ function closeDay(s: GameSnapshot, fx: EngineEffects, endedKey: string, midnight
   updateIdeologyAndFriction(s, fx, rng.fork('society'), midnight);
   updateSubstancesAndBlackMarket(s, fx, rng.fork('substances'));
   updateMoraleAndDiplomacy(s, midnight);
+  // Relations avec les voisins (V5.8) : jauges, effets, échéance et nouvelle demande
+  processNeighbors(s, fx, endedKey, season, createRng(`${v.id}:neighbors:${endedKey}`));
   refreshDerived(s, midnight, season, fx);
   // Premier chantier collectif (V5.0) : ouvert dès la première nuit, sauf le lundi (closeSeason s'en charge)
   if (!lifeOf(v).collective && localParts(midnight).weekday !== 1) startWeeklyProject(s, fx, rng.fork('collective'), midnight);
@@ -489,7 +492,7 @@ function processGite(s: GameSnapshot, fx: EngineEffects, rng: Rng): void {
   // Marginaux attirés [GDD §5.3]
   v.drug_prevalence_pct = gauge(v.drug_prevalence_pct + 1.5);
   v.left_wing_ideology_pct = gauge(v.left_wing_ideology_pct + 1);
-  const controlRisk = 15 + v.admin_pressure_pct / 10 - (activePlayers(s).some((p) => p.ministerial_portfolios.includes('chancery')) ? 7 : 0);
+  const controlRisk = 15 + v.admin_pressure_pct / 10 - (activePlayers(s).some((p) => p.ministerial_portfolios.includes('chancery')) ? 7 : 0) + (neighborGauge(v, 'mossos') <= C.NEIGHBOR_BAD ? C.NEIGHBOR_GITE_CONTROL : 0);
   if (rng.chance(controlRisk)) {
     const fine = money(rng.int(500, 1500));
     v.treasury_eur = money(v.treasury_eur - fine);

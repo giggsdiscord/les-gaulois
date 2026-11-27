@@ -497,6 +497,79 @@ export const RIVAL_MIN_RESIDENTS = 3;
 export const STORY_CHANCE_PCT = 50; // [GDD §4.8]
 
 // ---------------------------------------------------------------------------
+// Relations avec les voisins [GDD §5.9, V5.8]
+// ---------------------------------------------------------------------------
+export type NeighborId = 'organya' | 'ayuntamiento' | 'mossos';
+export interface NeighborDef {
+  id: NeighborId;
+  label: string;
+  short: string;
+  icon: string;
+  /** Effet d'une bonne relation (≥ NEIGHBOR_GOOD) et d'une mauvaise (≤ NEIGHBOR_BAD), pour l'interface. */
+  good: string;
+  bad: string;
+}
+export const NEIGHBORS: readonly NeighborDef[] = [
+  { id: 'organya', label: 'Le village d’Organyà', short: 'Organyà', icon: '🏘️', good: 'prix du marché +10 %', bad: 'prix du marché −10 %' },
+  { id: 'ayuntamiento', label: 'La mairie (Ayuntamiento)', short: 'Mairie', icon: '🏛️', good: 'pression administrative en baisse chaque nuit', bad: 'pression administrative en hausse ; sous 20, plus de permis de construire' },
+  { id: 'mossos', label: 'Les Mossos d’Esquadra', short: 'Mossos', icon: '🚓', good: 'alerte des douanes en baisse chaque nuit', bad: 'alerte des douanes en hausse, contrôles du gîte plus fréquents' },
+]; // [GDD §5.9]
+/** Jauges 0–100 : départ et valeur vers laquelle elles reviennent doucement chaque nuit. */
+export const NEIGHBOR_DEFAULT = 50; // [GDD §5.9]
+export const NEIGHBOR_DRIFT = 0.5; // [GDD §5.9] points par nuit vers 50
+export const NEIGHBOR_GOOD = 70; // [GDD §5.9]
+export const NEIGHBOR_BAD = 30; // [GDD §5.9]
+/** Effets des jauges. */
+export const NEIGHBOR_MARKET_FACTOR = 0.1; // [GDD §5.9] prix du marché ±10 % (Organyà)
+export const NEIGHBOR_ADMIN_SHIFT = 0.3; // [GDD §5.9] pression administrative ∓ par nuit (mairie)
+export const NEIGHBOR_PERMIT_MIN = 20; // [GDD §5.9] mairie sous ce seuil : plus de nouveau bâtiment
+export const NEIGHBOR_CUSTOMS_SHIFT = 1; // [GDD §5.9] alerte des douanes ∓ par nuit (Mossos)
+export const NEIGHBOR_GITE_CONTROL = 5; // [GDD §5.9] risque de contrôle du gîte + (Mossos ≤ 30)
+/** Ce qui fait bouger les jauges au quotidien. */
+export const NEIGHBOR_MARKET_SALE_GAIN = 0.5; // [GDD §5.9] Organyà + par vente au marché
+export const NEIGHBOR_DIPLOMACY_GAIN = 5; // [GDD §5.9] mairie + par négociation réussie (−3 en cas de quiproquo)
+export const NEIGHBOR_STRAIN = 0.5; // [GDD §5.9] par nuit : pression admin > 60 (mairie), alerte douane > 50 (Mossos), insécurité > 50 (Organyà)
+/** Nuits sans mission entre deux demandes des voisins. */
+export const NEIGHBOR_MISSION_GAP = 1; // [GDD §5.9]
+
+export type NeighborCostKey = 'wood_stock' | 'food_rations' | 'tomatoes_stock' | 'treasury_eur';
+export type NeighborMissionWhen = 'cold' | 'warm' | 'any';
+export interface NeighborMissionDef {
+  id: string;
+  from: NeighborId;
+  icon: string;
+  /** Titre court (« Déneiger la route »). */
+  title: string;
+  /** Demande du voisin, au style indirect. */
+  ask: string;
+  /** Coups de main (PA) nécessaires. */
+  steps: number;
+  /** Coût de chaque coup de main (en plus du PA). */
+  cost?: Partial<Record<NeighborCostKey, number>>;
+  /** Jours pour répondre (le jour d'ouverture compte). */
+  days: number;
+  /** Jauge + si la mission est remplie ; − si elle échoue. */
+  reward: number;
+  penalty: number;
+  /** Bonus concret (texte) appliqué par `missionBonus`. */
+  bonus: string;
+  when: NeighborMissionWhen;
+  physical?: boolean;
+}
+export const NEIGHBOR_MISSIONS: readonly NeighborMissionDef[] = [
+  { id: 'snow_road', from: 'organya', icon: '❄️', title: 'Déneiger la route', ask: 'Le maire d’Organyà demande de déneiger la route du col.', steps: 3, days: 2, reward: 12, penalty: 8, bonus: 'piste +5 %', when: 'cold', physical: true },
+  { id: 'firewood_elders', from: 'organya', icon: '🪵', title: 'Du bois pour les anciens', ask: 'Les anciens d’Organyà manquent de bois pour leurs poêles.', steps: 2, cost: { wood_stock: 10 }, days: 3, reward: 12, penalty: 6, bonus: 'moral +3 %', when: 'cold' },
+  { id: 'harvest_hands', from: 'organya', icon: '🌾', title: 'Des bras pour les foins', ask: 'Une famille d’Organyà demande des bras pour rentrer les foins avant l’orage.', steps: 2, days: 2, reward: 10, penalty: 6, bonus: '+15 rations offertes', when: 'warm', physical: true },
+  { id: 'fiesta_tomatoes', from: 'organya', icon: '🍅', title: 'Tomates pour la fête', ask: 'Le comité des fêtes d’Organyà cherche des tomates pour le pa amb tomàquet.', steps: 1, cost: { tomatoes_stock: 10 }, days: 3, reward: 10, penalty: 5, bonus: 'moral +3 %', when: 'warm' },
+  { id: 'census', from: 'ayuntamiento', icon: '📋', title: 'Registre des habitants', ask: 'La mairie réclame le registre des habitants du hameau, à jour et signé.', steps: 2, days: 3, reward: 12, penalty: 8, bonus: 'pression administrative −5 %', when: 'any' },
+  { id: 'clear_path', from: 'ayuntamiento', icon: '🌿', title: 'Débroussailler le chemin', ask: 'La mairie demande de débroussailler le chemin communal contre les incendies.', steps: 2, days: 3, reward: 10, penalty: 6, bonus: 'piste +3 %', when: 'warm', physical: true },
+  { id: 'snowplough_fund', from: 'ayuntamiento', icon: '🚜', title: 'Participer au chasse-neige', ask: 'La mairie sollicite une participation au chasse-neige communal.', steps: 1, cost: { treasury_eur: 60 }, days: 3, reward: 10, penalty: 5, bonus: 'pression administrative −3 %', when: 'cold' },
+  { id: 'patrol_report', from: 'mossos', icon: '🔦', title: 'Signaler les passages', ask: 'Les Mossos demandent de noter les véhicules suspects sur la piste pendant deux soirs.', steps: 2, days: 3, reward: 12, penalty: 6, bonus: 'alerte des douanes −5 %', when: 'any' },
+  { id: 'clear_track', from: 'mossos', icon: '🚧', title: 'Dégager la piste', ask: 'Les Mossos demandent de dégager les pierres tombées sur la piste d’accès.', steps: 2, days: 2, reward: 8, penalty: 5, bonus: 'piste +3 %', when: 'any', physical: true },
+  { id: 'open_house', from: 'mossos', icon: '☕', title: 'Café avec la patrouille', ask: 'La patrouille des Mossos passerait volontiers boire un café et faire connaissance.', steps: 1, cost: { food_rations: 5 }, days: 2, reward: 8, penalty: 4, bonus: 'insécurité apaisée (sécurité +3 %)', when: 'any' },
+]; // [GDD §5.9]
+
+// ---------------------------------------------------------------------------
 // Chantier collectif de la semaine [GDD §5.5, V5.0]
 // ---------------------------------------------------------------------------
 export type CollectiveProjectId = 'woodpile' | 'track_day' | 'water_works' | 'garden_extension' | 'site_rush' | 'village_feast';

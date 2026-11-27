@@ -199,6 +199,33 @@ export interface VillageLife {
   supply_last?: SupplyNight | null;
   /** Dernière petite histoire des résidents (V5.7), reprise par la Gazette. */
   story_last?: ResidentStory | null;
+  /** Relations avec les voisins (V5.8) : jauges 0–100 (50 par défaut). */
+  neighbors?: Partial<Record<'organya' | 'ayuntamiento' | 'mossos', number>>;
+  /** Demande des voisins en cours (V5.8) ; null = aucune. */
+  neighbor_mission?: NeighborMission | null;
+  /** Dernière demande close (remplie ou manquée). */
+  neighbor_last?: NeighborMissionResult | null;
+  /** Pas de nouvelle demande avant ce jour local (AAAA-MM-JJ). */
+  neighbor_next_day?: string | null;
+}
+
+/** Demande d'un voisin (V5.8). */
+export interface NeighborMission {
+  id: string;
+  /** Jour local d'ouverture et dernier jour pour répondre (AAAA-MM-JJ). */
+  opened_day: string;
+  due_day: string;
+  /** Coups de main déjà donnés, et par qui (joueur → nombre). */
+  done_steps: number;
+  helpers: Record<string, number>;
+}
+
+export interface NeighborMissionResult {
+  id: string;
+  outcome: 'done' | 'failed';
+  day: string;
+  /** Variation de la jauge du voisin. */
+  delta: number;
 }
 
 /** Personnalité d'un résident (V5.7, `village_migrants.traits`) : clés facultatives. */

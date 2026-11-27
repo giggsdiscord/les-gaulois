@@ -97,6 +97,8 @@ export interface OpResult {
 
 /** Titre des petites histoires de résidents (V5.7, événement `resident_story` du moteur). */
 const STORY_PREFIX = 'Petite histoire : ';
+/** Titre des événements de voisinage (V5.8, `NEIGHBOR_EVENT_PREFIX` du moteur). */
+const NEIGHBOR_PREFIX = 'Voisins : ';
 const fail = (error: string): OpResult => ({ ok: false, error });
 
 const ACTION_INPUT_KEYS = [
@@ -665,6 +667,8 @@ export class GameSession {
         { title: 'Faits du jour', items: events.slice(-12).map((e) => e.title) },
         // Petite histoire des résidents (V5.7) : écrite par le moteur, publiée même sans IA
         { title: 'Petite histoire du hameau', items: events.filter((e) => e.title.startsWith(STORY_PREFIX)).slice(-1).map((e) => `${e.title.slice(STORY_PREFIX.length)} — ${e.body}`) },
+        // Relations avec les voisins (V5.8) : demandes ouvertes, remplies ou manquées
+        { title: 'Chez les voisins', items: events.filter((e) => e.title.startsWith(NEIGHBOR_PREFIX)).slice(-2).map((e) => `${e.title.slice(NEIGHBOR_PREFIX.length).replace(/^./, (c) => c.toUpperCase())} — ${e.body}`) },
         { title: 'Météo réelle', items: [v.real_weather_summary] },
         { title: 'Actualité réelle', items: this.news.slice(0, 5) },
         { title: 'Scandales', items: scandals },

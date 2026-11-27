@@ -1,5 +1,11 @@
 # Historique des versions du GDD
 
+### V5.8 — 27/11/2026 — Relations avec les voisins
+- **Trois jauges** (§5.9) : Organyà, la mairie (Ayuntamiento) et les Mossos, de 0 à 100, qui reviennent doucement vers 50 ; ventes au marché et négociations à l’Ayuntamiento les font monter.
+- **Petites demandes de voisinage**, une à la fois, avec échéance : déneiger la route, du bois pour les anciens, registre des habitants, patrouille… Nouvelle action « Rendre service aux voisins » (1 PA, parfois des ressources).
+- **Effets** : prix du marché ±10 % (Organyà), pression administrative et permis de construire (mairie), alerte des douanes et contrôles du gîte (Mossos).
+- Carte « Les voisins » (accueil et Agora), priorité, section « Chez les voisins » de la Gazette. Aucune migration (\`village_state.life.neighbors\`, \`neighbor_mission\`) ; 12 nouveaux tests Vitest.
+
 ### V5.7 — 27/11/2026 — Résidents avec une personnalité
 - **Caractère** (§4.8) : chaque résident est bosseur, boute-en-train, ronchon, frileux, gourmand, solitaire ou bavard (tiré de son identifiant, stable).
 - **Humeur** 0–100 chaque nuit : le travail, le repas et les amis la font monter ; l'inactivité, la faim, le froid, une blessure ou un rival au même poste la font baisser. Joyeux (≥ 75) : rendement +10 % ; maussade (< 30) : −15 %.

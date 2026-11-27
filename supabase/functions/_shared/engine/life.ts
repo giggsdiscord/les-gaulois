@@ -22,6 +22,18 @@ export function ensureLife(v: VillageState): VillageLife {
   return v.life;
 }
 
+/** Jauge de relation avec un voisin (V5.8), 0–100, 50 par défaut. */
+export function neighborGauge(v: Pick<VillageState, 'life'>, id: C.NeighborId): number {
+  const n = Number(lifeOf(v).neighbors?.[id]);
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : C.NEIGHBOR_DEFAULT;
+}
+
+/** Prix du marché selon la relation avec Organyà (V5.8) : ×1,1 si bonne, ×0,9 si mauvaise. */
+export function neighborMarketFactor(v: Pick<VillageState, 'life'>): number {
+  const g = neighborGauge(v, 'organya');
+  return g >= C.NEIGHBOR_GOOD ? 1 + C.NEIGHBOR_MARKET_FACTOR : g <= C.NEIGHBOR_BAD ? 1 - C.NEIGHBOR_MARKET_FACTOR : 1;
+}
+
 // ---------------------------------------------------------------------------
 // Marché d'Organyà
 // ---------------------------------------------------------------------------
@@ -57,7 +69,7 @@ export function marketQuote(v: MarketVillage, itemId: string | null | undefined,
   // Saturation moyenne sur la vente : la moitié de la quantité vendue compte déjà
   const saturation = Math.min(1, (sold + units / 2) / item.weekly_cap);
   const language = C.MARKET_LANGUAGE_MIN + ((C.MARKET_LANGUAGE_MAX - C.MARKET_LANGUAGE_MIN) * Math.max(0, Math.min(100, v.spanish_fluency_pct))) / 100;
-  const unitPrice = money(item.price_eur * (saturday ? 1 + C.MARKET_SATURDAY_BONUS : 1) * (1 - C.MARKET_SATURATION_DROP * saturation) * language);
+  const unitPrice = money(item.price_eur * (saturday ? 1 + C.MARKET_SATURDAY_BONUS : 1) * (1 - C.MARKET_SATURATION_DROP * saturation) * language * neighborMarketFactor(v));
   return {
     item,
     lots: n,

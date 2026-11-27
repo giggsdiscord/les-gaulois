@@ -59,7 +59,7 @@ export const ACTION_CATEGORIES: readonly ActionCategory[] = [
     id: 'diplomatie',
     emoji: '🤝',
     label: 'Diplomatie & image',
-    codes: ['diplomacy_ayuntamiento', 'negotiate_spain_andorra', 'international_recognition', 'editorial', 'counter_defamation'],
+    codes: ['help_neighbors', 'diplomacy_ayuntamiento', 'negotiate_spain_andorra', 'international_recognition', 'editorial', 'counter_defamation'],
   },
   {
     id: 'ordre',

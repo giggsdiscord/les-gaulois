@@ -13,6 +13,7 @@ import { applyInjury, healInjury, injuryRiskPct, isDetained } from './health.ts'
 import { applyMarketSale, ensureLife, marketQuote } from './life.ts';
 import { advanceStructure, BUILDING_KINDS, findWorkPost, forestBan, residentSkill } from './work.ts';
 import { cheerBlocker, cheerResident, firstName, temperOf } from './personality.ts';
+import { adjustNeighbor, helpNeighbors, missionCostText, neighborHelpBlocker } from './neighbors.ts';
 import { contributeToCollective, currentCollective, findCollectiveProject } from './collective.ts';
 import { buildingTypeOf, findBuildingType, findParcel, hasBuilding, planBlocker, planBuilding } from './buildings.ts';
 import { applyUpgrade, maintainBlocker, nextUpgrade, UPGRADABLE_KINDS, upgradeBlocker, upgradeGains, WEARING_KINDS } from './upkeep.ts';
@@ -330,6 +331,7 @@ export const ACTIONS: readonly ActionDef[] = [
       gainTreasury(ctx, q.total, `Marché d'Organyà : ${q.item.label} ×${q.units} ${q.item.unit}`, 'market');
       ctx.v.spanish_fluency_pct = gauge(ctx.v.spanish_fluency_pct + 0.5);
       ctx.v.track_condition_pct = gauge(ctx.v.track_condition_pct - 1);
+      adjustNeighbor(ctx.v, 'organya', C.NEIGHBOR_MARKET_SALE_GAIN);
       return `Vendu ${q.units} ${q.item.unit} (${q.item.label.toLowerCase()}) à ${q.unitPrice.toFixed(2)} € : +${q.total.toFixed(2)} € pour la caisse${q.saturday ? ' — jour de marché, +30 %' : ''}. Le marché en prendra encore ${q.remaining - q.units} ${q.item.unit} cette semaine.`;
     },
   },
@@ -423,6 +425,16 @@ export const ACTIONS: readonly ActionDef[] = [
       ensure(!blocked, blocked ?? '');
       const mood = cheerResident(m, day);
       return `${firstName(m)} (${temperOf(m).label.toLowerCase()}) a le cœur plus léger : humeur ${mood}/100.`;
+    },
+  },
+  {
+    code: 'help_neighbors', label: 'Rendre service aux voisins', description: 'Un coup de main pour la demande en cours d’Organyà, de la mairie ou des Mossos (1 PA, parfois des ressources). Demande remplie à temps : la relation monte et un bonus tombe ; manquée : elle baisse.', anyone: true, apCost: 1, delegable: false, target: 'none',
+    precheck: (s) => neighborHelpBlocker(s.village),
+    run: (ctx) => {
+      const h = asAction(() => helpNeighbors(ctx.s, ctx.fx, ctx.actor, ctx.now));
+      const cost = missionCostText(h.def);
+      if (h.finished) return `${h.def.icon} « ${h.def.title} » : c’est fait ! Relation ${Math.round(h.gauge)}/100 et ${h.def.bonus}.`;
+      return `${h.def.icon} Coup de main pour « ${h.def.title} » : ${h.mission.done_steps}/${h.def.steps}${cost ? ` (${cost})` : ''}.`;
     },
   },
   {
@@ -742,11 +754,13 @@ export const ACTIONS: readonly ActionDef[] = [
       const r = negotiation(ctx, 40);
       if (r.success) {
         ctx.v.admin_pressure_pct = gauge(ctx.v.admin_pressure_pct - 8);
-        return '« Molt bé ! » L\'Ayuntamiento se montre conciliant : pression administrative −8 %.';
+        const g = adjustNeighbor(ctx.v, 'ayuntamiento', C.NEIGHBOR_DIPLOMACY_GAIN);
+        return `« Molt bé ! » L’Ayuntamiento se montre conciliant : pression administrative −8 %, relation avec la mairie ${Math.round(g)}/100.`;
       }
       if (r.quiproquo) {
         spendTreasury(ctx, Math.min(150, ctx.v.treasury_eur), 'Amende administrative (quiproquo)', 'fine');
         ctx.v.admin_pressure_pct = gauge(ctx.v.admin_pressure_pct + 5);
+        adjustNeighbor(ctx.v, 'ayuntamiento', -3);
         return '« ¿Perdone? » Quiproquo linguistique : amende de 150 € et dossier rouvert.';
       }
       return 'Le fonctionnaire est en pause café jusqu\'à nouvel ordre.';

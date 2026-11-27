@@ -35,6 +35,7 @@ import {
 import { actGoalsView, goalForPriority, type ActGoalsView } from './actGoals.ts';
 import { buildingsOverview } from './buildings.ts';
 import { collectiveView } from './collective.ts';
+import { neighborPriorityScore, neighborsView } from './neighbors.ts';
 import { electionView } from './election.ts';
 import { MISSION_REWARD_TEXT } from './jobLevel.ts';
 import { residentPersona, sulkingResidents } from './residentLife.ts';
@@ -384,6 +385,20 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
         'Votez aussi pour le chantier de la semaine prochaine (accueil ou Agora).',
       ],
       gain: col.def.summary,
+    });
+  }
+  // Relations avec les voisins (V5.8) : une demande ouverte à remplir avant l'échéance
+  const nb = neighborsView(data, now);
+  const nbScore = neighborPriorityScore(nb);
+  if (nb.mission && nbScore !== null) {
+    const m = nb.mission;
+    P.add({
+      key: 'neighbors', emoji: m.def.icon, title: `Voisins : ${m.def.title}`, urgent: m.daysLeft <= 1, score: nbScore,
+      short: `${m.from.short} : ${m.done}/${m.steps} coups de main, ${m.deadline}.`.slice(0, 70),
+      why: `${m.def.ask} Remplie à temps : relation avec ${m.from.short} +${m.def.reward} et ${m.def.bonus}. Manquée : −${m.def.penalty}. Une bonne relation (≥ ${C.NEIGHBOR_GOOD}) donne : ${m.from.good}.`,
+      actionCode: 'help_neighbors',
+      steps: [`1 PA par coup de main${m.cost ? ` + ${m.cost}` : ''} ; tout le monde peut aider.`, `Il en manque ${m.steps - m.done}.`],
+      gain: `${m.from.short} +${m.def.reward}, ${m.def.bonus}`,
     });
   }
   // Nouveaux bâtiments (V5.4) : rien en projet, une parcelle libre et de quoi payer un petit plan

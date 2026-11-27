@@ -184,4 +184,10 @@ describe('Maître du Jeu IA', () => {
     const alone = fallbackResponse({ kind: 'gazette', date: '2026-11-28', events: [story], scandals: [] }, CTX, 's');
     expect(alone.narrative_text.match(/Aitor accuse/g)).toHaveLength(1);
   });
+
+  it('Gazette de secours : la demande des voisins (V5.8) paraît sans IA', () => {
+    const ask = { title: 'Voisins : déneiger la route', body: '❄️ Le maire d’Organyà demande de déneiger la route du col.' };
+    const r = fallbackResponse({ kind: 'gazette', date: '2026-11-28', events: [{ title: 'Chantier achevé', body: '« Four » est livré.' }, ask], scandals: [] }, CTX, 's');
+    expect(r.narrative_text).toContain('Chez les voisins : ❄️ Le maire d’Organyà');
+  });
 });
