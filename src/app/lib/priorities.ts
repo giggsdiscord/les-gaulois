@@ -24,6 +24,7 @@ import {
   type AutonomyBreakdown,
   type GameSnapshot,
 } from '../engine.ts';
+import { collectiveView } from './collective.ts';
 import type { ActionInput, GameData, Structure } from '../api/types.ts';
 import { eur } from './format.ts';
 import { availableActions } from './game.ts';
@@ -310,6 +311,23 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
         'Ou louer une tronçonneuse chez Kiloutou (60 €, +10 bois).',
       ],
       gain: ban ? '+10 stères par location' : `+${C.WOOD_CUT_BASE} stères par séance`,
+    });
+  }
+  // Chantier collectif de la semaine (V5.0) : tant qu'il n'est pas fini, chaque PA compte
+  const col = collectiveView(data, now);
+  if (col.project && col.def && !col.done) {
+    const late = col.daysBeforeSunday <= 1;
+    P.add({
+      key: 'collective', emoji: col.def.icon, title: `Chantier de la semaine : ${col.def.label}`, urgent: late && col.daysBeforeSunday === 1, score: late ? 70 : 58,
+      short: `${col.project.points}/${col.project.goal} points — ${col.daysBeforeSunday === 0 ? 'à finir ce soir (sans bonus)' : col.daysBeforeSunday === 1 ? 'dernier jour pour le bonus' : `${col.daysBeforeSunday} jours pour le bonus`}.`,
+      why: `Le projet commun de la semaine : ${col.def.summary} Fini avant dimanche, son effet est multiplié par ${String(C.COLLECTIVE_EARLY_FACTOR).replace('.', ',')} et le moral gagne ${C.COLLECTIVE_EARLY_MORALE} % ; inachevé lundi, le moral perd ${C.COLLECTIVE_FAIL_MORALE} %.`,
+      actionCode: 'contribute_collective',
+      steps: [
+        `1 PA = 1 point, ${col.myPoints > 1 ? '2 pour vous (c\'est votre métier)' : `2 pour le métier du projet (${P.nameOf(col.def.pole)})`}. Il manque ${col.remaining} ${plural(col.remaining, 'point', 'points')}.`,
+        'Tout le monde peut y participer, même aux travaux forcés.',
+        'Votez aussi pour le chantier de la semaine prochaine (accueil ou Agora).',
+      ],
+      gain: col.def.summary,
     });
   }
   if (work.unassigned > 0) {

@@ -36,7 +36,8 @@ import {
   septicSaturationPct,
 } from './formulas.ts';
 import { addictionDrift, applyInjury, computeDailyAp, isInWithdrawal } from './health.ts';
-import { processHeating, resetSeasonLife } from './life.ts';
+import { closeCollectiveWeek, startWeeklyProject } from './collective.ts';
+import { lifeOf, processHeating, resetSeasonLife } from './life.ts';
 import { clamp, deepClone, gauge, money, stepToward, stock } from './math.ts';
 import { activePlayers, computeHousingCapacity, countPopulation, residents, structureByCode } from './population.ts';
 import { createRng, type Rng } from './rng.ts';
@@ -70,6 +71,8 @@ function closeDay(s: GameSnapshot, fx: EngineEffects, endedKey: string, midnight
   updateSubstancesAndBlackMarket(s, fx, rng.fork('substances'));
   updateMoraleAndDiplomacy(s, midnight);
   refreshDerived(s, midnight, season, fx);
+  // Premier chantier collectif (V5.0) : ouvert dès la première nuit, sauf le lundi (closeSeason s'en charge)
+  if (!lifeOf(v).collective && localParts(midnight).weekday !== 1) startWeeklyProject(s, fx, rng.fork('collective'), midnight);
   v.game_day += 1;
 }
 
@@ -423,6 +426,7 @@ function closeSeason(s: GameSnapshot, fx: EngineEffects, midnight: Date): void {
   v.children_welcomed_this_season = 0;
   v.new_adults_this_season = 0;
   resetSeasonLife(v);
+  closeCollectiveWeek(s, fx, rng.fork('collective'), midnight);
   v.season_number += 1;
 }
 

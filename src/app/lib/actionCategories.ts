@@ -23,7 +23,7 @@ export const ACTION_CATEGORIES: readonly ActionCategory[] = [
     id: 'chantiers',
     emoji: '🏗️',
     label: 'Chantiers & bâti',
-    codes: ['renovate_building', 'improve_own_housing', 'clear_rubble', 'demolish_building', 'build_septic', 'track_maintenance', 'cut_wood', 'forest_ban', 'lift_forest_ban', 'plu_inspection', 'eco_veto', 'lift_eco_veto'],
+    codes: ['renovate_building', 'improve_own_housing', 'clear_rubble', 'demolish_building', 'build_septic', 'track_maintenance', 'contribute_collective', 'vote_collective_project', 'cut_wood', 'forest_ban', 'lift_forest_ban', 'plu_inspection', 'eco_veto', 'lift_eco_veto'],
   },
   {
     id: 'reseaux',

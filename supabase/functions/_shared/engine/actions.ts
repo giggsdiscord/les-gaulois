@@ -12,6 +12,7 @@ import { massMoraleGain, poleFactor, smugglingRiskPct } from './formulas.ts';
 import { applyInjury, healInjury, injuryRiskPct, isDetained } from './health.ts';
 import { applyMarketSale, ensureLife, marketQuote } from './life.ts';
 import { advanceStructure, BUILDING_KINDS, findWorkPost, forestBan, residentSkill } from './work.ts';
+import { contributeToCollective, currentCollective, findCollectiveProject } from './collective.ts';
 import { checkLocks, markGroupExecuted } from './locks.ts';
 import { clamp, deepClone, gauge, money, round2, stock } from './math.ts';
 import { adjustLoyalty } from './migrants.ts';
@@ -374,6 +375,33 @@ export const ACTIONS: readonly ActionDef[] = [
       ensureLife(ctx.v).forest_ban = null;
       pushEvent(ctx.fx, ctx.s, { event_type: 'forest_ban_lifted', title: 'Forêt rouverte', body: 'Ely lève l\'interdiction : les coupes de bois reprennent.' });
       return 'La forêt est rouverte aux coupes.';
+    },
+  },
+  // ======================= Chantier collectif de la semaine (V5.0) =======================
+  {
+    code: 'contribute_collective', label: 'Travailler au chantier de la semaine', description: 'Mettre 1 PA dans le projet commun : 1 point, 2 si c\'est votre métier. Fini avant dimanche, son effet est multiplié par 1,5.', anyone: true, apCost: 1, physical: true, delegable: false, target: 'none',
+    run: (ctx) => {
+      const project = currentCollective(ctx.v);
+      const def = findCollectiveProject(project?.id);
+      ensure(project && def, 'Pas de chantier collectif cette semaine : le prochain s\'ouvrira cette nuit.');
+      ensure(!project.completed_at, 'Le chantier de la semaine est déjà achevé : rendez-vous lundi pour le suivant.');
+      const { gained, project: p, finished } = contributeToCollective(ctx.s, ctx.fx, ctx.actor, ctx.now);
+      if (finished) return `${def.icon} Dernier coup de collier : « ${def.label} » est achevé ! ${finished.charAt(0).toUpperCase()}${finished.slice(1)}.`;
+      return `${def.icon} +${gained} point${gained > 1 ? 's' : ''} pour « ${def.label} » : ${p.points}/${p.goal}.`;
+    },
+  },
+  {
+    code: 'vote_collective_project', label: 'Voter pour le chantier de la semaine prochaine', description: 'Choisir parmi les projets proposés celui qui s\'ouvrira lundi ; sans vote, le hameau retient sa proposition.', anyone: true, apCost: 0, delegable: false, target: 'none',
+    run: (ctx) => {
+      const life = ensureLife(ctx.v);
+      const candidates = life.collective_candidates ?? [];
+      ensure(candidates.length > 0, 'Aucun projet à voter pour l\'instant.');
+      const choice = String(ctx.req.params?.project ?? '').trim();
+      const def = findCollectiveProject(choice);
+      ensure(def && candidates.includes(choice), 'Ce projet n\'est pas soumis au vote.');
+      ensure(life.collective_votes?.[ctx.actor.id] !== choice, `Vous avez déjà voté pour « ${def.label} ».`);
+      life.collective_votes = { ...(life.collective_votes ?? {}), [ctx.actor.id]: choice };
+      return `Voix donnée à « ${def.icon} ${def.label} » pour la semaine prochaine.`;
     },
   },
   {

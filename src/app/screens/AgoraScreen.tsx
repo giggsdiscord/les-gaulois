@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { findWorkPost, nextAgoraSession, type ActionDef } from '../engine.ts';
 import type { MotionKind, Proposal, PublicMigrant } from '../api/types.ts';
 import { ActionSheet } from '../components/ActionSheet.tsx';
+import { CollectiveCard } from '../components/CollectiveCard.tsx';
 import { ProposalCard } from '../components/ProposalCard.tsx';
 import { Badge, Button, Card, Empty, Field, Gauge, Input, ListRow, SectionTitle, Select, Sheet, Tabs, TextArea, cx } from '../components/ui.tsx';
 import { postChoices, residentWorkView, skillLabel, totalsParts } from '../lib/residentWork.ts';
@@ -172,6 +173,7 @@ function Initiatives() {
           Prochaine séance de l'Agora : <strong>{dateTime(nextAgoraSession(now).toISOString())}</strong> (dans {countdown(nextAgoraSession(now).toISOString(), now)}). Majorité simple, voix prépondérante d'Ely ; veto possible 6 h après l'adoption.
         </p>
       </Card>
+      <CollectiveCard full />
       <InitiativeForm />
       {list.length === 0 ? <Empty>Aucun scrutin pour le moment.</Empty> : list.map((p) => <ProposalCard key={p.id} p={p} />)}
       <MotionForm />

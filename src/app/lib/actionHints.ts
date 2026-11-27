@@ -3,7 +3,7 @@
  * recherche et actions récentes. Pur (aucun DOM) : testé dans tests/app/actionHints.test.ts.
  * La validation qui fait foi reste celle du moteur (performAction).
  */
-import { forestBan, getAction, isAfter, isSunday, type ActionDef } from '../engine.ts';
+import { currentCollective, forestBan, getAction, isAfter, isSunday, lifeOf, type ActionDef } from '../engine.ts';
 import type { GameData, PublicPlayer } from '../api/types.ts';
 
 export interface ActionSituation {
@@ -16,6 +16,9 @@ export interface ActionSituation {
   now: Date;
   /** Coupes de bois interdites par Ely jusqu'à lundi (V4.9). */
   forestBanned?: boolean;
+  /** Chantier collectif de la semaine (V5.0) : absent, ouvert ou achevé ; projets soumis au vote. */
+  collective?: 'none' | 'open' | 'done';
+  collectiveVotable?: boolean;
 }
 
 /** Situation du joueur qui agit, pour lui-même (`holderId` null) ou pour un poste délégué. */
@@ -34,6 +37,8 @@ export function situationFor(data: Pick<GameData, 'me' | 'players' | 'village'>,
     defeated: data.village.is_defeated,
     now,
     forestBanned: forestBan(data.village) !== null,
+    collective: collectiveState(data.village),
+    collectiveVotable: (lifeOf(data.village).collective_candidates ?? []).length > 0,
   };
 }
 
@@ -48,6 +53,10 @@ export function actionBlockReason(def: ActionDef, s: ActionSituation): string | 
   // Droit de regard d'Ely sur la forêt (V4.9)
   if (s.forestBanned && (def.code === 'cut_wood' || def.code === 'forest_ban')) return 'Coupes interdites par Ely jusqu\'à lundi.';
   if (s.forestBanned === false && def.code === 'lift_forest_ban') return 'La forêt est ouverte : rien à lever.';
+  // Chantier collectif de la semaine (V5.0)
+  if (def.code === 'contribute_collective' && s.collective === 'none') return "Le premier chantier commun s'ouvrira cette nuit.";
+  if (def.code === 'contribute_collective' && s.collective === 'done') return 'Chantier de la semaine achevé : rendez-vous lundi.';
+  if (def.code === 'vote_collective_project' && s.collectiveVotable === false) return "Aucun projet à voter pour l'instant.";
   return null;
 }
 
@@ -95,4 +104,9 @@ export function pushRecent(list: readonly string[], code: string, max = RECENT_M
 /** Libellé français d'un code d'action (repli : le code). */
 export function actionLabel(code: string): string {
   return getAction(code)?.label ?? code;
+}
+
+function collectiveState(v: GameData['village']): 'none' | 'open' | 'done' {
+  const p = currentCollective(v);
+  return !p ? 'none' : p.completed_at ? 'done' : 'open';
 }

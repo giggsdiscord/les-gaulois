@@ -164,6 +164,27 @@ export interface VillageLife {
   forest_ban?: ForestBan | null;
   /** Ce que les résidents ont produit la nuit dernière (V4.9). */
   work_last?: ResidentWorkTotals;
+  /** Chantier collectif de la semaine en cours (V5.0). */
+  collective?: CollectiveProject | null;
+  /** Projets soumis au vote pour la semaine suivante (le premier est celui que le hameau propose). */
+  collective_candidates?: string[];
+  /** Votes pour le chantier de la semaine suivante : joueur → projet. */
+  collective_votes?: Record<string, string>;
+  /** Bilan du chantier de la semaine précédente. */
+  collective_last?: CollectiveProject | null;
+}
+
+/** Chantier collectif de la semaine (V5.0) : tout le monde y met des PA. */
+export interface CollectiveProject {
+  id: string;
+  started_at: ISODate;
+  goal: number;
+  points: number;
+  /** Points apportés par joueur. */
+  contributions: Record<string, number>;
+  completed_at: ISODate | null;
+  /** Achevé avant dimanche : bonus appliqué. */
+  early: boolean;
 }
 
 /** Droit de regard d'Ely sur les coupes de bois (V4.9). */

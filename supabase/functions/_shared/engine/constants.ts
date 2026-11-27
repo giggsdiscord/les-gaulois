@@ -446,3 +446,44 @@ export const RESIDENT_WATER_POINTS = 2; // [GDD §4.7] % d'état du réseau par 
 export const RESIDENT_TRACK_POINTS = 1; // [GDD §4.7] % d'état de la piste par nuit
 /** Motif minimal de l'interdiction des coupes par Ely. */
 export const FOREST_BAN_REASON_MIN = 10;
+
+// ---------------------------------------------------------------------------
+// Chantier collectif de la semaine [GDD §5.5, V5.0]
+// ---------------------------------------------------------------------------
+export type CollectiveProjectId = 'woodpile' | 'track_day' | 'water_works' | 'garden_extension' | 'site_rush' | 'village_feast';
+export interface CollectiveProjectDef {
+  id: CollectiveProjectId;
+  label: string;
+  icon: string;
+  /** Métier qui y travaille deux fois plus vite (2 points par PA au lieu d'un). */
+  pole: RoleCode;
+  /** Effet à l'achèvement (texte d'aide ; valeurs ci-dessous). */
+  summary: string;
+}
+export const COLLECTIVE_PROJECTS: readonly CollectiveProjectDef[] = [
+  { id: 'woodpile', label: 'Grande corvée de bois', icon: '🪵', pole: 'smith_diplo', summary: '+40 stères de bois pour l\'hiver.' },
+  { id: 'track_day', label: 'Journée de la piste', icon: '🛤️', pole: 'transport_customs', summary: 'État de la piste +15 %.' },
+  { id: 'water_works', label: 'Curage des canaux', icon: '🚰', pole: 'water_eng', summary: 'Réseau d\'eau +15 %, qualité de l\'eau +5 %.' },
+  { id: 'garden_extension', label: 'Agrandir le potager', icon: '🥕', pole: 'mayor_agri', summary: '+40 m² de potager.' },
+  { id: 'site_rush', label: 'Coup de main au chantier', icon: '🧱', pole: 'civil_eng', summary: 'Le chantier de bâtisse le plus avancé gagne +20 %.' },
+  { id: 'village_feast', label: 'Préparer la fête du hameau', icon: '🎉', pole: 'druid', summary: 'Moral du hameau +6 %.' },
+]; // [GDD §5.5]
+export const COLLECTIVE_WOOD = 40; // [GDD §5.5]
+export const COLLECTIVE_TRACK = 15; // [GDD §5.5]
+export const COLLECTIVE_WATER_NETWORK = 15; // [GDD §5.5]
+export const COLLECTIVE_WATER_QUALITY = 5;
+export const COLLECTIVE_GARDEN_M2 = 40; // [GDD §5.5]
+export const COLLECTIVE_SITE_PROGRESS = 20; // [GDD §5.5]
+export const COLLECTIVE_FEAST_MORALE = 6; // [GDD §5.5]
+/** Objectif = points par fondateur actif × nombre de fondateurs actifs (minimum ci-dessous). */
+export const COLLECTIVE_POINTS_PER_PLAYER = 2; // [GDD §5.5]
+export const COLLECTIVE_MIN_GOAL = 6;
+/** Points par PA : 1, ou 2 pour le métier du projet. */
+export const COLLECTIVE_POLE_POINTS = 2; // [GDD §5.5]
+/** Fini avant dimanche : effet multiplié et moral en plus. */
+export const COLLECTIVE_EARLY_FACTOR = 1.5; // [GDD §5.5]
+export const COLLECTIVE_EARLY_MORALE = 3; // [GDD §5.5]
+/** Chantier inachevé le lundi : moral perdu. */
+export const COLLECTIVE_FAIL_MORALE = 2; // [GDD §5.5]
+/** Projets proposés au vote pour la semaine suivante. */
+export const COLLECTIVE_CANDIDATES = 3;

@@ -4,7 +4,7 @@
  * bouton collé en bas et résultat affiché dans la fenêtre (avec « Refaire »).
  */
 import { useMemo, useState } from 'react';
-import { CATALOG, constants, marketQuote, purchaseCost, type ActionDef, type VillageState } from '../engine.ts';
+import { CATALOG, constants, findCollectiveProject, lifeOf, marketQuote, purchaseCost, type ActionDef, type VillageState } from '../engine.ts';
 import type { ActionInput, OpResponse } from '../api/types.ts';
 import { actionBlockReason, lockNotes, situationFor } from '../lib/actionHints.ts';
 import { AMOUNT_ACTIONS, QUANTITY_ACTIONS, STRUCTURE_ACTION_KINDS } from '../lib/game.ts';
@@ -93,6 +93,8 @@ export function ActionSheet({
   const [direction, setDirection] = useState<'in' | 'out'>('in');
   const [reason, setReason] = useState('');
   const [workPost, setWorkPost] = useState(typeof preset?.params?.post === 'string' ? preset.params.post : constants.WORK_POSTS[0]!.code);
+  const [voteProject, setVoteProject] = useState(typeof preset?.params?.project === 'string' ? preset.params.project : '');
+  const voteChoices = (lifeOf(data.village).collective_candidates ?? []).map((id) => findCollectiveProject(id)).filter((p) => p !== undefined);
   const [freeText, setFreeText] = useState('');
   const [partnerA, setPartnerA] = useState('');
   const [partnerB, setPartnerB] = useState('');
@@ -155,6 +157,11 @@ export function ActionSheet({
       input.params = { reason: reason.trim() };
     }
     if (def.code === 'assign_work_post') input.params = { post: workPost };
+    if (def.code === 'vote_collective_project') {
+      const choice = voteProject || voteChoices[0]?.id;
+      if (!choice) return 'Aucun projet à voter pour l\'instant.';
+      input.params = { project: choice };
+    }
     if (def.code === 'celebrate_marriage') {
       if (!partnerA || !partnerB) return 'Désignez les deux époux.';
       const side = (v: string, key: 'a' | 'b') => (v.startsWith('m:') ? { [`${key}_migrant`]: v.slice(2) } : { [`${key}_player`]: v });
@@ -289,6 +296,17 @@ export function ActionSheet({
               {[...(def.code === 'assign_work_post' ? [] : candidates), ...residents].map((m) => (
                 <option key={m.id} value={`m:${m.id}`}>
                   {m.full_name} — {def.code === 'assign_work_post' ? `${SPECIALTY_LABEL[m.specialty_code]} ${m.specialty_level}` : MIGRANT_STATUS[m.status]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+        {def.code === 'vote_collective_project' && voteChoices.length > 0 && (
+          <Field label="Projet pour la semaine prochaine" hint={voteChoices.find((p) => p.id === (voteProject || voteChoices[0]!.id))?.summary}>
+            <Select value={voteProject || voteChoices[0]!.id} onChange={(e) => setVoteProject(e.target.value)}>
+              {voteChoices.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.icon} {p.label}
                 </option>
               ))}
             </Select>

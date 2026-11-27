@@ -1,5 +1,13 @@
 # Historique des versions du GDD
 
+### V5.0 — 27/11/2026 — Chantier collectif de la semaine
+- **Un projet commun par semaine** (§5.5) : corvée de bois, journée de la piste, curage des canaux, agrandissement du potager, coup de main au chantier le plus avancé ou fête du hameau.
+- Tout le monde y met des PA (1 point par PA, 2 pour le métier du projet ; objectif 2 points par fondateur actif) ; **barre de progression commune** sur l'accueil et à l'Agora.
+- **Achevé avant dimanche** : effet ×1,5 et moral +3 % ; achevé le dimanche : effet simple ; inachevé le lundi : moral −2 %.
+- **Vote** pour le projet de la semaine suivante parmi trois propositions (0 PA) ; sans vote, le hameau retient le plus utile du moment. Le premier chantier s'ouvre à la première nuit.
+- « À faire en priorité » rappelle le chantier en cours ; aucune nouvelle migration (`village_state.life`).
+- 13 nouveaux tests Vitest.
+
 ### V4.9 — 27/11/2026 — Travail des résidents & droit de regard d'Ely sur la forêt
 - **Un poste pour chaque résident** (§4.7) : potager, forêt, chantier, forge, pâturage, réseau d'eau ou piste ; tout le monde l'affecte, sans PA. Chaque nuit, il produit selon son poste : rations et tomates, bois, avancement ou réparation des bâtisses (1 pierre par nuit), entretien des outils et recyclage de la ferraille, lait, réseau d'eau, piste.
 - Au poste de sa **spécialité**, un résident rend +25 % par niveau (×1,25 à ×2,25) ; places comptées (un jardinier par 100 m², un berger pour 10 bêtes) ; sans poste, au chantier privé, au cachot, blessé ou trop faible, il ne produit rien ; la grève divise le travail par deux.
