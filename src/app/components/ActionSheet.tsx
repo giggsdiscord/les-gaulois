@@ -303,7 +303,7 @@ export function ActionSheet({
           <Field label={def.code === 'assign_work_post' ? 'Résident' : 'Résident ou candidat'}>
             <Select value={target} onChange={(e) => setTarget(e.target.value)}>
               <option value="">— Choisir —</option>
-              {[...(def.code === 'assign_work_post' ? [] : candidates), ...residents].map((m) => (
+              {[...(def.code === 'assign_work_post' || def.code === 'cheer_resident' ? [] : candidates), ...residents].map((m) => (
                 <option key={m.id} value={`m:${m.id}`}>
                   {m.full_name} — {def.code === 'assign_work_post' ? `${SPECIALTY_LABEL[m.specialty_code]} ${m.specialty_level}` : MIGRANT_STATUS[m.status]}
                 </option>

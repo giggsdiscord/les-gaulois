@@ -449,6 +449,53 @@ export const RESIDENT_TRACK_POINTS = 1; // [GDD §4.7] % d'état de la piste par
 export const FOREST_BAN_REASON_MIN = 10;
 
 // ---------------------------------------------------------------------------
+// Résidents avec une personnalité [GDD §4.8, V5.7]
+// ---------------------------------------------------------------------------
+export type TemperCode = 'hard_worker' | 'joker' | 'grumpy' | 'chilly' | 'gourmand' | 'loner' | 'chatty';
+export interface TemperDef {
+  code: TemperCode;
+  label: string;
+  icon: string;
+  /** Effet en clair (aide de jeu). */
+  summary: string;
+}
+export const TEMPERS: readonly TemperDef[] = [
+  { code: 'hard_worker', label: 'Bosseur', icon: '💪', summary: 'Rendement +10 % ; s\'ennuie vite sans poste (humeur −2 de plus par nuit sans travail).' },
+  { code: 'joker', label: 'Boute-en-train', icon: '😄', summary: 'Remonte le moral de son ami (+2 par nuit) ; son humeur baisse moitié moins vite.' },
+  { code: 'grumpy', label: 'Ronchon', icon: '😤', summary: 'Humeur −1 par nuit quoi qu\'il arrive ; se trouve souvent un rival.' },
+  { code: 'chilly', label: 'Frileux', icon: '🥶', summary: 'Les nuits sans feu lui coûtent deux fois plus d\'humeur.' },
+  { code: 'gourmand', label: 'Gourmand', icon: '🧀', summary: 'La pénurie lui coûte deux fois plus d\'humeur ; ravi quand il y a du fromage (+2).' },
+  { code: 'loner', label: 'Solitaire', icon: '🌲', summary: 'Ni ami ni rival ; humeur stable (+1 par nuit au travail).' },
+  { code: 'chatty', label: 'Bavard', icon: '🗣️', summary: 'Ses histoires font plus souvent la Gazette ; +1 d\'humeur avec son ami.' },
+]; // [GDD §4.8]
+/** Humeur d'un nouveau résident et valeur vers laquelle elle revient doucement (10 % de l'écart par nuit). */
+export const MOOD_DEFAULT = 60; // [GDD §4.8]
+export const MOOD_RETURN_RATE = 0.1;
+/** Variations d'humeur par nuit [GDD §4.8]. */
+export const MOOD_WORKING = 2;
+export const MOOD_SKILLED_BONUS = 1;
+export const MOOD_IDLE = -3;
+export const MOOD_HUNGRY = -6;
+export const MOOD_FED = 1;
+export const MOOD_COLD = -5;
+export const MOOD_INJURED = -3;
+export const MOOD_FRIEND = 1;
+export const MOOD_RIVAL_SAME_POST = -2;
+/** Paliers d'humeur et effet sur le rendement au poste [GDD §4.8]. */
+export const MOOD_HAPPY_AT = 75;
+export const MOOD_SULK_AT = 30;
+export const MOOD_HAPPY_FACTOR = 1.1;
+export const MOOD_SULK_FACTOR = 0.85;
+export const TEMPER_WORKER_FACTOR = 1.1;
+/** Encourager un résident (action) : humeur + et coût en PA ; une fois par résident et par jour. */
+export const CHEER_MOOD = 15; // [GDD §4.8]
+export const CHEER_AP = 1;
+/** Au moins ce nombre de résidents pour qu'un ronchon se trouve un rival. */
+export const RIVAL_MIN_RESIDENTS = 3;
+/** Chance (%) qu'une petite histoire paraisse dans la Gazette chaque nuit (deux résidents ou plus). */
+export const STORY_CHANCE_PCT = 50; // [GDD §4.8]
+
+// ---------------------------------------------------------------------------
 // Chantier collectif de la semaine [GDD §5.5, V5.0]
 // ---------------------------------------------------------------------------
 export type CollectiveProjectId = 'woodpile' | 'track_day' | 'water_works' | 'garden_extension' | 'site_rush' | 'village_feast';

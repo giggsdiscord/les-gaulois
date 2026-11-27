@@ -175,4 +175,13 @@ describe('Maître du Jeu IA', () => {
     );
     expect(r.deltas.sovereign_fund_eur).toBe(5000);
   });
+
+  it('Gazette de secours : la petite histoire des résidents (V5.7) paraît sans IA', () => {
+    const story = { title: 'Petite histoire : Querelle de voisinage', body: 'Aitor accuse Nour d’avoir emprunté sa pelle.' };
+    const r = fallbackResponse({ kind: 'gazette', date: '2026-11-28', events: [{ title: 'Chantier achevé', body: '« Four » est livré.' }, story], scandals: [] }, CTX, 's');
+    expect(r.gazette_headline).toBe('Chantier achevé');
+    expect(r.narrative_text).toContain('Au coin du feu : Aitor accuse Nour');
+    const alone = fallbackResponse({ kind: 'gazette', date: '2026-11-28', events: [story], scandals: [] }, CTX, 's');
+    expect(alone.narrative_text.match(/Aitor accuse/g)).toHaveLength(1);
+  });
 });

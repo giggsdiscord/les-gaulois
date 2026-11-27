@@ -20,6 +20,7 @@ import {
   dayKey,
   wornStructures,
   getAction,
+  firstName,
   forestBan,
   heatingNeed,
   planResidentWork,
@@ -36,6 +37,7 @@ import { buildingsOverview } from './buildings.ts';
 import { collectiveView } from './collective.ts';
 import { electionView } from './election.ts';
 import { MISSION_REWARD_TEXT } from './jobLevel.ts';
+import { residentPersona, sulkingResidents } from './residentLife.ts';
 import type { ActionInput, GameData, Structure } from '../api/types.ts';
 import { eur } from './format.ts';
 import { availableActions } from './game.ts';
@@ -505,6 +507,21 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
       actionCode: 'market_sale', preset: { catalog_item_id: 'cheese' },
       steps: ['1 PA par vente, par lots de 2 kg ; le marché sature au fil de la semaine.'],
       gain: 'Argent pour la caisse',
+    });
+  }
+
+  // Résidents maussades (V5.7) : le rendement baisse, un encouragement par jour remonte l'humeur
+  const sulky = sulkingResidents(data.migrants);
+  if (sulky.length > 0) {
+    const m = sulky[0]!;
+    const p = residentPersona(m, data.migrants, now);
+    P.add({
+      key: `mood:${m.id}`, emoji: '😞', title: `Remonter le moral de ${firstName(m)}`, urgent: false, score: p.cheeredToday ? 20 : 45,
+      short: `Humeur ${p.mood}/100 : son rendement baisse de ${Math.round((1 - C.MOOD_SULK_FACTOR) * 100)} %.`,
+      why: `Sous ${C.MOOD_SULK_AT} d'humeur, un résident travaille moins bien${p.lastReason ? ` ; la nuit dernière, c'est surtout ${p.lastReason} qui a pesé` : ''}. Le travail, le repas, le feu et les amis font remonter l'humeur.${sulky.length > 1 ? ` Aussi maussades : ${sulky.slice(1).map(firstName).join(', ')}.` : ''}`,
+      actionCode: 'cheer_resident', preset: { target_migrant_id: m.id },
+      steps: [`${C.CHEER_AP} PA : +${C.CHEER_MOOD} d'humeur, une fois par jour et par résident.`, 'Un poste à sa spécialité, des rations et du bois l’hiver le gardent de bonne humeur.'],
+      gain: `+${C.CHEER_MOOD} d'humeur`,
     });
   }
 

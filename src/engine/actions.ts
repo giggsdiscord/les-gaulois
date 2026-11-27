@@ -11,6 +11,7 @@ import { massMoraleGain, poleFactor, smugglingRiskPct } from './formulas.ts';
 import { applyInjury, healInjury, injuryRiskPct, isDetained } from './health.ts';
 import { applyMarketSale, ensureLife, marketQuote } from './life.ts';
 import { advanceStructure, BUILDING_KINDS, findWorkPost, forestBan, residentSkill } from './work.ts';
+import { cheerBlocker, cheerResident, firstName, temperOf } from './personality.ts';
 import { contributeToCollective, currentCollective, findCollectiveProject } from './collective.ts';
 import { buildingTypeOf, findBuildingType, findParcel, hasBuilding, planBlocker, planBuilding } from './buildings.ts';
 import { applyUpgrade, maintainBlocker, nextUpgrade, UPGRADABLE_KINDS, upgradeBlocker, upgradeGains, WEARING_KINDS } from './upkeep.ts';
@@ -409,6 +410,18 @@ export const ACTIONS: readonly ActionDef[] = [
       m.work_post = post.code;
       const skill = residentSkill(m, post);
       return `${m.full_name} travaillera ${post.place} chaque nuit${skill > 1 ? ` — c'est sa spécialité (rendement ×${String(skill).replace('.', ',')})` : ''}.`;
+    },
+  },
+  {
+    code: 'cheer_resident', label: 'Encourager un résident', description: `Un mot gentil, un verre partagé : l’humeur du résident remonte (+${C.CHEER_MOOD}), une fois par jour. Un résident joyeux travaille mieux, un résident maussade moins bien.`, anyone: true, apCost: C.CHEER_AP, delegable: false, target: 'migrant',
+    precheck: (s, req) => cheerBlocker(s.migrants.find((m) => m.id === req.target_migrant_id), ''),
+    run: (ctx) => {
+      const m = targetMigrant(ctx, ['accepted', 'forced_labor']);
+      const day = dayKeyOf(ctx.now);
+      const blocked = cheerBlocker(m, day);
+      ensure(!blocked, blocked ?? '');
+      const mood = cheerResident(m, day);
+      return `${firstName(m)} (${temperOf(m).label.toLowerCase()}) a le cœur plus léger : humeur ${mood}/100.`;
     },
   },
   {

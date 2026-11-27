@@ -71,7 +71,7 @@ export const ACTION_CATEGORIES: readonly ActionCategory[] = [
     id: 'candidats',
     emoji: '🧳',
     label: 'Résidents & candidats',
-    codes: ['assign_work_post', 'screen_migrant_physical', 'screen_migrant_medical', 'screen_migrant_psych'],
+    codes: ['assign_work_post', 'cheer_resident', 'screen_migrant_physical', 'screen_migrant_medical', 'screen_migrant_psych'],
   },
 ];
 

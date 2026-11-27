@@ -24,6 +24,7 @@ import { processBirths, processChildrenSeason, processDemographicSeason } from '
 import { emptyEffects, pushEvent, pushLedger, pushTrigger } from './effects.ts';
 import { processWear } from './upkeep.ts';
 import { processSupply } from './supply.ts';
+import { processResidentLife } from './personality.ts';
 import {
   actForAutonomy,
   computeAutonomy,
@@ -67,12 +68,14 @@ function closeDay(s: GameSnapshot, fx: EngineEffects, endedKey: string, midnight
 
   updateWaterAndSanitation(s, fx, rng, season, midnight);
   updateEnergy(s, fx);
-  processResidentWork(s, fx, season, midnight);
+  const workPlan = processResidentWork(s, fx, season, midnight);
   updateFood(s, fx, rng, season);
   processHeating(s, fx);
   processBuildings(s, fx, season);
   processWear(s, fx, season);
   processSupply(s, fx, season);
+  // Personnalité des résidents (V5.7) : relations, humeur de la nuit, petite histoire
+  processResidentLife(s, fx, workPlan, endedKey, createRng(`${v.id}:residents:${endedKey}`));
   updateToolsAndTrack(s, rng);
   updateIdeologyAndFriction(s, fx, rng.fork('society'), midnight);
   updateSubstancesAndBlackMarket(s, fx, rng.fork('substances'));

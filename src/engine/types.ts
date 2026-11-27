@@ -196,6 +196,30 @@ export interface VillageLife {
   pantry?: Partial<Record<'cheese_kg' | 'ratafia_bottles' | 'plums_kg', number>>;
   /** Bilan de la nuit dernière : filières, péremption, surplus perdu (V5.6). */
   supply_last?: SupplyNight | null;
+  /** Dernière petite histoire des résidents (V5.7), reprise par la Gazette. */
+  story_last?: ResidentStory | null;
+}
+
+/** Personnalité d'un résident (V5.7, `village_migrants.traits`) : clés facultatives. */
+export interface ResidentTraits {
+  temper?: string;
+  /** Humeur 0–100. */
+  mood?: number;
+  friend_id?: string | null;
+  rival_id?: string | null;
+  /** Dernier encouragement (date locale AAAA-MM-JJ). */
+  cheered_day?: string;
+  /** Variation d'humeur de la dernière nuit et sa raison principale. */
+  mood_delta?: number;
+  mood_reason?: string;
+}
+
+export interface ResidentStory {
+  day: string;
+  migrant_id: string;
+  other_id?: string | null;
+  title: string;
+  text: string;
 }
 
 /** Bilan nocturne des filières et des réserves (V5.6). */
@@ -399,7 +423,7 @@ export interface Migrant {
   /** Poste de travail d'un résident (V4.9, code de `WORK_POSTS`) : null = sans affectation. */
   work_post?: string | null;
   /** Personnalité et humeur d'un résident (V5.x, JSONB). */
-  traits?: Record<string, unknown>;
+  traits?: ResidentTraits;
 }
 
 export type ChildStatus = 'child' | 'apprentice' | 'law_student' | 'graduated' | 'lawyer' | 'departed';

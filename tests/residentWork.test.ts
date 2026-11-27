@@ -129,7 +129,7 @@ describe('Production de nuit', () => {
   });
 
   it('pâturage, réseau d\'eau et piste', () => {
-    const s = withResidents([{ work_post: 'pasture' }, { work_post: 'water' }, { work_post: 'track' }].map((m) => ({ ...m, specialty_code: 'unskilled' as const })), { livestock_count: 12 });
+    const s = withResidents([{ work_post: 'pasture' }, { work_post: 'water' }, { work_post: 'track' }].map((m) => ({ ...m, specialty_code: 'unskilled' as const, traits: { temper: 'loner' } })), { livestock_count: 12 });
     const plan = planResidentWork(s, 'autumn', WEDNESDAY);
     expect(plan.totals.rations).toBeCloseTo(10 * C.RESIDENT_PASTURE_RATIONS_PER_HEAD, 2);
     expect(plan.totals.water).toBe(C.RESIDENT_WATER_POINTS);

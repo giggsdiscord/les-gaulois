@@ -95,6 +95,8 @@ export interface OpResult {
   [key: string]: unknown;
 }
 
+/** Titre des petites histoires de résidents (V5.7, événement `resident_story` du moteur). */
+const STORY_PREFIX = 'Petite histoire : ';
 const fail = (error: string): OpResult => ({ ok: false, error });
 
 const ACTION_INPUT_KEYS = [
@@ -661,6 +663,8 @@ export class GameSession {
       body_markdown: g.response.narrative_text,
       sections: [
         { title: 'Faits du jour', items: events.slice(-12).map((e) => e.title) },
+        // Petite histoire des résidents (V5.7) : écrite par le moteur, publiée même sans IA
+        { title: 'Petite histoire du hameau', items: events.filter((e) => e.title.startsWith(STORY_PREFIX)).slice(-1).map((e) => `${e.title.slice(STORY_PREFIX.length)} — ${e.body}`) },
         { title: 'Météo réelle', items: [v.real_weather_summary] },
         { title: 'Actualité réelle', items: this.news.slice(0, 5) },
         { title: 'Scandales', items: scandals },

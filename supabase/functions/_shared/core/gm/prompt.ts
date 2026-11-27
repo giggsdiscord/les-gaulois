@@ -180,7 +180,7 @@ function taskInstruction(task: GmTask): string {
     case 'gazette': {
       const events = task.events.length > 0 ? task.events.map((e) => `- ${e.title} : ${e.body}`).join('\n') : '- (journée calme)';
       const scandals = task.scandals.length > 0 ? task.scandals.map((s) => `- ${s}`).join('\n') : '- aucun';
-      return `TÂCHE : Rédige l'édition du ${task.date} de La Gazette du hameau : gazette_headline = gros titre du jour, narrative_text = éditorial de 4 à 6 phrases croisant les événements du village, les discussions de La Taverne, la météo réelle et l'actualité réelle. Publie avec humour les scandales non confessés. Deltas modestes (souvent 0). new_migrant_candidate et private_temptation restent null.\nÉvénements des dernières 24 heures :\n${events}\nScandales non confessés :\n${scandals}`;
+      return `TÂCHE : Rédige l'édition du ${task.date} de La Gazette du hameau : gazette_headline = gros titre du jour, narrative_text = éditorial de 4 à 6 phrases croisant les événements du village, les discussions de La Taverne, la météo réelle et l'actualité réelle. Publie avec humour les scandales non confessés. Si un événement « Petite histoire » figure, glisse-la en une phrase tendre ou drôle (ses résidents sont de vrais personnages). Deltas modestes (souvent 0). new_migrant_candidate et private_temptation restent null.\nÉvénements des dernières 24 heures :\n${events}\nScandales non confessés :\n${scandals}`;
     }
   }
 }

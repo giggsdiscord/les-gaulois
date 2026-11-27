@@ -1,6 +1,6 @@
 /** Écran 3 — L'Agora, Bureau de l'Immigration, Tribunal Public, Constitution & duels. */
 import { useMemo, useState } from 'react';
-import { findWorkPost, nextAgoraSession, type ActionDef } from '../engine.ts';
+import { constants as C, findWorkPost, nextAgoraSession, type ActionDef } from '../engine.ts';
 import type { MotionKind, Proposal, PublicMigrant } from '../api/types.ts';
 import { ActionSheet } from '../components/ActionSheet.tsx';
 import { CollectiveCard } from '../components/CollectiveCard.tsx';
@@ -8,6 +8,7 @@ import { ElectionCard } from '../components/ElectionCard.tsx';
 import { ProposalCard } from '../components/ProposalCard.tsx';
 import { Badge, Button, Card, Empty, Field, Gauge, Input, ListRow, SectionTitle, Select, Sheet, Tabs, TextArea, cx } from '../components/ui.tsx';
 import { postChoices, residentWorkView, skillLabel, totalsParts } from '../lib/residentWork.ts';
+import { lastStory, residentPersona } from '../lib/residentLife.ts';
 import { availableActions, canFight, nextAgoraWeek, playerName, population } from '../lib/game.ts';
 import { countdown, dateTime } from '../lib/format.ts';
 import { CATEGORY_LABEL, DUEL_CONTEXT, DUEL_MODE, MIGRANT_STATUS, PORTFOLIO_LABEL, SENTENCE_LABEL, SPECIALTY_LABEL } from '../lib/labels.ts';
@@ -196,6 +197,18 @@ function ResidentsAtWork() {
   const t = view.tonight;
   const tonight = totalsParts(t);
   const last = view.lastNight ? totalsParts(view.lastNight) : [];
+  const story = lastStory(data);
+  const persona = selected ? residentPersona(selected, data.migrants, now) : null;
+
+  async function cheer(m: PublicMigrant) {
+    setBusy(true);
+    const r = await perform(
+      () => api.action({ action_code: 'cheer_resident', target_migrant_id: m.id }),
+      (res) => (res.ok ? res.narrative ?? 'Résident encouragé.' : undefined),
+    );
+    setBusy(false);
+    if (r && !r.ok) toast('error', r.error ?? 'Encouragement refusé.');
+  }
 
   async function assign(m: PublicMigrant, post: string) {
     setBusy(true);
@@ -225,12 +238,18 @@ function ResidentsAtWork() {
               <strong className="text-ink">Cette nuit :</strong> {tonight.length > 0 ? tonight.join(' · ') : 'rien de prévu'}
             </p>
             {last.length > 0 && <p className="text-xs text-ink-soft">Nuit dernière : {last.join(' · ')}</p>}
+            {story && (
+              <p data-testid="resident-story" className="rounded-xl bg-parchment-100 px-3 py-2 text-xs leading-snug">
+                📖 <strong>{story.title}</strong> — {story.text}
+              </p>
+            )}
             {view.ban && <p className="rounded-xl bg-ember-600/10 px-3 py-2 text-xs text-ember-600">🚫 Ely a interdit les coupes jusqu'à lundi : « {view.ban.reason} ». Les bûcherons entretiennent la forêt.</p>}
           </div>
           <ul className="divide-y divide-parchment-200 border-t border-parchment-200">
             {view.workforce.map((m) => {
               const line = view.lines[m.id];
               const post = findWorkPost(m.work_post);
+              const p = residentPersona(m, data.migrants, now);
               return (
                 <li key={m.id}>
                   <ListRow
@@ -241,6 +260,7 @@ function ResidentsAtWork() {
                         {SPECIALTY_LABEL[m.specialty_code]} {m.specialty_level}
                         {post ? ` · ${post.label}` : ''}
                         {m.status === 'forced_labor' ? ' · travaux forcés' : ''}
+                        <span className="block text-xs">{p.moodIcon} {p.moodLabel} {p.mood} · {p.temper.icon} {p.temper.label}</span>
                         <span className={cx('block text-xs', line?.working ? 'text-moss-700' : 'text-ember-600')}>{line?.working ? line.note : line?.note ?? 'Sans poste'}</span>
                       </>
                     }
@@ -253,7 +273,7 @@ function ResidentsAtWork() {
           </ul>
         </Card>
       )}
-      <Sheet open={selected !== null} onClose={() => setOpenId(null)} title={selected ? `Poste de ${selected.full_name}` : ''}>
+      <Sheet open={selected !== null} onClose={() => setOpenId(null)} title={selected ? selected.full_name : ''}>
         {selected && (
           <div className="space-y-3">
             <p className="text-sm text-ink-soft">
@@ -264,6 +284,38 @@ function ResidentsAtWork() {
               {selected.is_naturalized && <Badge tone="moss">Citoyen</Badge>}
               <Badge tone={selected.status === 'forced_labor' ? 'ember' : 'neutral'}>{MIGRANT_STATUS[selected.status]}</Badge>
             </div>
+            {persona && (
+              <div data-testid="resident-persona" className="space-y-2 rounded-xl border border-parchment-300 bg-white px-3 py-2.5 text-sm">
+                <p>
+                  <strong>{persona.temper.icon} {persona.temper.label}</strong>
+                  <span className="block text-xs leading-snug text-ink-soft">{persona.temper.summary}</span>
+                </p>
+                <div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span>{persona.moodIcon} Humeur : <strong>{persona.moodLabel}</strong> ({persona.mood}/100)</span>
+                    {persona.yieldText && <span className={persona.yieldText.startsWith('+') ? 'text-moss-700' : 'text-ember-600'}>rendement {persona.yieldText}</span>}
+                  </div>
+                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-parchment-200">
+                    <div className={cx('h-full rounded-full', persona.level === 'happy' ? 'bg-moss-600' : persona.level === 'sulk' ? 'bg-ember-600' : 'bg-gold-500')} style={{ width: `${persona.mood}%` }} />
+                  </div>
+                  {persona.lastDelta !== null && (
+                    <p className="mt-1 text-xs text-ink-soft">
+                      Nuit dernière : {persona.lastDelta > 0 ? '+' : persona.lastDelta < 0 ? '−' : '±'}{Math.abs(persona.lastDelta)}{persona.lastReason ? ` (surtout ${persona.lastReason})` : ''}
+                    </p>
+                  )}
+                </div>
+                {(persona.friend || persona.rival) && (
+                  <p className="text-xs">
+                    {persona.friend && <>🤝 Ami : <strong>{persona.friend}</strong></>}
+                    {persona.friend && persona.rival && ' · '}
+                    {persona.rival && <>⚡ Rival : <strong>{persona.rival}</strong></>}
+                  </p>
+                )}
+                <Button variant="secondary" className="w-full" disabled={busy || persona.cheeredToday || persona.mood >= 100} onClick={() => void cheer(selected)}>
+                  {persona.cheeredToday ? 'Déjà encouragé aujourd’hui' : `Encourager (+${C.CHEER_MOOD} d’humeur, ${C.CHEER_AP} PA)`}
+                </Button>
+              </div>
+            )}
             {selected.private_employer_id ? (
               <p className="rounded-xl bg-parchment-100 px-3 py-2 text-sm">
                 Il travaille sur le chantier privé de {playerName(data.players, selected.private_employer_id)} : pour lui donner un poste au hameau, il faut d'abord mettre fin au contrat.

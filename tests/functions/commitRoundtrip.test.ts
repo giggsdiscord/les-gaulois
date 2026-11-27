@@ -45,13 +45,13 @@ async function loadState(): Promise<GameState> {
   };
 }
 
-async function play(actionCode: string, playerId: string, now: Date, params?: Record<string, unknown>, structureCode?: string) {
+async function play(actionCode: string, playerId: string, now: Date, params?: Record<string, unknown>, structureCode?: string, migrantId?: string) {
   const state = await loadState();
   const session = new GameSession(state, { now, gm: createGm(null, { seed: 'roundtrip' }) });
   session.tick();
   await session.maintainAgora();
   const target = structureCode ? state.snapshot.structures.find((st) => st.code === structureCode)?.id : undefined;
-  const result = await session.action(playerId, { action_code: actionCode, ...(params ? { params } : {}), ...(target ? { target_structure_id: target } : {}) });
+  const result = await session.action(playerId, { action_code: actionCode, ...(params ? { params } : {}), ...(target ? { target_structure_id: target } : {}), ...(migrantId ? { target_migrant_id: migrantId } : {}) });
   const payload = session.commitPayload();
   const revision = (await db.query<{ r: number }>('SELECT engine_commit($1, $2::jsonb) AS r', [state.snapshot.village.revision, JSON.stringify(payload)])).rows[0].r;
   return { result, revision: Number(revision), before: state.snapshot.village.revision };
@@ -101,5 +101,17 @@ describe('engine_commit accepte ce que produit le moteur (base réelle)', () => 
     );
     expect(row).toMatchObject({ upgrade_level: 2, beds_capacity: 8 });
     expect(row!.condition_pct).toBeGreaterThanOrEqual(60);
+  });
+
+  it('encourager un résident (V5.7) : humeur écrite dans traits', async () => {
+    const { rows: [m] } = await db.query<{ id: string }>(
+      `INSERT INTO village_migrants (full_name, age, origin, religion, political_leaning, physical_strength, specialty_code, value_proposition, status, traits)
+       VALUES ('Aina Puig', 30, 'Lleida', 'Athée/Laïque', 'Centre', 50, 'farmer', 'Potagère', 'accepted', '{"temper":"joker","mood":20}'::jsonb) RETURNING id`,
+    );
+    const out = await play('cheer_resident', GUILLEM, new Date(Date.now() + 300_000), undefined, undefined, m!.id);
+    expect(out.result.ok, out.result.error ?? '').toBe(true);
+    const [row] = await rows<{ traits: { temper: string; mood: number; cheered_day: string } }>(`SELECT traits FROM village_migrants WHERE id = '${m!.id}'`);
+    expect(row!.traits).toMatchObject({ temper: 'joker', mood: 35 });
+    expect(row!.traits.cheered_day).toHaveLength(10);
   });
 });

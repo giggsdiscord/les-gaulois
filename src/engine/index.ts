@@ -29,6 +29,7 @@ export * from './work.ts';
 export * from './buildings.ts';
 export * from './upkeep.ts';
 export * from './supply.ts';
+export * from './personality.ts';
 export * from './collective.ts';
 export * from './goals.ts';
 export * from './skills.ts';

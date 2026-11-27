@@ -1,5 +1,12 @@
 # Historique des versions du GDD
 
+### V5.7 — 27/11/2026 — Résidents avec une personnalité
+- **Caractère** (§4.8) : chaque résident est bosseur, boute-en-train, ronchon, frileux, gourmand, solitaire ou bavard (tiré de son identifiant, stable).
+- **Humeur** 0–100 chaque nuit : le travail, le repas et les amis la font monter ; l'inactivité, la faim, le froid, une blessure ou un rival au même poste la font baisser. Joyeux (≥ 75) : rendement +10 % ; maussade (< 30) : −15 %.
+- **Relations** : un ami pour chacun (sauf le solitaire), un rival pour le ronchon.
+- **Petites histoires** dans la Gazette (section « Petite histoire du hameau », « Au coin du feu » dans l'édition de secours) : écrites par le moteur, sans IA.
+- Nouvelle action « Encourager un résident » (1 PA, +15 d'humeur, une fois par jour) ; humeur et caractère dans Agora → Immigration ; priorité « Remonter le moral ». Aucune migration (`village_migrants.traits`, `village_state.life.story_last`) ; 11 nouveaux tests Vitest (dont l'écriture réelle de `traits` par `engine_commit`).
+
 ### V5.6 — 27/11/2026 — Filières, péremption & stockage
 - **Filières** (§5.8) : le lait devient du **fromage** (fromagerie : 2 kg par nuit avec au moins 2 bêtes ; action « Faire du fromage » : 4 rations de lait → 3 kg) ; le verger donne des **prunes** l'été et l'automne, distillées en **ratafia légal** (10 kg + 15 € → 6 bouteilles).
 - **Marché d'Organyà** : fromage (14 €/kg) et ratafia (11 € la bouteille) s'ajoutent aux tomates, au bois et aux conserves.

@@ -12,6 +12,7 @@ import { pushEvent } from './effects.ts';
 import { computeWaterBalance } from './formulas.ts';
 import { isDetained } from './health.ts';
 import { ensureLife, lifeOf } from './life.ts';
+import { personalityFactor } from './personality.ts';
 import { clamp, gauge, money, round2, stock } from './math.ts';
 import { residents, structureByCode } from './population.ts';
 import { wornStructures } from './upkeep.ts';
@@ -72,15 +73,16 @@ export function residentSkill(m: Pick<Migrant, 'specialty_code' | 'specialty_lev
   return 1 + C.RESIDENT_SKILL_BONUS_PER_LEVEL * clamp(Math.round(m.specialty_level), 1, 5);
 }
 
-/** Rendement d'un résident à son poste : spécialité × productivité du village × grève. */
+/** Rendement d'un résident à son poste : spécialité × humeur et caractère (V5.7) × productivité du village × grève. */
 export function residentFactor(
   v: Pick<VillageState, 'productivity_modifier_pct' | 'strike_until'>,
-  m: Pick<Migrant, 'specialty_code' | 'specialty_level'>,
+  m: Pick<Migrant, 'specialty_code' | 'specialty_level'> & Partial<Pick<Migrant, 'id' | 'traits'>>,
   post: C.WorkPost,
   now: Date,
 ): number {
   const strike = isAfter(v.strike_until, now) ? C.RESIDENT_STRIKE_FACTOR : 1;
-  return round2(residentSkill(m, post) * (v.productivity_modifier_pct / 100) * strike);
+  const mood = m.id ? personalityFactor({ id: m.id, traits: m.traits }) : 1;
+  return round2(residentSkill(m, post) * mood * (v.productivity_modifier_pct / 100) * strike);
 }
 
 /** Interdiction des coupes en cours (droit de regard d'Ely), ou null. */
