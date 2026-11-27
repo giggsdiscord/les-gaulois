@@ -21,7 +21,7 @@ Liste demandée par l'utilisateur le 26/11/2026 : **toutes ces idées sont à r�
 | V5.2 | **Niveaux de métier visibles** (l'expérience `skill_xp` existe déjà : niveaux 2, 3, 4 = bonus), **mission du jour par métier** (petite récompense), **bonus d'action à deux** (deux joueurs agissent ensemble le même jour) | ✅ `18e6f8f` |
 | V5.3 | **Élections vivantes** pour les places 8 à 10 à l'Acte II : candidats, programme, débat à la Taverne, vote | ✅ `209f0f6` |
 | V5.4 | **Nouveaux bâtiments** : four à pain, fromagerie, chambre froide, scierie, moulin sur la rivière, lavoir (moins d'épidémies), infirmerie, poulailler, ruches, serre (légumes d'hiver), bar du hameau, hangar ; **choix d'une parcelle libre** sur la carte | ✅ `1cf7a91` |
-| V5.5 | **Améliorations par niveaux** (ex. Casa Gran niveau 2 : +2 lits, isolation → moins de bois) et **usure** des bâtiments (entretien régulier, plus rapide l'hiver) | À faire |
+| V5.5 | **Améliorations par niveaux** (ex. Casa Gran niveau 2 : +2 lits, isolation → moins de bois) et **usure** des bâtiments (entretien régulier, plus rapide l'hiver) | ✅ `163030e` |
 | V5.6 | **Filières** (lait → fromage, prunes → ratafia légal) avec **fromage vendu au marché d'Organyà**, **péremption** des vivres frais l'été sans chambre froide, **limites de stockage** (le hangar les relève) | À faire |
 | V5.7 | **Calendrier catalan réel** : Sant Joan, Diada (11 septembre), Castanyada, Nadal et Caga Tió, Carnaval — chaque fête devient un événement avec une décision collective | À faire |
 | V5.8 | **Résidents avec une personnalité** : prénom, humeur, relations, petites histoires dans la Gazette | À faire |
@@ -39,7 +39,7 @@ L'utilisateur a demandé de **bien noter toutes ces idées** : rien ne doit êtr
 
 **Constats sur le moteur**
 - Tomates : elles ne servent qu'au lancer sur les BOR. [✅ V4.8 : marché, conserves]
-- Bois, pierre, fer : ces réserves ne baissent jamais toutes seules, et rien ne produit du bois : on ne peut que l'acheter. [✅ V4.8 pour le bois : coupe et chauffage ; pierre et fer : V5.5 usure et entretien]
+- Bois, pierre, fer : ces réserves ne baissent jamais toutes seules, et rien ne produit du bois : on ne peut que l'acheter. [✅ V4.8 pour le bois : coupe et chauffage ; pierre et fer : ✅ V5.5 usure et entretien `163030e`]
 - Dette : ce pilier (20 points d'autonomie) bouge à peine. Rembourser 295 000 € à 360 € par semaine prend des années. [à traiter au fil des versions : plus de revenus (marché, gîte, filières) et ✅ récompenses d'objectifs d'Acte V5.1 : remises d'emprunt]
 - Argent : avant le gîte, presque rien ne rapporte. Une négociation donne 300 €, et l'autre source est une taxe votée à l'Agora. [✅ V4.8 marché ; V5.6 filières]
 - Résidents : les migrants comptent surtout comme population, on ne peut pas leur donner de travail. [✅ V4.9]
@@ -67,8 +67,8 @@ L'utilisateur a demandé de **bien noter toutes ces idées** : rien ne doit êtr
 
 **Constructions**
 - Nouveaux bâtiments utiles : four à pain, fromagerie, chambre froide, scierie ; moulin sur la rivière, lavoir (moins d'épidémies), infirmerie ; poulailler et ruches, serre pour les légumes d'hiver, bar du hameau. [✅ V5.4 `1cf7a91`, avec le hangar]
-- Améliorations par niveaux : par exemple Casa Gran niveau 2, avec 2 lits de plus et une meilleure isolation, donc moins de bois brûlé. [V5.5]
-- Usure : les bâtiments s'abîment doucement (plus vite l'hiver), et l'entretien devient une tâche régulière. [V5.5]
+- Améliorations par niveaux : par exemple Casa Gran niveau 2, avec 2 lits de plus et une meilleure isolation, donc moins de bois brûlé. [✅ V5.5 `163030e`]
+- Usure : les bâtiments s'abîment doucement (plus vite l'hiver), et l'entretien devient une tâche régulière. [✅ V5.5 `163030e`]
 - Choix d'une parcelle libre sur la carte pour un nouveau bâtiment. [✅ V5.4 `1cf7a91`]
 
 **Vie du village**
