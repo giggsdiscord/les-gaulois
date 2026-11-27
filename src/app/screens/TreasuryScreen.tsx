@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import { CATALOG, constants, getAction, purchaseCost, type CatalogItem, type VillageState } from '../engine.ts';
 import { ActionSheet } from '../components/ActionSheet.tsx';
+import { IncomeCard } from '../components/IncomeCard.tsx';
 import { Badge, Button, Card, Empty, Gauge, SectionTitle, Sheet, Stat, Tabs, cx } from '../components/ui.tsx';
 import { eur, num, dateTime } from '../lib/format.ts';
 import { ACCOUNT_LABEL, ACT_LABEL, ENERGY_LABEL } from '../lib/labels.ts';
@@ -137,6 +138,7 @@ function Finances() {
       {v.collectivization_active && <Card tone="danger">Collectivisation en vigueur : les comptes privés sont réquisitionnés au profit de la caisse commune.</Card>}
       <AutonomyCard />
       <ReservesCard />
+      <IncomeCard />
       <Card title="Indicateurs économiques">
         <div className="grid gap-3 sm:grid-cols-2">
           <Gauge label="Productivité" value={Math.round(v.productivity_modifier_pct)} good="neutral" max={150} />

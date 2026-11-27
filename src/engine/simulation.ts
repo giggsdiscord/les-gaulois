@@ -50,6 +50,7 @@ import { processResidentWork } from './work.ts';
 import { processNeighbors } from './neighbors.ts';
 import { processVisitors } from './visitors.ts';
 import { closeWeekReview, recordMilestones } from './chronicle.ts';
+import { closeIncomeWeek, processIncome } from './income.ts';
 import { pickPutschLeader, putschConditions, updateIdeologyAndFriction, updateSubstancesAndBlackMarket } from './society.ts';
 import type { CalendarSeason, EngineEffects, GameSnapshot } from './types.ts';
 
@@ -77,6 +78,8 @@ function closeDay(s: GameSnapshot, fx: EngineEffects, endedKey: string, midnight
   processBuildings(s, fx, season);
   processWear(s, fx, season);
   processSupply(s, fx, season);
+  // Installations et commandes régulières (V6.1)
+  processIncome(s, fx, season, endedKey);
   // Personnalité des résidents (V5.7) : relations, humeur de la nuit, petite histoire
   processResidentLife(s, fx, workPlan, endedKey, createRng(`${v.id}:residents:${endedKey}`));
   updateToolsAndTrack(s, rng);
@@ -448,6 +451,8 @@ function closeSeason(s: GameSnapshot, fx: EngineEffects, midnight: Date): void {
   // Bilan de la semaine (V6.0) : classement, habitant de la semaine, records (avant la remise à zéro)
   const endedKey = addDaysToKey(dayKey(midnight), -1);
   closeWeekReview(s, fx, endedKey);
+  // Charges des installations, fin des commandes et des services de la semaine (V6.1)
+  closeIncomeWeek(s, fx);
 
   // Remise à zéro hebdomadaire
   for (const p of s.players) {

@@ -3,7 +3,7 @@
  * Les valeurs citées explicitement par le GDD sont marquées [GDD §x] ; les autres sont
  * des précisions d'implémentation V3.8 (modifiables ici, puis documentées dans docs/GDD.md).
  */
-import type { CalendarSeason, Portfolio, RoleCode, SpecialtyCode } from './types.ts';
+import type { ActNumber, CalendarSeason, Portfolio, RoleCode, SpecialtyCode } from './types.ts';
 
 export const TIMEZONE = 'Europe/Madrid';
 /** Nombre maximal de jours rattrapés en un seul appel à applyElapsedTime. */
@@ -652,6 +652,7 @@ export const TIMELINE_MAX = 60; // [GDD §5.11]
 /** Événements du moteur qui entrent dans la frise, avec leur icône. */
 export const TIMELINE_EVENTS: Record<string, string> = {
   structure_completed: '🏗️',
+  install_started: '⚙️',
   building_upgraded: '⬆️',
   gite_opened: '🛏️',
   energy_tier: '⚡',
@@ -1012,3 +1013,124 @@ export const PLUMS_PER_NIGHT: Record<CalendarSeason, number> = { spring: 0, summ
 export const RATAFIA_PLUMS_KG = 10; // [GDD §5.8]
 export const RATAFIA_BOTTLES = 6; // [GDD §5.8] (× métier, plafonné à ×1,5)
 export const RATAFIA_COST_EUR = 15; // [GDD §5.8] eau-de-vie, sucre et droits d'accise
+
+// ---------------------------------------------------------------------------
+// Revenus & production automatique [GDD §5.12, V6.1]
+// ---------------------------------------------------------------------------
+/** Réserves que les installations, commandes et services peuvent toucher. */
+export type IncomeStockKey = 'food_rations' | 'wood_stock' | 'tomatoes_stock' | 'cheese_kg' | 'ratafia_bottles';
+export type AutoInstallId =
+  | 'roadside_stall' | 'livestock_produce' | 'bread_round' | 'wood_contract'
+  | 'power_resale' | 'gite_booking' | 'track_toll' | 'workshop_rental'
+  | 'nuclear_export' | 'army_protection' | 'collector_stamps';
+export interface AutoInstallDef {
+  id: AutoInstallId;
+  /** Acte à partir duquel on peut l'installer : paysan (1), modernisation (2), micro-État (3). */
+  act: ActNumber;
+  label: string;
+  icon: string;
+  /** Prix d'installation, payé une fois par la caisse. */
+  install_eur: number;
+  /** Charge hebdomadaire (entretien, abonnement, salaire), prélevée chaque lundi ; impayée → installation suspendue. */
+  weekly_eur: number;
+  /** Condition pour l'installer et pour qu'elle tourne (texte). */
+  requires: string | null;
+  /** Ce qu'elle fait chaque nuit (texte d'aide). */
+  summary: string;
+}
+export const AUTO_INSTALLS: readonly AutoInstallDef[] = [
+  // Acte 1 — le hameau paysan
+  { id: 'roadside_stall', act: 1, label: 'Étal en libre-service', icon: '🧺', install_eur: 180, weekly_eur: 15, requires: null, summary: 'Au bord de la route : vend seul chaque nuit jusqu’à 5 kg de tomates (2,4 €/kg), ou 2 rations (3 €) s’il n’y a plus de tomates. Moitié moins en hiver.' }, // [GDD §5.12]
+  { id: 'livestock_produce', act: 1, label: 'Vente de lait et de laine', icon: '🐑', install_eur: 120, weekly_eur: 10, requires: 'au moins 2 bêtes à l’enclos', summary: 'Un collecteur de la coopérative passe chaque nuit : 1,5 € par bête (15 € au plus).' }, // [GDD §5.12]
+  { id: 'bread_round', act: 1, label: 'Tournée du pain', icon: '🥖', install_eur: 250, weekly_eur: 25, requires: 'four à pain en service', summary: 'Une camionnette d’occasion livre chaque nuit 4 rations de pain aux hameaux voisins (3,5 € l’une), seulement s’il en reste plus de 20.' }, // [GDD §5.12]
+  { id: 'wood_contract', act: 1, label: 'Bûcheron sous contrat', icon: '🪓', install_eur: 60, weekly_eur: 45, requires: null, summary: 'Un bûcheron de la vallée apporte 2 stères chaque nuit, sauf quand Ely ferme la forêt.' }, // [GDD §5.12]
+  // Acte 2 — la modernisation
+  { id: 'power_resale', act: 2, label: 'Revente d’électricité aux villages', icon: '🔌', install_eur: 450, weekly_eur: 20, requires: 'électricité (palier 2 ou plus)', summary: 'Un onduleur revend le surplus aux villages voisins : 4 € par nuit et par palier d’énergie au-delà du premier ; ×1,5 l’été, ×0,6 l’hiver.' }, // [GDD §5.12]
+  { id: 'gite_booking', act: 2, label: 'Réservation en ligne du gîte', icon: '🛎️', install_eur: 200, weekly_eur: 20, requires: 'gîte ouvert', summary: 'Les nuitées réservées en ligne rapportent 8 € par nuit, 10 € si le moral du hameau atteint 60 %.' }, // [GDD §5.12]
+  { id: 'track_toll', act: 2, label: 'Péage de la piste', icon: '🚧', install_eur: 300, weekly_eur: 25, requires: null, summary: '4×4 et randonneurs paient le passage : 12 € par nuit si la piste est à 60 % ou plus, 6 € sinon.' }, // [GDD §5.12]
+  { id: 'workshop_rental', act: 2, label: 'Location de l’atelier', icon: '🛠️', install_eur: 350, weekly_eur: 30, requires: 'outils usés à moins de 80 %', summary: 'Artisans de la vallée louent l’atelier et les outils : 14 € par nuit, usure des outils +0,3 % par nuit.' }, // [GDD §5.12]
+  // Acte 3 — le micro-État
+  { id: 'nuclear_export', act: 3, label: 'Export d’électricité du micro-réacteur', icon: '☢️', install_eur: 4000, weekly_eur: 250, requires: 'micro-réacteur (palier 5)', summary: 'Une ligne vers l’Espagne, l’Andorre et la France : 90 € par nuit vendus aux réseaux voisins.' }, // [GDD §5.12]
+  { id: 'army_protection', act: 3, label: 'Protection armée des villages alentour', icon: '🛡️', install_eur: 1500, weekly_eur: 120, requires: 'menace sur le périmètre sous 40 %', summary: 'La garde du hameau patrouille pour les villages voisins : 40 € par nuit, relation avec la mairie +0,2 par nuit.' }, // [GDD §5.12]
+  { id: 'collector_stamps', act: 3, label: 'Timbres et monnaie de collection', icon: '📮', install_eur: 800, weekly_eur: 40, requires: null, summary: 'Comme Andorre ou Saint-Marin : les collectionneurs achètent nos timbres, 10 € par nuit + 0,3 € par point de notoriété internationale.' }, // [GDD §5.12]
+];
+export const STALL_TOMATOES_KG = 5; // [GDD §5.12]
+export const STALL_TOMATO_EUR = 2.4; // [GDD §5.12]
+export const STALL_RATIONS = 2; // [GDD §5.12]
+export const STALL_RATION_EUR = 3; // [GDD §5.12]
+export const STALL_WINTER_FACTOR = 0.5; // [GDD §5.12]
+export const BREAD_ROUND_RATIONS = 4; // [GDD §5.12]
+export const BREAD_ROUND_EUR = 3.5; // [GDD §5.12] par ration
+/** Réserve de rations que les ventes automatiques ne touchent jamais (on nourrit d'abord le hameau). */
+export const INCOME_RATIONS_FLOOR = 20; // [GDD §5.12]
+export const WOOD_CONTRACT_STERES = 2; // [GDD §5.12]
+export const POWER_RESALE_EUR_PER_TIER = 4; // [GDD §5.12]
+export const POWER_RESALE_SEASON: Record<CalendarSeason, number> = { spring: 1, summer: 1.5, autumn: 1, winter: 0.6 }; // [GDD §5.12]
+export const GITE_BOOKING_EUR = 8; // [GDD §5.12]
+export const GITE_BOOKING_GOOD_EUR = 10; // [GDD §5.12] moral ≥ 60 %
+export const GITE_BOOKING_MORALE = 60; // [GDD §5.12]
+export const LIVESTOCK_PRODUCE_EUR = 1.5; // [GDD §5.12] par bête et par nuit
+export const LIVESTOCK_PRODUCE_MAX_EUR = 15; // [GDD §5.12]
+export const LIVESTOCK_PRODUCE_MIN = 2; // [GDD §5.12]
+export const TRACK_TOLL_EUR = 12; // [GDD §5.12]
+export const TRACK_TOLL_POOR_EUR = 6; // [GDD §5.12]
+export const TRACK_TOLL_GOOD_PCT = 60; // [GDD §5.12]
+export const WORKSHOP_RENTAL_EUR = 14; // [GDD §5.12]
+export const WORKSHOP_RENTAL_WEAR = 0.3; // [GDD §5.12]
+export const WORKSHOP_RENTAL_MAX_WEAR = 80; // [GDD §5.12]
+export const NUCLEAR_EXPORT_EUR = 90; // [GDD §5.12]
+export const ARMY_PROTECTION_EUR = 40; // [GDD §5.12]
+export const ARMY_PROTECTION_GAUGE = 0.2; // [GDD §5.12] relation avec la mairie par nuit
+export const ARMY_PROTECTION_MAX_THREAT = 40; // [GDD §5.12]
+export const STAMPS_BASE_EUR = 10; // [GDD §5.12]
+export const STAMPS_PER_NOTORIETY_EUR = 0.3; // [GDD §5.12]
+
+/** Commandes régulières : un client prend chaque nuit une quantité fixe, payée mieux que le marché, jusqu'au lundi. */
+export type OrderId = 'inn_rations' | 'bakery_wood' | 'deli_cheese' | 'restaurant_tomatoes' | 'wine_shop_ratafia';
+export interface OrderDef {
+  id: OrderId;
+  icon: string;
+  client: string;
+  from: NeighborId;
+  stock: IncomeStockKey;
+  /** Quantité livrée chaque nuit. */
+  per_night: number;
+  unit: string;
+  /** Prix payé par unité livrée (€). */
+  unit_eur: number;
+}
+export const ORDER_OFFERS: readonly OrderDef[] = [
+  { id: 'inn_rations', icon: '🍲', client: 'Cantine de l’auberge d’Organyà', from: 'organya', stock: 'food_rations', per_night: 3, unit: 'ration', unit_eur: 5 }, // [GDD §5.12]
+  { id: 'bakery_wood', icon: '🔥', client: 'Fournil de Coll de Nargó', from: 'organya', stock: 'wood_stock', per_night: 2, unit: 'stère', unit_eur: 9 }, // [GDD §5.12]
+  { id: 'deli_cheese', icon: '🧀', client: 'Épicerie fine d’Organyà', from: 'organya', stock: 'cheese_kg', per_night: 1, unit: 'kg', unit_eur: 17 }, // [GDD §5.12]
+  { id: 'restaurant_tomatoes', icon: '🍅', client: 'Restaurant de la mairie', from: 'ayuntamiento', stock: 'tomatoes_stock', per_night: 4, unit: 'kg', unit_eur: 4 }, // [GDD §5.12]
+  { id: 'wine_shop_ratafia', icon: '🥃', client: 'Cave de la vallée', from: 'organya', stock: 'ratafia_bottles', per_night: 1, unit: 'bouteille', unit_eur: 14 }, // [GDD §5.12]
+];
+export const ORDER_MAX_ACTIVE = 2; // [GDD §5.12] commandes en cours à la fois
+export const ORDER_MAX_MISSED = 2; // [GDD §5.12] livraisons manquées avant que le client ne rompe
+export const ORDER_MISS_GAUGE = 1; // [GDD §5.12] relation perdue par livraison manquée
+export const ORDER_BREAK_GAUGE = 3; // [GDD §5.12] relation perdue à la rupture
+export const ORDER_KEPT_GAUGE = 1; // [GDD §5.12] relation gagnée par une semaine sans faute
+
+/** Services payants : un geste (1 PA) payé comptant, quelques fois par semaine. */
+export type PaidServiceId = 'repairs' | 'guided_walk' | 'lessons';
+export interface PaidServiceDef {
+  id: PaidServiceId;
+  icon: string;
+  label: string;
+  /** Recette (€). */
+  eur: number;
+  /** Fois par semaine au plus (pour tout le hameau). */
+  weekly_cap: number;
+  /** Effet secondaire en clair. */
+  extra: string;
+}
+export const PAID_SERVICES: readonly PaidServiceDef[] = [
+  { id: 'repairs', icon: '🔧', label: 'Réparations chez les voisins', eur: 30, weekly_cap: 3, extra: 'usure des outils +1 %' }, // [GDD §5.12]
+  { id: 'guided_walk', icon: '🥾', label: 'Balade guidée pour randonneurs', eur: 25, weekly_cap: 3, extra: '+10 € si le gîte est ouvert ; notoriété +0,2' }, // [GDD §5.12]
+  { id: 'lessons', icon: '📚', label: 'Cours de français à Organyà', eur: 20, weekly_cap: 3, extra: 'Organyà +1' }, // [GDD §5.12]
+];
+export const SERVICE_TOOLS_WEAR = 1; // [GDD §5.12]
+export const SERVICE_WALK_GITE_BONUS = 10; // [GDD §5.12]
+export const SERVICE_WALK_NOTORIETY = 0.2; // [GDD §5.12]
+export const SERVICE_LESSONS_GAUGE = 1; // [GDD §5.12]

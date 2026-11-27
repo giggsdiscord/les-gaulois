@@ -37,6 +37,7 @@ import { buildingsOverview } from './buildings.ts';
 import { collectiveView } from './collective.ts';
 import { neighborPriorityScore, neighborsView } from './neighbors.ts';
 import { visitorPriorityScore, visitorsView } from './visitors.ts';
+import { incomeView } from './income.ts';
 import { electionView } from './election.ts';
 import { MISSION_REWARD_TEXT } from './jobLevel.ts';
 import { residentPersona, sulkingResidents } from './residentLife.ts';
@@ -401,6 +402,50 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
       steps: m.choices.map((c) => `${c.def.icon} ${c.def.label} : 1 PA${c.cost ? ` + ${c.cost}` : ''}${c.effects ? ` → ${c.effects}` : ''}.`),
       gain: m.choices.map((c) => c.effects).filter(Boolean).join(' ou ') || 'éviter un impair',
     });
+  }
+  // Revenus automatiques (V6.1) : commandes à honorer, installations suspendues, charges, première installation
+  const inc = incomeView(data, now);
+  for (const o of inc.orders.filter((x) => x.short)) {
+    P.add({
+      key: `order:${o.def.id}`, emoji: o.def.icon, title: `Commande : ${o.def.client}`, urgent: true, score: 58,
+      short: `Stock insuffisant pour la livraison de cette nuit.`.slice(0, 70),
+      why: `La commande demande ${o.text}. Livraison manquée : relation −${C.ORDER_MISS_GAUGE} ; à ${C.ORDER_MAX_MISSED}, le client rompt (−${C.ORDER_BREAK_GAUGE} de plus).`,
+      actionCode: null, route: { name: 'tresor' },
+      steps: ['Remplir la réserve avant minuit (potager, coupe, fromagerie, achat…).', `Les ventes automatiques gardent toujours ${C.INCOME_RATIONS_FLOOR} rations pour le hameau.`],
+      gain: `${Math.round(o.def.per_night * o.def.unit_eur)} € et la confiance du client`,
+    });
+  }
+  for (const i of inc.installs.filter((x) => x.state === 'paused')) {
+    P.add({
+      key: `install:${i.def.id}`, emoji: i.def.icon, title: `Relancer : ${i.def.label}`, urgent: false, score: 45,
+      short: `Suspendue faute de charge payée : ${i.cost} € pour la relancer.`.slice(0, 70),
+      why: `${i.def.summary} La charge du lundi n’a pas pu être payée : elle ne produit plus rien.`,
+      actionCode: 'setup_install', preset: { params: { install: i.def.id } },
+      steps: [`1 PA + ${i.cost} € (une semaine de charge).`],
+      gain: i.def.summary,
+    });
+  }
+  if (inc.chargesAtRisk) {
+    P.add({
+      key: 'income:charges', emoji: '💸', title: 'Charges du lundi non couvertes', urgent: true, score: 52,
+      short: `Il faut ${Math.round(inc.weeklyEur)} € lundi, sinon les installations s’arrêtent.`.slice(0, 70),
+      why: 'Chaque lundi, les installations prélèvent leur charge ; une charge impayée suspend l’installation jusqu’à sa relance.',
+      actionCode: 'market_sale', steps: ['Vendre au marché, signer une commande ou rendre un service payant.', 'Ou arrêter une installation qui rapporte peu (Trésor).'],
+      gain: 'garder les revenus automatiques',
+    });
+  }
+  if (!inc.installs.some((i) => i.state !== 'off')) {
+    const first = inc.installs.filter((i) => !i.blocked && i.cost <= v.treasury_eur - 500).sort((a, b) => b.def.act - a.def.act || a.cost - b.cost)[0];
+    if (first) {
+      P.add({
+        key: 'income:start', emoji: '💶', title: 'Mettre en place un revenu automatique', urgent: false, score: 26,
+        short: `${first.def.icon} ${first.def.label} : ${first.cost} €, puis ça tourne seul.`.slice(0, 70),
+        why: `Une installation rapporte chaque nuit sans PA : ${first.def.summary}`,
+        actionCode: 'setup_install', preset: { params: { install: first.def.id } },
+        steps: [`1 PA + ${first.cost} € ; charge de ${first.def.weekly_eur} € chaque lundi.`, 'Autres installations, commandes et services : Trésor → Finances.'],
+        gain: 'des recettes chaque nuit',
+      });
+    }
   }
   // Relations avec les voisins (V5.8) : une demande ouverte à remplir avant l'échéance
   const nb = neighborsView(data, now);

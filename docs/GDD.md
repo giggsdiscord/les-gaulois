@@ -1,12 +1,12 @@
 ---
-version: 6.0
+version: 6.1
 date: 2026-11-27
 title: Les Gaulois — Game Design Document & Architecture Technique
 ---
 
 # LES GAULOIS — Simulation Coopérative de Village & Micro-État
 
-**Game Design Document (GDD) & Spécification Technique Complète — Version 6.0**
+**Game Design Document (GDD) & Spécification Technique Complète — Version 6.1**
 
 Jeu de stratégie, de gestion démographique, économique et politique asynchrone persistant, ancré dans le monde réel (Pyrénées de Lleida), piloté par un moteur déterministe TypeScript et un Maître du Jeu IA.
 
@@ -15,12 +15,9 @@ Jeu de stratégie, de gestion démographique, économique et politique asynchron
 | **Cadre réel :** hameau abandonné des Pyrénées de Lleida (Catalogne, Espagne), domaine de 30 ha situé à 18 km de la frontière d'Andorre. | **Achat & travaux :** 295 000 € (PLU 2013 validé). Rénovation globale estimée entre 600 000 € et 900 000 €. |
 | **Effectif & rythme :** 7 joueurs fondateurs (10 joueurs max) + population résidente dynamique (migrants accueillis, naturalisés, lignées et apprentis). 1 jour réel = 1 jour de jeu (3 PA/jour). | **Enjeux :** autonomie totale puis Micro-État souverain, pérennité démographique, équilibre idéologique (Droite vs Gauche), propriété privée vs collectivisation, contrebande, justice publique et dissuasion. Hébergement 0 € + API IA < 1 $/mois (Claude Haiku 5.5). |
 
-> **Nouveautés V6.0 :** **le bilan de la semaine et la frise du hameau** (§5.11) : chaque action réussie compte dans un **score de la semaine** (PA dépensés, actions, missions du jour, coups de main au chantier, aux voisins, aux visiteurs et aux résidents, binômes). Lundi à minuit, la Gazette publie le **bilan de la semaine** : classement, **habitant de la semaine** (+30 XP, moral +1 %) et **records** battus. Une **frise datée** retient les grandes étapes du hameau (« groupe électrogène livré le… », objectifs d’Acte, élections, chantiers collectifs, naissances…), affichée dans l’onglet Gazette.
+> **Nouveautés V6.1 :** **plus d’argent et de la production automatique** (§5.12) : le hameau investit dans des **installations qui rapportent seules chaque nuit**, de plus en plus modernes au fil des Actes — paysannes à l’Acte 1 (étal en libre-service, vente de lait et de laine, tournée du pain, bûcheron sous contrat), modernes à l’Acte 2 (revente d’électricité aux villages, réservation en ligne du gîte, péage de la piste, location de l’atelier), dignes d’un micro-État à l’Acte 3 (export d’électricité du micro-réacteur vers les pays voisins, protection armée des villages alentour, timbres de collection). Chacune coûte une **installation** puis une **charge chaque lundi** (impayée : suspendue). S’y ajoutent des **commandes régulières** (un client prend chaque nuit des rations, du bois, du fromage, des tomates ou du ratafia jusqu’au lundi) et des **services payants** (réparations, balades guidées, cours de français).
 
-> **Rappel V5.9 :** **des visiteurs imprévus** (§5.10) : certaines nuits, quelqu’un se présente au hameau — un **randonneur perdu**, une **journaliste**, un **inspecteur de la mairie** ou un **vendeur ambulant**. Il attend une réponse **le jour même avant 21 h** : le premier joueur qui répond choisit entre deux gestes (1 PA, parfois des rations, des tomates ou de l’argent). Le choix fait bouger la caisse, le moral, la notoriété, la pression administrative ou les relations avec les voisins ; **sans réponse**, la nuit tranche, souvent mal (Mossos fâchés, article méfiant, rapport salé…).
-
-
-
+> **Rappel V6.0 :** **le bilan de la semaine et la frise du hameau** (§5.11) : chaque action réussie compte dans un **score de la semaine** (PA dépensés, actions, missions du jour, coups de main au chantier, aux voisins, aux visiteurs et aux résidents, binômes). Lundi à minuit, la Gazette publie le **bilan de la semaine** : classement, **habitant de la semaine** (+30 XP, moral +1 %) et **records** battus. Une **frise datée** retient les grandes étapes du hameau (« groupe électrogène livré le… », objectifs d’Acte, élections, chantiers collectifs, naissances…), affichée dans l’onglet Gazette.
 
 > **Rappel V5.0 :** **un chantier collectif chaque semaine** (§5.5) : un projet commun (bois, piste, canaux, potager, chantier, fête) choisi par vote, auquel chacun met ses PA ; barre de progression commune, effet ×1,5 et moral en plus s'il est achevé avant dimanche.
 
@@ -355,6 +352,30 @@ Un hameau perché attire du monde inattendu : un randonneur égaré, une journal
 Le dimanche soir, le hameau fait ses comptes : qui a mis la main à la pâte, qui a battu un record, qui mérite le titre d’**habitant de la semaine**. Et pour ne pas oublier d’où l’on vient, une **frise** garde la date de chaque grande étape.
 
 > **Précisions V6.0 — bilan de la semaine & frise (feuille de route « vie du village »).** *Compteurs :* chaque action **réussie** ajoute à son auteur (l’acteur, même en délégation) dans `village_state.life.week_stats` : 1 action, les PA dépensés, la mission du jour si elle vient d’être accomplie, un **coup de main** pour `contribute_collective`, `help_neighbors`, `answer_visitor` et `cheer_resident`, un binôme s’il y a des partenaires. *Score :* **2 points par PA, 1 par action, 3 par mission du jour, 2 par coup de main, 1 par binôme** (`WEEK_SCORE`). *Bilan :* à la clôture de la semaine (lundi minuit, `closeWeekReview` au début de `closeSeason`), classement par score, puis PA, puis missions, puis ordre des places ; le premier est **habitant de la semaine** : **+30 XP de métier** et **moral +1 %** (`WEEK_HERO_XP`, `WEEK_HERO_MORALE`). Événement public « Bilan de la semaine : … » (podium de 3, totaux, records), repris par la Gazette (section « Bilan de la semaine », ligne « Bilan de la semaine : » de l’édition de secours) ; bilan gardé dans `life.week_last`, compteurs remis à zéro. *Records* (`life.records`) : PA d’un joueur en une semaine, coups de main d’un joueur, actions du hameau ; un record battu est annoncé (le premier n’est que posé). *Frise :* les événements publics `structure_completed`, `building_upgraded`, `gite_opened`, `energy_tier`, `act_changed`, `act_goal_done`, `act_goals_complete`, `collective_completed`, `election_result`, `neighbor_mission_done`, `migrant_admitted`, `naturalization`, `birth`, `marriage`, `independence`, `putsch_success` (`TIMELINE_EVENTS`, une icône chacun) entrent dans `life.timeline` avec la date du jour local (jour écoulé pour la nuit) ; **60 étapes au plus** (`TIMELINE_MAX`), les plus anciennes s’effacent. *Interface :* onglet Gazette, cartes « Bilan de la semaine » (classement en cours, dernier bilan, aide du score et records) et « Frise du hameau » (6 dernières étapes, frise complète en fenêtre). Aucune migration, aucune nouvelle action.
+
+### 5.12 Plus d’argent & production automatique
+
+Le hameau ne vit pas que du marché du samedi : il investit pour que l’argent rentre même la nuit. Au début, ce sont des affaires de paysans ; à mesure que le village devient un micro-État, ses revenus se modernisent.
+
+| Acte | Installation | Prix | Charge / lundi | Chaque nuit |
+|---|---|---|---|---|
+| 1 | 🧺 Étal en libre-service | 180 € | 15 € | 5 kg de tomates à 2,4 € (ou 2 rations à 3 €) ; moitié moins l’hiver |
+| 1 | 🐑 Vente de lait et de laine | 120 € | 10 € | 1,5 € par bête (15 € au plus), dès 2 bêtes |
+| 1 | 🥖 Tournée du pain | 250 € | 25 € | 4 rations à 3,5 € (four à pain requis) |
+| 1 | 🪓 Bûcheron sous contrat | 60 € | 45 € | +2 stères, sauf forêt fermée par Ely |
+| 2 | 🔌 Revente d’électricité aux villages | 450 € | 20 € | 4 € par palier d’énergie au-delà du premier (×1,5 l’été, ×0,6 l’hiver) |
+| 2 | 🛎️ Réservation en ligne du gîte | 200 € | 20 € | 8 € (10 € si moral ≥ 60 %), gîte ouvert |
+| 2 | 🚧 Péage de la piste | 300 € | 25 € | 12 € (6 € si la piste est sous 60 %) |
+| 2 | 🛠️ Location de l’atelier | 350 € | 30 € | 14 €, usure des outils +0,3 % (outils < 80 %) |
+| 3 | ☢️ Export d’électricité du micro-réacteur | 4 000 € | 250 € | 90 € (palier 5) |
+| 3 | 🛡️ Protection armée des villages alentour | 1 500 € | 120 € | 40 €, mairie +0,2 (menace < 40 %) |
+| 3 | 📮 Timbres et monnaie de collection | 800 € | 40 € | 10 € + 0,3 € par point de notoriété |
+
+**Commandes régulières.** Un client (auberge d’Organyà, fournil de Coll de Nargó, épicerie fine, restaurant de la mairie, cave de la vallée) prend chaque nuit une quantité fixe, payée mieux qu’au marché, jusqu’au lundi : 3 rations à 5 €, 2 stères à 9 €, 1 kg de fromage à 17 €, 4 kg de tomates à 4 €, 1 bouteille de ratafia à 14 €.
+
+**Services payants.** Réparations chez les voisins (30 €, usure des outils +1 %), balade guidée pour randonneurs (25 €, +10 € si le gîte est ouvert, notoriété +0,2), cours de français à Organyà (20 €, Organyà +1) : 1 PA, payé comptant, 3 fois par semaine chacun pour tout le hameau.
+
+> **Précisions V6.1 — revenus & production automatique (feuille de route « vie du village », demandé par l’utilisateur le 27/11/2026).** *Installations :* action `setup_install` (1 PA, `params.install`, prix payé par la caisse — verrou budgétaire habituel —, refus si l’Acte du hameau est inférieur à celui de l’installation ou si sa condition manque) ; `stop_install` (0 PA, sans remboursement). Chaque lundi (`closeIncomeWeek`, au début de la remise à zéro hebdomadaire), la charge de chaque installation en marche est prélevée ; si la caisse ne la couvre pas, l’installation est **suspendue** (`paused`) et ne produit plus ; `setup_install` la relance au prix d’une charge. *La nuit* (`processIncome`, après les filières) : le bûcheron apporte d’abord son bois, puis les **commandes** sont livrées, puis les **installations** vendent ; les ventes automatiques ne descendent jamais la réserve de rations sous **20**. Une installation dont la condition manque (four démoli, gîte fermé, menace trop forte…) ne produit rien cette nuit-là mais sa charge reste due. *Commandes :* `sign_order` (1 PA, `params.order`), 2 à la fois ; une livraison manquée coûte 1 point de relation avec le voisin du client ; à la 2ᵉ, le client rompt (−3 de plus) ; le lundi, une commande sans faute rapporte +1 et toutes les commandes se terminent. *Services :* `paid_service` (1 PA, physique, `params.service`), 3 fois par semaine chacun. *État :* `village_state.life.installs` / `orders` / `services_week` / `income_last` (bilan de la nuit) ; aucune migration. *Interface :* carte « Revenus automatiques » du Trésor (installations rangées par Acte, commandes, services, nuit dernière) ; « À faire en priorité » signale une livraison menacée, une installation suspendue, des charges du lundi non couvertes et propose une première installation ; le bois du bûcheron et des commandes compte dans les Réserves. Une installation mise en place s’inscrit dans la frise du hameau.
 
 ## 6. Duels (Carlage 2 × 2 & Épreuve de la cible), La Taverne, Tentations & Écrans Mobile-First
 

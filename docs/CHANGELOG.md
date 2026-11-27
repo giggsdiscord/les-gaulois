@@ -1,5 +1,11 @@
 # Historique des versions du GDD
 
+### V6.1 — 27/11/2026 — Plus d’argent & production automatique
+- **Installations qui produisent seules chaque nuit** (§5.12), par Acte : paysannes (étal, lait et laine, tournée du pain, bûcheron sous contrat), modernes (revente d’électricité aux villages, réservation du gîte, péage de la piste, location de l’atelier), micro-État (export d’électricité du micro-réacteur, protection armée des villages alentour, timbres de collection). Prix d’installation + **charge chaque lundi** ; impayée → suspendue jusqu’à relance.
+- **Commandes régulières** (2 à la fois, livrées chaque nuit jusqu’au lundi ; 2 livraisons manquées → rupture) et **services payants** (réparations, balade guidée, cours de français ; 3 fois par semaine).
+- Trésor : carte « Revenus automatiques » ; priorités (livraison menacée, installation suspendue, charges non couvertes, première installation) ; bois du contrat dans les Réserves. Actions `setup_install`, `stop_install`, `sign_order`, `paid_service`. Aucune migration (`village_state.life.installs` / `orders` / `services_week` / `income_last`) ; 15 nouveaux tests Vitest.
+- Nouvelle idée de l’utilisateur notée pour V6.2 : placer le fonds souverain sur des ETF qui suivent les vrais marchés.
+
 ### V6.0 — 27/11/2026 — Bilan de la semaine & frise du hameau
 - **Score de la semaine** (§5.11) : chaque action réussie compte (2 pts par PA, 1 par action, 3 par mission du jour, 2 par coup de main — chantier, voisins, visiteur, résident —, 1 par binôme).
 - **Bilan du lundi** : classement, **habitant de la semaine** (+30 XP de métier, moral +1 %), **records** du hameau ; événement « Bilan de la semaine : … » et section de la Gazette (et de l’édition de secours).

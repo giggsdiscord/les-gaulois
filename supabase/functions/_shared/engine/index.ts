@@ -34,6 +34,7 @@ export * from './personality.ts';
 export * from './neighbors.ts';
 export * from './visitors.ts';
 export * from './chronicle.ts';
+export * from './income.ts';
 export * from './collective.ts';
 export * from './goals.ts';
 export * from './skills.ts';

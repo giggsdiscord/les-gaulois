@@ -9,6 +9,7 @@ import type { ActionInput, OpResponse } from '../api/types.ts';
 import { actionBlockReason, lockNotes, situationFor } from '../lib/actionHints.ts';
 import { AMOUNT_ACTIONS, QUANTITY_ACTIONS, STRUCTURE_ACTION_KINDS } from '../lib/game.ts';
 import { eur } from '../lib/format.ts';
+import { defaultChoice, incomeChoices } from '../lib/income.ts';
 import { MIGRANT_STATUS, SPECIALTY_LABEL, STRUCTURE_STATUS } from '../lib/labels.ts';
 import { useData, useGame, useNow } from '../state/GameContext.tsx';
 import { Avatar, Badge, Button, Field, Input, Segmented, Select, Sheet, Stepper, TextArea, cx } from './ui.tsx';
@@ -101,6 +102,10 @@ export function ActionSheet({
   const visitorChoices = currentVisitor(data.village)?.def.choices ?? [];
   const [visitorChoice, setVisitorChoice] = useState(typeof preset?.params?.choice === 'string' ? preset.params.choice : '');
   const [freeText, setFreeText] = useState('');
+  // Revenus (V6.1) : installation, commande ou service choisi
+  const incomePick = incomeChoices(def.code, data);
+  const [incomeChoice, setIncomeChoice] = useState(incomePick ? String(preset?.params?.[incomePick.param] ?? '') : '');
+  const incomeValue = incomePick ? incomeChoice || defaultChoice(incomePick) : '';
   const [partnerA, setPartnerA] = useState('');
   const [partnerB, setPartnerB] = useState('');
   const [busy, setBusy] = useState(false);
@@ -173,6 +178,12 @@ export function ActionSheet({
       const choice = visitorChoice || visitorChoices[0]?.id;
       if (!choice) return 'Aucun visiteur n’attend au hameau.';
       input.params = { choice };
+    }
+    if (incomePick) {
+      if (!incomeValue) return 'Rien à choisir pour l’instant.';
+      const why = incomePick.options.find((o) => o.id === incomeValue)?.blocked;
+      if (why) return why;
+      input.params = { [incomePick.param]: incomeValue };
     }
     if (def.code === 'plan_building') {
       const why = planBlocker(data, buildVariant, buildParcel);
@@ -348,6 +359,18 @@ export function ActionSheet({
               {voteChoices.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.icon} {p.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+        {incomePick && incomePick.options.length > 0 && (
+          <Field label={incomePick.label} hint={incomePick.options.find((o) => o.id === incomeValue)?.blocked ?? incomePick.options.find((o) => o.id === incomeValue)?.hint}>
+            <Select value={incomeValue} onChange={(e) => setIncomeChoice(e.target.value)}>
+              {incomePick.options.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                  {o.blocked ? ' (impossible)' : ''}
                 </option>
               ))}
             </Select>

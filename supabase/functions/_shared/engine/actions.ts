@@ -15,6 +15,7 @@ import { advanceStructure, BUILDING_KINDS, findWorkPost, forestBan, residentSkil
 import { cheerBlocker, cheerResident, firstName, temperOf } from './personality.ts';
 import { adjustNeighbor, helpNeighbors, missionCostText, neighborHelpBlocker } from './neighbors.ts';
 import { answerVisitor, visitorBlocker } from './visitors.ts';
+import { findInstall, orderBlocker, renderService, serviceBlocker, setupBlocker, setupCost, setupInstall, signOrder, stopBlocker, stopInstall, unitText } from './income.ts';
 import { recordWeekAction } from './chronicle.ts';
 import { contributeToCollective, currentCollective, findCollectiveProject } from './collective.ts';
 import { buildingTypeOf, findBuildingType, findParcel, hasBuilding, planBlocker, planBuilding } from './buildings.ts';
@@ -445,6 +446,45 @@ export const ACTIONS: readonly ActionDef[] = [
       const cost = missionCostText(h.def);
       if (h.finished) return `${h.def.icon} « ${h.def.title} » : c’est fait ! Relation ${Math.round(h.gauge)}/100 et ${h.def.bonus}.`;
       return `${h.def.icon} Coup de main pour « ${h.def.title} » : ${h.mission.done_steps}/${h.def.steps}${cost ? ` (${cost})` : ''}.`;
+    },
+  },
+  {
+    code: 'setup_install', label: 'Installer un revenu automatique', description: 'Étal en libre-service, tournée du pain, bûcheron sous contrat, revente d’électricité, réservation en ligne du gîte : la caisse paie l’installation, puis une charge chaque lundi ; ensuite tout tourne seul chaque nuit. Une installation suspendue (charge impayée) se relance en réglant une semaine.', anyone: true, apCost: 1, delegable: false, target: 'none',
+    cost: (s, req) => setupCost(s.village, req.params?.install),
+    precheck: (s, req) => setupBlocker(s, req.params?.install),
+    run: (ctx) => {
+      const id = ctx.req.params?.install;
+      const blocker = setupBlocker(ctx.s, id);
+      ensure(!blocker, blocker ?? '');
+      const def = findInstall(id)!;
+      const price = setupCost(ctx.v, id);
+      spendTreasury(ctx, price, `${ctx.v.life?.installs?.[def.id]?.paused ? 'Relance' : 'Installation'} — ${def.label}`, 'installations');
+      const r = asAction(() => setupInstall(ctx.s, ctx.fx, ctx.actor, id, dayKeyOf(ctx.now)));
+      return r.resumed ? `${def.icon} ${def.label} repart (${price} € réglés).` : `${def.icon} ${def.label} en place (${price} €) : premières recettes dès cette nuit, ${def.weekly_eur} € de charge chaque lundi.`;
+    },
+  },
+  {
+    code: 'stop_install', label: 'Arrêter une installation', description: 'Plus de charge le lundi, plus de recettes : l’installation est démontée (sans remboursement).', anyone: true, apCost: 0, delegable: false, target: 'none',
+    precheck: (s, req) => stopBlocker(s.village, req.params?.install),
+    run: (ctx) => {
+      const def = asAction(() => stopInstall(ctx.s, ctx.fx, ctx.actor, ctx.req.params?.install));
+      return `${def.icon} ${def.label} arrêté.`;
+    },
+  },
+  {
+    code: 'sign_order', label: 'Signer une commande régulière', description: `Un client prend chaque nuit une quantité fixe (rations, bois, fromage, tomates, ratafia), mieux payée qu’au marché, jusqu’au lundi. ${C.ORDER_MAX_ACTIVE} commandes à la fois ; ${C.ORDER_MAX_MISSED} livraisons manquées et le client rompt (relation en baisse).`, anyone: true, apCost: 1, delegable: false, target: 'none',
+    precheck: (s, req) => orderBlocker(s.village, req.params?.order),
+    run: (ctx) => {
+      const def = asAction(() => signOrder(ctx.s, ctx.fx, ctx.actor, ctx.req.params?.order, dayKeyOf(ctx.now)));
+      return `${def.icon} Commande signée : ${def.per_night} ${unitText(def, def.per_night)} par nuit pour ${def.client}, ${def.unit_eur} € l’unité, jusqu’à lundi.`;
+    },
+  },
+  {
+    code: 'paid_service', label: 'Rendre un service payant', description: 'Réparations chez les voisins, balade guidée pour randonneurs, cours de français à Organyà : payé comptant, quelques fois par semaine pour tout le hameau.', anyone: true, apCost: 1, physical: true, delegable: false, target: 'none',
+    precheck: (s, req) => serviceBlocker(s.village, req.params?.service),
+    run: (ctx) => {
+      const r = asAction(() => renderService(ctx.s, ctx.fx, ctx.actor, ctx.req.params?.service));
+      return `${r.def.icon} ${r.def.label} : +${r.eur} € dans la caisse (${r.def.extra}).`;
     },
   },
   {

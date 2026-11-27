@@ -221,6 +221,51 @@ export interface VillageLife {
   records?: VillageRecords;
   /** Frise datée des grandes étapes du hameau (V6.0), de la plus ancienne à la plus récente. */
   timeline?: TimelineEntry[];
+  /** Installations qui produisent seules (V6.1) : id → installation. */
+  installs?: Record<string, AutoInstall>;
+  /** Commandes régulières en cours (V6.1) : id → commande, closes chaque lundi. */
+  orders?: Record<string, ActiveOrder>;
+  /** Services payants rendus cette semaine (V6.1) : id → nombre. */
+  services_week?: Record<string, number>;
+  /** Bilan de la nuit dernière : installations et commandes (V6.1). */
+  income_last?: IncomeNight | null;
+}
+
+/** Installation automatique (V6.1). */
+export interface AutoInstall {
+  /** Jour local d'installation (AAAA-MM-JJ). */
+  since: string;
+  by: string;
+  /** Charge hebdomadaire impayée : l'installation ne tourne plus jusqu'à sa relance. */
+  paused?: boolean;
+}
+
+/** Commande régulière signée (V6.1). */
+export interface ActiveOrder {
+  since: string;
+  by: string;
+  delivered: number;
+  missed: number;
+  earned_eur: number;
+}
+
+/** Une ligne du bilan de la nuit (V6.1). */
+export interface IncomeLine {
+  id: string;
+  icon: string;
+  label: string;
+  eur: number;
+  /** Ce qui est sorti (négatif) ou entré (positif) des réserves, en clair. */
+  goods?: string;
+  /** Rien ne s'est passé : pourquoi. */
+  idle?: string;
+}
+
+export interface IncomeNight {
+  day: string;
+  eur: number;
+  wood: number;
+  lines: IncomeLine[];
 }
 
 /** Ce qu'un joueur a fait pendant la semaine (V6.0). */

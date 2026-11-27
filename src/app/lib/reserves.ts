@@ -5,7 +5,7 @@
  * s'en procurer (actions des métiers, catalogue des fournisseurs).
  * Pur (aucun DOM) : testé dans tests/app/priorities.test.ts.
  */
-import {
+import { planIncomeNight,
   calendarSeasonOfKey,
   CATALOG,
   computeEnergyBalance,
@@ -213,12 +213,14 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
   const insulated = s.structures.filter((st) => st.status === 'operational' && UPGRADABLE_KINDS.includes(st.kind) && structureLevel(st) > 1).length;
   const worn = wornStructures(s);
   const cuts = lifeOf(v).wood_cuts ?? 0;
-  const woodNet = round1(work.wood - heat.wood - builds.wood);
+  // Revenus automatiques (V6.1) : bûcheron sous contrat (+) et commande de bois (−)
+  const incomeWood = planIncomeNight(s, season).stocks.wood_stock ?? 0;
+  const woodNet = round1(work.wood - heat.wood - builds.wood + incomeWood);
   const woodDays = woodNet < 0 ? Math.floor(v.wood_stock / -woodNet) : null;
   lines.push({
     key: 'wood', emoji: '🪵', label: 'Bois', amount: v.wood_stock, display: num(v.wood_stock),
-    perDay: heat.wood > 0 || work.wood > 0 ? woodNet : null,
-    rate: heat.wood > 0 || work.wood > 0 ? `${signed(woodNet)} / nuit${heat.wood > 0 ? ' (chauffage)' : ' (bûcherons)'}` : sessions(v.wood_stock, 5),
+    perDay: heat.wood > 0 || work.wood > 0 || incomeWood !== 0 ? woodNet : null,
+    rate: heat.wood > 0 || work.wood > 0 || incomeWood !== 0 ? `${signed(woodNet)} / nuit${heat.wood > 0 ? ' (chauffage)' : ' (bûcherons)'}` : sessions(v.wood_stock, 5),
     daysLeft: woodDays,
     low: v.wood_stock < 5 || (woodDays !== null && woodDays < 5),
     daily: [
@@ -228,6 +230,7 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
       ...(builds.wood > 0 ? [`Four à pain : −${builds.wood} stère par nuit de cuisson.`] : []),
       `Sans bois une nuit de froid : moral −${C.HEATING_COLD_MORALE} % et santé −${C.HEATING_COLD_HEALTH} pour chaque fondateur.`,
       ...(work.wood > 0 ? [`Bûcherons résidents : +${num(round1(work.wood))} stères par nuit.`] : []),
+      ...(incomeWood !== 0 ? [`Bûcheron sous contrat et commandes de bois : ${signed(incomeWood)} stères par nuit.`] : []),
       `Coupes cette semaine : ${num(cuts)} / ${C.WOOD_CUT_SUSTAINABLE} soutenables (au-delà, la forêt souffre et les agents rurals peuvent verbaliser ; une nuit de bûcheron résident compte pour ${num(C.RESIDENT_FOREST_CUT_SHARE)} coupe).`,
       ...(ban ? [`🚫 Ely a interdit les coupes jusqu'à lundi : « ${ban.reason} ». Les bûcherons résidents entretiennent la forêt.`] : []),
     ],

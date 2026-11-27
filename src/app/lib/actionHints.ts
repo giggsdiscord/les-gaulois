@@ -3,6 +3,7 @@
  * recherche et actions récentes. Pur (aucun DOM) : testé dans tests/app/actionHints.test.ts.
  * La validation qui fait foi reste celle du moteur (performAction).
  */
+import { incomeChoices } from './income.ts';
 import { constants as C, currentCollective, forestBan, neighborHelpBlocker, permitBlocker, visitorBlocker, freeParcels, openBuildingProjects, getAction, isAfter, isSunday, lifeOf, pantryAmount, type ActionDef } from '../engine.ts';
 import type { GameData, PublicPlayer } from '../api/types.ts';
 import { electionView } from './election.ts';
@@ -28,6 +29,8 @@ export interface ActionSituation {
   neighborHelp?: string | null;
   /** Visiteurs (V5.9) : pourquoi on ne peut pas répondre (null = possible). */
   visitor?: string | null;
+  /** Revenus (V6.1) : pourquoi aucune option n'est possible, par action (null = au moins une possible). */
+  income?: Partial<Record<'setup_install' | 'stop_install' | 'sign_order' | 'paid_service', string | null>>;
   /** Élection vivante (V5.3) : gestes possibles maintenant. */
   election?: { open: boolean; canStand: boolean; canSpeak: boolean; canVote: boolean; phase: string | null };
 }
@@ -59,6 +62,7 @@ export function situationFor(data: Pick<GameData, 'me' | 'players' | 'village'> 
           : permitBlocker(data.village),
     neighborHelp: neighborHelpBlocker(data.village),
     visitor: visitorBlocker(data.village, now),
+    income: incomeBlockers({ village: data.village, structures: data.structures ?? [] }),
     election: electionSituation(data, holder.id === me.id, now),
     supply: { livestock: data.village.livestock_count, rations: data.village.food_rations, plums: pantryAmount(data.village, 'plums_kg') },
   };
@@ -82,6 +86,7 @@ export function actionBlockReason(def: ActionDef, s: ActionSituation): string | 
   if (def.code === 'plan_building' && s.buildBlocked) return s.buildBlocked;
   if (def.code === 'help_neighbors' && s.neighborHelp) return s.neighborHelp;
   if (def.code === 'answer_visitor' && s.visitor) return s.visitor;
+  if (s.income && def.code in s.income && s.income[def.code as keyof typeof s.income]) return s.income[def.code as keyof typeof s.income]!;
   // Filières (V5.6)
   if (s.supply && def.code === 'make_cheese' && s.supply.livestock < C.CHEESE_MIN_LIVESTOCK) return `Il faut au moins ${C.CHEESE_MIN_LIVESTOCK} bêtes à l’enclos.`;
   if (s.supply && def.code === 'make_cheese' && s.supply.rations < C.CHEESE_MAKE_RATIONS) return `Il faut ${C.CHEESE_MAKE_RATIONS} rations de lait.`;
@@ -152,4 +157,15 @@ function electionSituation(data: Pick<GameData, 'me' | 'players' | 'village'>, s
   const v = electionView(data, now);
   if (!v.election) return { open: false, canStand: false, canSpeak: false, canVote: false, phase: null };
   return { open: true, canStand: self && v.canStand, canSpeak: self && v.canSpeak, canVote: self && v.canVote, phase: v.phase };
+}
+
+/** Revenus (V6.1) : une action dont toutes les options sont refusées est grisée avec la première raison. */
+function incomeBlockers(data: Parameters<typeof incomeChoices>[1]): NonNullable<ActionSituation['income']> {
+  const out: NonNullable<ActionSituation['income']> = {};
+  for (const code of ['setup_install', 'stop_install', 'sign_order', 'paid_service'] as const) {
+    const ch = incomeChoices(code, data);
+    if (!ch || ch.options.length === 0) out[code] = code === 'stop_install' ? 'Aucune installation en place.' : 'Rien de possible pour l’instant.';
+    else out[code] = ch.options.every((o) => o.blocked) ? ch.options[0]!.blocked : null;
+  }
+  return out;
 }
