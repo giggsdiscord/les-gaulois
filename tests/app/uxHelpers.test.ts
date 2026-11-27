@@ -60,6 +60,15 @@ describe('Menu des actions par type', () => {
 });
 
 describe('Raisons de blocage et verrous', () => {
+  it('filières (V5.6) : fromage sans troupeau, ratafia sans prunes', () => {
+    const supply = { livestock: 0, rations: 100, plums: 0 };
+    expect(actionBlockReason(def('make_cheese'), situation({ supply }))).toMatch(/bêtes/);
+    expect(actionBlockReason(def('make_cheese'), situation({ supply: { ...supply, livestock: 3, rations: 1 } }))).toMatch(/rations/);
+    expect(actionBlockReason(def('make_cheese'), situation({ supply: { ...supply, livestock: 3 } }))).toBeNull();
+    expect(actionBlockReason(def('make_ratafia'), situation({ supply }))).toMatch(/prunes/);
+    expect(actionBlockReason(def('make_ratafia'), situation({ supply: { ...supply, plums: 12 } }))).toBeNull();
+  });
+
   it('suit l’ordre du moteur', () => {
     expect(actionBlockReason(def('garden_tend'), situation())).toBeNull();
     expect(actionBlockReason(def('garden_tend'), situation({ defeated: true }))).toMatch(/terminée/);

@@ -4,7 +4,7 @@
  * bouton collé en bas et résultat affiché dans la fenêtre (avec « Refaire »).
  */
 import { useMemo, useState } from 'react';
-import { buildingTypeOf, CATALOG, constants, findCollectiveProject, freeParcels, lifeOf, planBlocker, marketQuote, purchaseCost, type ActionDef, type VillageState } from '../engine.ts';
+import { buildingTypeOf, CATALOG, constants, findCollectiveProject, freeParcels, lifeOf, planBlocker, marketQuote, marketStock, purchaseCost, type ActionDef, type VillageState } from '../engine.ts';
 import type { ActionInput, OpResponse } from '../api/types.ts';
 import { actionBlockReason, lockNotes, situationFor } from '../lib/actionHints.ts';
 import { AMOUNT_ACTIONS, QUANTITY_ACTIONS, STRUCTURE_ACTION_KINDS } from '../lib/game.ts';
@@ -409,7 +409,7 @@ export function ActionSheet({
               <Select value={marketId} onChange={(e) => setMarketId(e.target.value)}>
                 {constants.MARKET_ITEMS.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.label} — lot de {m.lot} {m.unit} (réserve : {Math.floor(Number(data.village[m.stock]))})
+                    {m.label} — lot de {m.lot} {m.unit} (réserve : {Math.floor(marketStock(data.village as unknown as VillageState, m.stock))})
                   </option>
                 ))}
               </Select>

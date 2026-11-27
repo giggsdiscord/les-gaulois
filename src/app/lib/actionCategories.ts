@@ -17,7 +17,7 @@ export const ACTION_CATEGORIES: readonly ActionCategory[] = [
     id: 'vivres',
     emoji: '🌾',
     label: 'Vivres & élevage',
-    codes: ['garden_tend', 'expand_garden', 'build_livestock_pen', 'buy_livestock', 'livestock_care', 'butcher_livestock', 'fish_hunt', 'repel_boars', 'make_preserves'],
+    codes: ['garden_tend', 'expand_garden', 'build_livestock_pen', 'buy_livestock', 'livestock_care', 'butcher_livestock', 'fish_hunt', 'repel_boars', 'make_preserves', 'make_cheese', 'make_ratafia'],
   },
   {
     id: 'chantiers',

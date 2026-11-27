@@ -192,6 +192,20 @@ export interface VillageLife {
   buildings_last?: BuildingsNight | null;
   /** Usure fractionnaire en attente par ouvrage (V5.5 : `condition_pct` est entier). */
   wear_acc?: Record<string, number>;
+  /** Produits des filières (V5.6) : fromage, ratafia, prunes. */
+  pantry?: Partial<Record<'cheese_kg' | 'ratafia_bottles' | 'plums_kg', number>>;
+  /** Bilan de la nuit dernière : filières, péremption, surplus perdu (V5.6). */
+  supply_last?: SupplyNight | null;
+}
+
+/** Bilan nocturne des filières et des réserves (V5.6). */
+export interface SupplyNight {
+  cheese: number;
+  plums: number;
+  /** Vivres gâtés par la chaleur (réserve → quantité). */
+  spoiled: Record<string, number>;
+  /** Surplus perdu faute de place (réserve → quantité). */
+  overflow: Record<string, number>;
 }
 
 /** Bilan nocturne des nouveaux bâtiments (V5.4). */

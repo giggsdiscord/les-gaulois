@@ -14,6 +14,7 @@ import { advanceStructure, BUILDING_KINDS, findWorkPost, forestBan, residentSkil
 import { contributeToCollective, currentCollective, findCollectiveProject } from './collective.ts';
 import { buildingTypeOf, findBuildingType, findParcel, hasBuilding, planBlocker, planBuilding } from './buildings.ts';
 import { applyUpgrade, maintainBlocker, nextUpgrade, UPGRADABLE_KINDS, upgradeBlocker, upgradeGains, WEARING_KINDS } from './upkeep.ts';
+import { addPantry, pantryAmount } from './supply.ts';
 import { castElectionVote, speakAtDebate, standForElection } from './elections.ts';
 import { checkLocks, markGroupExecuted } from './locks.ts';
 import { clamp, deepClone, gauge, money, round2, stock } from './math.ts';
@@ -315,7 +316,7 @@ export const ACTIONS: readonly ActionDef[] = [
   },
   // ======================= Vie du village (V4.8) =======================
   {
-    code: 'market_sale', label: 'Vendre au marché d\'Organyà', description: 'Tomates, bois ou conserves vendus pour la caisse commune ; le samedi, jour de marché, +30 %. Le marché sature au fil de la semaine.', anyone: true, apCost: 1, target: 'market',
+    code: 'market_sale', label: 'Vendre au marché d\'Organyà', description: 'Tomates, bois, conserves, fromage ou ratafia vendus pour la caisse commune ; le samedi, jour de marché, +30 %. Le marché sature au fil de la semaine.', anyone: true, apCost: 1, target: 'market',
     run: (ctx) => {
       const q = marketQuote(ctx.v, ctx.req.catalog_item_id, num(ctx.req.quantity, 1), ctx.now);
       ensure(q, 'Produit inconnu au marché.');
@@ -362,6 +363,31 @@ export const ACTIONS: readonly ActionDef[] = [
       const rations = Math.max(1, Math.round(C.PRESERVES_RATIONS * Math.min(1.5, factor(ctx))));
       ctx.v.food_rations = money(ctx.v.food_rations + rations);
       return `${C.PRESERVES_TOMATOES_KG} kg de tomates mis en bocaux : +${rations} rations pour l'hiver.`;
+    },
+  },
+  // ======================= Filières (V5.6) =======================
+  {
+    code: 'make_cheese', label: 'Faire du fromage', description: 'Le lait du troupeau (au moins 2 bêtes, 4 rations de lait) devient environ 3 kg de fromage qui se garde et se vend bien au marché ; davantage avec la fromagerie.', anyone: true, apCost: 1, pole: 'mayor_agri', target: 'none',
+    run: (ctx) => {
+      ensure(ctx.v.livestock_count >= C.CHEESE_MIN_LIVESTOCK, `Il faut au moins ${C.CHEESE_MIN_LIVESTOCK} bêtes à l'enclos (${ctx.v.livestock_count} aujourd'hui).`);
+      ensure(ctx.v.food_rations >= C.CHEESE_MAKE_RATIONS, `Pas assez de lait : il faut ${C.CHEESE_MAKE_RATIONS} rations.`);
+      ctx.v.food_rations = money(ctx.v.food_rations - C.CHEESE_MAKE_RATIONS);
+      const dairy = hasBuilding(ctx.s, 'cheese_dairy');
+      const kg = round2(Math.max(1, Math.round(C.CHEESE_MAKE_KG * Math.min(1.5, factor(ctx)))) + (dairy ? C.CHEESE_MAKE_DAIRY_BONUS : 0));
+      const total = addPantry(ctx.v, 'cheese_kg', kg);
+      return `Caillé, moulé, salé : +${kg} kg de fromage${dairy ? ' (fromagerie)' : ''}. Réserve : ${total} kg, à vendre au marché d'Organyà.`;
+    },
+  },
+  {
+    code: 'make_ratafia', label: 'Distiller du ratafia', description: '10 kg de prunes du verger + 15 € (eau-de-vie, sucre, droits d’accise déclarés) → 6 bouteilles de ratafia légal, à vendre au marché.', anyone: true, apCost: 1, pole: 'mayor_agri', target: 'none',
+    run: (ctx) => {
+      const plums = pantryAmount(ctx.v, 'plums_kg');
+      ensure(plums >= C.RATAFIA_PLUMS_KG, `Pas assez de prunes (${plums} kg pour ${C.RATAFIA_PLUMS_KG}) : le verger en donne l'été et l'automne.`);
+      spendTreasury(ctx, C.RATAFIA_COST_EUR, 'Ratafia : eau-de-vie, sucre et droits d’accise', 'supplies');
+      addPantry(ctx.v, 'plums_kg', -C.RATAFIA_PLUMS_KG);
+      const bottles = Math.max(1, Math.round(C.RATAFIA_BOTTLES * Math.min(1.5, factor(ctx))));
+      const total = addPantry(ctx.v, 'ratafia_bottles', bottles);
+      return `${C.RATAFIA_PLUMS_KG} kg de prunes macérés : +${bottles} bouteilles de ratafia déclaré (${total} en réserve).`;
     },
   },
   // ======================= Travail des résidents & droit de regard d'Ely (V4.9) =======================

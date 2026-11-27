@@ -67,15 +67,23 @@ export function marketQuote(v: MarketVillage, itemId: string | null | undefined,
     saturday,
     sold,
     remaining: Math.max(0, item.weekly_cap - sold),
-    available: Math.floor(v[item.stock]),
+    available: Math.floor(marketStock(v, item.stock)),
   };
+}
+
+/** Quantité disponible d'une réserve vendable (colonne du village ou produit des filières dans `life.pantry`, V5.6). */
+export function marketStock(v: MarketVillage, key: C.MarketItem['stock']): number {
+  if (key === 'cheese_kg' || key === 'ratafia_bottles') return Number(lifeOf(v).pantry?.[key] ?? 0) || 0;
+  return v[key];
 }
 
 /** Enregistre une vente : réserve débitée, compteur de la semaine, recette dans la caisse (par l'appelant). */
 export function applyMarketSale(v: VillageState, q: MarketQuote): void {
-  if (q.item.stock === 'food_rations') v.food_rations = money(v.food_rations - q.units);
-  else v[q.item.stock] = stock(v[q.item.stock] - q.units);
   const life = ensureLife(v);
+  const key = q.item.stock;
+  if (key === 'cheese_kg' || key === 'ratafia_bottles') life.pantry = { ...(life.pantry ?? {}), [key]: money(Math.max(0, (life.pantry?.[key] ?? 0) - q.units)) };
+  else if (key === 'food_rations') v.food_rations = money(v.food_rations - q.units);
+  else v[key] = stock(v[key] - q.units);
   life.market_sold = { ...(life.market_sold ?? {}), [q.item.id]: q.sold + q.units };
 }
 

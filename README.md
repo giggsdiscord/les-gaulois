@@ -2,7 +2,7 @@
 
 Simulation coopérative asynchrone pour 7 à 10 amis : un hameau en ruines des Pyrénées de Lleida, 295 000 € de dette, 3 Points d'Action par jour, une Agora le dimanche, des duels (Carlage 2×2 en direct ou épreuve de la cible en différé) pour trancher les vetos et un Maître du Jeu IA pince-sans-rire. Objectif : l'autonomie, puis le Micro-État souverain.
 
-- **Game Design Document (source vivante) :** [docs/GDD.md](docs/GDD.md) → PDF à la racine : `Les Gaulois - Game Design Document & Architecture Technique V5.5.pdf` (versions précédentes dans `docs/archive/`)
+- **Game Design Document (source vivante) :** [docs/GDD.md](docs/GDD.md) → PDF à la racine : `Les Gaulois - Game Design Document & Architecture Technique V5.6.pdf` (versions précédentes dans `docs/archive/`)
 - **Historique des versions :** [docs/CHANGELOG.md](docs/CHANGELOG.md)
 - **Mise en ligne (≈ 20 min, 0 €) :** [docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md)
 

@@ -3,7 +3,7 @@
  * recherche et actions récentes. Pur (aucun DOM) : testé dans tests/app/actionHints.test.ts.
  * La validation qui fait foi reste celle du moteur (performAction).
  */
-import { constants as C, currentCollective, forestBan, freeParcels, openBuildingProjects, getAction, isAfter, isSunday, lifeOf, type ActionDef } from '../engine.ts';
+import { constants as C, currentCollective, forestBan, freeParcels, openBuildingProjects, getAction, isAfter, isSunday, lifeOf, pantryAmount, type ActionDef } from '../engine.ts';
 import type { GameData, PublicPlayer } from '../api/types.ts';
 import { electionView } from './election.ts';
 
@@ -22,6 +22,8 @@ export interface ActionSituation {
   collectiveVotable?: boolean;
   /** Nouveaux bâtiments (V5.4) : pourquoi aucun plan n'est possible (null = possible). */
   buildBlocked?: string | null;
+  /** Filières (V5.6) : troupeau, rations et prunes disponibles. */
+  supply?: { livestock: number; rations: number; plums: number };
   /** Élection vivante (V5.3) : gestes possibles maintenant. */
   election?: { open: boolean; canStand: boolean; canSpeak: boolean; canVote: boolean; phase: string | null };
 }
@@ -52,6 +54,7 @@ export function situationFor(data: Pick<GameData, 'me' | 'players' | 'village'> 
           ? 'Deux nouveaux bâtiments déjà en projet : finissez-en un.'
           : null,
     election: electionSituation(data, holder.id === me.id, now),
+    supply: { livestock: data.village.livestock_count, rations: data.village.food_rations, plums: pantryAmount(data.village, 'plums_kg') },
   };
 }
 
@@ -71,6 +74,10 @@ export function actionBlockReason(def: ActionDef, s: ActionSituation): string | 
   if (def.code === 'contribute_collective' && s.collective === 'done') return 'Chantier de la semaine achevé : rendez-vous lundi.';
   if (def.code === 'vote_collective_project' && s.collectiveVotable === false) return "Aucun projet à voter pour l'instant.";
   if (def.code === 'plan_building' && s.buildBlocked) return s.buildBlocked;
+  // Filières (V5.6)
+  if (s.supply && def.code === 'make_cheese' && s.supply.livestock < C.CHEESE_MIN_LIVESTOCK) return `Il faut au moins ${C.CHEESE_MIN_LIVESTOCK} bêtes à l’enclos.`;
+  if (s.supply && def.code === 'make_cheese' && s.supply.rations < C.CHEESE_MAKE_RATIONS) return `Il faut ${C.CHEESE_MAKE_RATIONS} rations de lait.`;
+  if (s.supply && def.code === 'make_ratafia' && s.supply.plums < C.RATAFIA_PLUMS_KG) return `Il faut ${C.RATAFIA_PLUMS_KG} kg de prunes (verger : été et automne).`;
   // Élection vivante d'un portefeuille (V5.3)
   if (s.election && (def.code === 'run_for_office' || def.code === 'campaign_speech' || def.code === 'vote_election')) {
     const e = s.election;

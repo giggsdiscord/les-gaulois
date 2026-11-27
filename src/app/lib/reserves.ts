@@ -23,6 +23,9 @@ import {
   lifeOf,
   marketQuote,
   planBuildingsNight,
+  pantryAmount,
+  planSupplyNight,
+  storageFactor,
   planResidentWork,
   purchaseCost,
   type CalendarSeason,
@@ -169,7 +172,7 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
         ? `Le potager en produit seul : +${num(round1(harvest.tomatoesKg))} kg par jour (${Math.round(tomatoShare * 100)} % de la récolte en ${SEASON[season]}).`
         : 'Aucune tomate en hiver : la réserve attend le printemps.',
       ...(work.tomatoes > 0 ? [`Résidents au potager : +${num(round1(work.tomatoes))} kg par nuit.`] : []),
-      'Personne n\'en mange au quotidien : elles ne baissent pas toutes seules — vendez-les ou mettez-les en conserve.',
+      'Personne n\'en mange au quotidien : vendez-les ou mettez-les en conserve (l\'été, sans chambre froide, elles se gâtent).',
     ],
     uses: [
       `Vendre au marché d'Organyà : ${sale('tomatoes')}.`,
@@ -194,7 +197,7 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
         : 'Pas d\'élevage possible tant que l\'enclos (Cleda) n\'est pas construit.',
       `À partir de ${C.LIVESTOCK_FERTILIZER_THRESHOLD} bêtes, le fumier ajoute ${Math.round(C.LIVESTOCK_FERTILIZER_BONUS * 100)} % à la récolte du potager.`,
     ],
-    uses: ['Boucherie : 1 bête → 25 rations (en cas de disette).'],
+    uses: ['Boucherie : 1 bête → 25 rations (en cas de disette).', `Faire du fromage (au moins ${C.CHEESE_MIN_LIVESTOCK} bêtes) : environ ${C.CHEESE_MAKE_KG} kg par séance, à vendre au marché.`],
     sources: sources(
       penReady ? null : act('build_livestock_pen', 'Construire l\'enclos (Cleda)', '350 € par séance de chantier, 8 bois.', pen ? { target_structure_id: pen.id } : undefined),
       act('buy_livestock', 'Acheter du bétail (foire de Lleida)', `${eur(C.LIVESTOCK_PRICE_EUR)} par tête, enclos requis.`),
@@ -326,5 +329,61 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
   });
 
   if (surcharge) for (const l of lines) if (l.sources.some((x) => x.actionCode === 'buy_supplies')) l.uses.push(surcharge.trim());
+  // --- Filières (V5.6) : fromage, prunes, ratafia ---------------------------
+  const supply = planSupplyNight(s, season);
+  const lotsToSell = (n: number) => (n >= 2 ? (Math.floor(n / 2) > 1 ? Math.floor(n / 2) + ' lots à vendre' : '1 lot à vendre') : 'à fabriquer');
+  const cheese = pantryAmount(v, 'cheese_kg');
+  lines.push({
+    key: 'cheese', emoji: '🧀', label: 'Fromage', amount: cheese, display: `${num(round1(cheese))} kg`,
+    perDay: supply.cheese > 0 ? supply.cheese : null,
+    rate: supply.cheese > 0 ? `${signed(supply.cheese)} kg / nuit` : lotsToSell(cheese),
+    daysLeft: null, low: false,
+    daily: [
+      supply.cheese > 0
+        ? `La fromagerie affine +${num(supply.cheese)} kg par nuit.`
+        : `Rien ne se fait tout seul sans fromagerie (et au moins ${C.CHEESE_MIN_LIVESTOCK} bêtes).`,
+      'Le fromage se garde : il ne se gâte pas l’été.',
+    ],
+    uses: [`Vendre au marché d'Organyà : ${sale('cheese')}.`],
+    sources: sources(
+      act('make_cheese', 'Faire du fromage', `${C.CHEESE_MAKE_RATIONS} rations de lait → environ ${C.CHEESE_MAKE_KG} kg (au moins ${C.CHEESE_MIN_LIVESTOCK} bêtes ; +${C.CHEESE_MAKE_DAIRY_BONUS} kg avec la fromagerie).`),
+      act('plan_building', 'Bâtir une fromagerie', `Du fromage chaque nuit (${C.CHEESE_DAIRY_KG} kg avec au moins ${C.CHEESE_MIN_LIVESTOCK} bêtes).`),
+    ),
+  });
+  const plums = pantryAmount(v, 'plums_kg');
+  lines.push({
+    key: 'plums', emoji: '🫐', label: 'Prunes', amount: plums, display: `${num(Math.floor(plums))} kg`,
+    perDay: supply.plums > 0 ? supply.plums : null,
+    rate: supply.plums > 0 ? `${signed(supply.plums)} kg / nuit` : 'hors saison',
+    daysLeft: null, low: false,
+    daily: [
+      supply.plums > 0 ? `Le verger en donne +${supply.plums} kg par nuit en ${SEASON[season]}.` : 'Le verger ne donne des prunes que l’été et l’automne.',
+      'Fruits frais : l’été, sans chambre froide, ils se gâtent vite.',
+    ],
+    uses: [`Distiller du ratafia : ${C.RATAFIA_PLUMS_KG} kg → ${C.RATAFIA_BOTTLES} bouteilles (${C.RATAFIA_COST_EUR} € d'eau-de-vie et de droits).`],
+    sources: [{ label: 'Verger du hameau', detail: `Cueillette toute seule, chaque nuit d’été (+${C.PLUMS_PER_NIGHT.summer} kg) et d’automne (+${C.PLUMS_PER_NIGHT.autumn} kg).`, actionCode: null, who: 'personne : se fait tout seul', mine: false }],
+  });
+  const ratafia = pantryAmount(v, 'ratafia_bottles');
+  lines.push({
+    key: 'ratafia', emoji: '🍶', label: 'Ratafia', amount: ratafia, display: num(Math.floor(ratafia)),
+    perDay: null, rate: lotsToSell(ratafia), daysLeft: null, low: false,
+    daily: ['Ratafia légal, droits d’accise payés : il se garde sans fin.'],
+    uses: [`Vendre au marché d'Organyà : ${sale('ratafia')}.`],
+    sources: sources(act('make_ratafia', 'Distiller du ratafia', `${C.RATAFIA_PLUMS_KG} kg de prunes + ${C.RATAFIA_COST_EUR} € → ${C.RATAFIA_BOTTLES} bouteilles.`)),
+  });
+
+  // --- Stockage & péremption (V5.6) -------------------------------------------
+  const STORE: Record<string, C.StorageKey> = { food: 'food_rations', tomatoes: 'tomatoes_stock', wood: 'wood_stock', stone: 'stone_stock', iron: 'iron_stock', cheese: 'cheese_kg', plums: 'plums_kg', ratafia: 'ratafia_bottles' };
+  const shed = storageFactor(s);
+  for (const line of lines) {
+    const key = STORE[line.key];
+    if (!key) continue;
+    const cap = supply.caps[key];
+    const full = line.amount >= cap * 0.9;
+    line.daily.push(`Capacité : ${num(Math.floor(line.amount))} / ${num(cap)}${shed > 1 ? ` (hangar ×${num(shed)})` : ''}. Au-delà, le surplus se perd la nuit${shed > 1 ? '' : ' — un hangar la relève'}.`);
+    const spoil = supply.spoiled[key];
+    if (spoil) line.daily.push(`Chaleur sans chambre froide : −${num(spoil)} se gâtent cette nuit.`);
+    if (full) line.low = true;
+  }
   return lines;
 }

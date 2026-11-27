@@ -23,6 +23,10 @@ import {
   forestBan,
   heatingNeed,
   planResidentWork,
+  pantryAmount,
+  planSupplyNight,
+  storageAmount,
+  type VillageState,
   type ActionDef,
   type AutonomyBreakdown,
   type GameSnapshot,
@@ -453,6 +457,54 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
       actionCode: 'market_sale', preset: { catalog_item_id: 'tomatoes' },
       steps: [`Faire des conserves : ${C.PRESERVES_TOMATOES_KG} kg → ${C.PRESERVES_RATIONS} rations (${C.PRESERVES_JARS_EUR} € de bocaux).`, 'Garder 20 kg pour le lancer sur les BOR (moral +15 %).'],
       gain: 'Argent pour la caisse ou rations',
+    });
+  }
+
+  // Filières, péremption & stockage (V5.6)
+  const supply = planSupplyNight(s, season);
+  if (Object.keys(supply.spoiled).length > 0) {
+    const lost = Object.entries(supply.spoiled).map(([k, n]) => `${C.STORAGE_LABEL[k as C.StorageKey].label.toLowerCase()} −${n}`).join(', ');
+    P.add({
+      key: 'spoil', emoji: '❄️', title: 'Arrêter le gâchis : une chambre froide', urgent: false, score: 44,
+      short: 'La chaleur gâte rations, tomates et prunes chaque nuit.',
+      why: `L'été (ou quand il fait plus de ${C.SPOIL_HOT_C} °C), les vivres frais se gâtent la nuit : ${lost} cette nuit. Une chambre froide en service arrête tout le gâchis. Fromage et ratafia, eux, se gardent.`,
+      actionCode: 'plan_building', preset: { params: { variant: 'cold_room' } },
+      steps: ['La chambre froide demande l’électricité.', 'En attendant : vendre les tomates, faire des conserves, distiller les prunes en ratafia.'],
+      gain: 'Plus aucune perte de vivres',
+    });
+  }
+  const full = (Object.keys(supply.caps) as C.StorageKey[]).filter((k) => storageAmount(v as VillageState, k) >= supply.caps[k] * 0.9);
+  if (full.length > 0) {
+    const k = full[0]!;
+    const meta = C.STORAGE_LABEL[k];
+    const sell = C.MARKET_ITEMS.find((m) => m.stock === k);
+    P.add({
+      key: `storage:${k}`, emoji: '🏚️', title: sell ? `Vendre du surplus : ${meta.label.toLowerCase()}` : 'Bâtir un hangar', urgent: false, score: 52,
+      short: `${meta.label} presque plein : au-delà, le surplus se perd la nuit.`,
+      why: `Chaque réserve a une capacité (${full.map((x) => `${C.STORAGE_LABEL[x].label.toLowerCase()} ${Math.floor(storageAmount(v as VillageState, x))} / ${supply.caps[x]}`).join(', ')}). Ce qui dépasse se perd chaque nuit. Un hangar relève toutes les capacités (×1,5, puis ×2 et ×2,5 avec ses niveaux).`,
+      actionCode: sell ? 'market_sale' : 'plan_building', preset: sell ? { catalog_item_id: sell.id } : { params: { variant: 'shed' } },
+      steps: [sell ? `Vendre au marché d'Organyà (+30 % le samedi).` : 'Hangar : 500 €, sur une parcelle libre.', 'Ou bâtir (ou améliorer) le hangar pour garder davantage.'],
+      gain: sell ? 'Argent pour la caisse' : 'Plus de place pour tout',
+    });
+  }
+  if (pantryAmount(v, 'plums_kg') >= C.RATAFIA_PLUMS_KG) {
+    P.add({
+      key: 'ratafia', emoji: '🍶', title: 'Distiller du ratafia', urgent: false, score: 40,
+      short: `Des prunes mûres : ${C.RATAFIA_PLUMS_KG} kg font ${C.RATAFIA_BOTTLES} bouteilles de ratafia.`,
+      why: `Le verger donne des prunes l'été et l'automne, mais elles se gâtent vite. En ratafia légal (${C.RATAFIA_COST_EUR} € d'eau-de-vie et de droits), elles se gardent et se vendent au marché.`,
+      actionCode: 'make_ratafia',
+      steps: [`1 PA, ${C.RATAFIA_PLUMS_KG} kg de prunes et ${C.RATAFIA_COST_EUR} € de la caisse.`, 'Ensuite : vendre les bouteilles au marché d’Organyà.'],
+      gain: `${C.RATAFIA_BOTTLES} bouteilles à vendre`,
+    });
+  }
+  if (pantryAmount(v, 'cheese_kg') >= 4) {
+    P.add({
+      key: 'cheese:sell', emoji: '🧀', title: `Vendre ${Math.floor(pantryAmount(v, 'cheese_kg'))} kg de fromage`, urgent: false, score: v.treasury_eur < 3000 ? 55 : 32,
+      short: 'Du fromage en réserve : il se vend bien à Organyà.',
+      why: 'Le fromage du hameau est le produit le mieux payé du marché d’Organyà, surtout le samedi.',
+      actionCode: 'market_sale', preset: { catalog_item_id: 'cheese' },
+      steps: ['1 PA par vente, par lots de 2 kg ; le marché sature au fil de la semaine.'],
+      gain: 'Argent pour la caisse',
     });
   }
 

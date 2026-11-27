@@ -1,5 +1,12 @@
 # Historique des versions du GDD
 
+### V5.6 — 27/11/2026 — Filières, péremption & stockage
+- **Filières** (§5.8) : le lait devient du **fromage** (fromagerie : 2 kg par nuit avec au moins 2 bêtes ; action « Faire du fromage » : 4 rations de lait → 3 kg) ; le verger donne des **prunes** l'été et l'automne, distillées en **ratafia légal** (10 kg + 15 € → 6 bouteilles).
+- **Marché d'Organyà** : fromage (14 €/kg) et ratafia (11 € la bouteille) s'ajoutent aux tomates, au bois et aux conserves.
+- **Péremption** : l'été ou par forte chaleur, sans chambre froide, une part des rations, des tomates et des prunes se gâte chaque nuit.
+- **Limites de stockage** : chaque réserve a une capacité, relevée par le hangar (×1,5 / ×2 / ×2,5 selon son niveau) ; le surplus se perd la nuit.
+- Réserves du Trésor (fromage, prunes, ratafia, capacités, pertes) et quatre nouvelles priorités. Aucune migration (`village_state.life.pantry`, `supply_last`) ; 13 nouveaux tests Vitest.
+
 ### V5.5 — 27/11/2026 — Niveaux & usure des bâtisses
 - **Usure** (§5.7) : chaque nuit, les bâtisses en service perdent un peu d'état (0,25 à 0,7 point selon la saison, +0,2 les nuits de gel) ; sous 30 %, elles sont **endommagées** (lits et effet perdus jusqu'à la réparation).
 - **Entretien** : nouvelle action « Entretenir une bâtisse » (1 PA, 2 pierres et 1 fer, +20 % d'état, sans dépense) ; les résidents du chantier entretiennent aussi les bâtisses sous 70 %. La pierre et le fer retrouvent un usage régulier.

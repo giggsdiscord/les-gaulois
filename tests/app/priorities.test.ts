@@ -127,7 +127,7 @@ describe('Réserves du hameau', () => {
   it('donne le rythme quotidien et la durée des rations, comme le moteur', async () => {
     const { data, now } = await load(2);
     const lines = reserveReport(data, now);
-    expect(lines.map((l) => l.key)).toEqual(['food', 'tomatoes', 'livestock', 'wood', 'stone', 'iron', 'tools', 'medicine', 'fuel']);
+    expect(lines.map((l) => l.key)).toEqual(['food', 'tomatoes', 'livestock', 'wood', 'stone', 'iron', 'tools', 'medicine', 'fuel', 'cheese', 'plums', 'ratafia']);
     const food = lines.find((l) => l.key === 'food')!;
     expect(food.perDay).toBeLessThan(0); // 7 fondateurs mangent plus que le potager d'automne ne produit
     expect(food.daysLeft).toBe(Math.floor(data.village.food_rations / -food.perDay!));
@@ -163,5 +163,28 @@ describe('Réserves du hameau', () => {
     expect(tools.low).toBe(true);
     expect(tools.sources.find((s) => s.actionCode === 'forge_tools')?.mine).toBe(true);
     expect(lines.find((l) => l.key === 'livestock')?.rate).toBe('enclos à bâtir');
+  });
+});
+
+describe('Filières, péremption & stockage (V5.6)', () => {
+  it('réserves : fromage, prunes et ratafia, capacité et gâchis de chaleur', async () => {
+    const { data, now } = await load(1);
+    const hot = withVillage(data, { real_temp_c: 32, wood_stock: 290, life: { ...(data.village.life ?? {}), pantry: { cheese_kg: 6, plums_kg: 30 } } });
+    const lines = reserveReport(hot, now);
+    const cheese = lines.find((l) => l.key === 'cheese')!;
+    expect(cheese.display).toBe('6 kg');
+    expect(cheese.sources.map((s) => s.actionCode)).toContain('make_cheese');
+    expect(lines.find((l) => l.key === 'plums')!.daily.some((d) => /se gâtent cette nuit/.test(d))).toBe(true);
+    const wood = lines.find((l) => l.key === 'wood')!;
+    expect(wood.daily.some((d) => /Capacité : 290 \/ 300/.test(d))).toBe(true);
+    expect(wood.low).toBe(true);
+    const plan = priorityPlan(hot, now);
+    expect(keys(plan)).toEqual(expect.arrayContaining(['spoil', 'storage:wood_stock', 'ratafia', 'cheese:sell']));
+    expect(plan.items.find((i) => i.key === 'storage:wood_stock')!.preset).toEqual({ catalog_item_id: 'wood' });
+  });
+
+  it('les filières sont classées dans le menu et grisées sans troupeau ni prunes', async () => {
+    expect(categoryOf('make_cheese')?.id).toBe('vivres');
+    expect(categoryOf('make_ratafia')?.id).toBe('vivres');
   });
 });

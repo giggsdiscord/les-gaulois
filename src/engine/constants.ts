@@ -360,12 +360,14 @@ export interface MarketItem {
   /** Unités achetées au plus par le marché sur une saison (semaine) : au-delà, il est saturé. */
   weekly_cap: number;
   /** Réserve du village d'où part la marchandise. */
-  stock: 'tomatoes_stock' | 'wood_stock' | 'food_rations';
+  stock: 'tomatoes_stock' | 'wood_stock' | 'food_rations' | 'cheese_kg' | 'ratafia_bottles';
 }
 export const MARKET_ITEMS: readonly MarketItem[] = [
   { id: 'tomatoes', label: 'Tomates du potager', unit: 'kg', lot: 10, price_eur: 3, weekly_cap: 150, stock: 'tomatoes_stock' }, // [GDD §5.5]
   { id: 'wood', label: 'Bois de chauffage', unit: 'stère', lot: 5, price_eur: 7, weekly_cap: 60, stock: 'wood_stock' }, // [GDD §5.5]
   { id: 'rations', label: 'Conserves & légumes', unit: 'ration', lot: 5, price_eur: 4, weekly_cap: 60, stock: 'food_rations' }, // [GDD §5.5]
+  { id: 'cheese', label: 'Fromage du hameau', unit: 'kg', lot: 2, price_eur: 14, weekly_cap: 30, stock: 'cheese_kg' }, // [GDD §5.8]
+  { id: 'ratafia', label: 'Ratafia (légal)', unit: 'bouteille', lot: 2, price_eur: 11, weekly_cap: 24, stock: 'ratafia_bottles' }, // [GDD §5.8]
 ];
 /** Jour de marché à Organyà : le samedi, prix +30 %. */
 export const MARKET_SATURDAY_BONUS = 0.3; // [GDD §5.5]
@@ -645,8 +647,8 @@ export interface BuildingTypeDef {
 
 export const BUILDING_TYPES: readonly BuildingTypeDef[] = [
   { id: 'bakery', label: 'Four à pain', icon: '🍞', price_eur: 600, ease: 1.5, power: false, river: false, effect: '+5 rations par nuit (+3 de plus avec le moulin), pour 1 stère de bois.' },
-  { id: 'cheese_dairy', label: 'Fromagerie', icon: '🧀', price_eur: 900, ease: 1.2, power: false, river: false, effect: '+3 rations par nuit s\'il y a au moins 2 bêtes à l\'enclos.' },
-  { id: 'cold_room', label: 'Chambre froide', icon: '❄️', price_eur: 1200, ease: 1.2, power: true, river: false, effect: '+2 rations par nuit (moins de gâchis) ; électricité requise.' },
+  { id: 'cheese_dairy', label: 'Fromagerie', icon: '🧀', price_eur: 900, ease: 1.2, power: false, river: false, effect: '+3 rations et 2 kg de fromage (à vendre) par nuit s\'il y a au moins 2 bêtes à l\'enclos.' },
+  { id: 'cold_room', label: 'Chambre froide', icon: '❄️', price_eur: 1200, ease: 1.2, power: true, river: false, effect: '+2 rations par nuit ; plus aucun vivre ne se gâte l\'été ; électricité requise.' },
   { id: 'sawmill', label: 'Scierie', icon: '🪚', price_eur: 1000, ease: 1, power: true, river: false, effect: '+3 stères à chaque coupe de bois ; électricité requise.' },
   { id: 'water_mill', label: 'Moulin sur la rivière', icon: '🌾', price_eur: 1100, ease: 0.8, power: false, river: true, effect: '+3 rations par nuit (farine) ; le four à pain en donne 3 de plus. Bord de rivière.' },
   { id: 'washhouse', label: 'Lavoir', icon: '🧺', price_eur: 400, ease: 1.5, power: false, river: true, effect: 'Risque d\'épidémie divisé par deux (départ et contagion). Bord de rivière.' },
@@ -655,7 +657,7 @@ export const BUILDING_TYPES: readonly BuildingTypeDef[] = [
   { id: 'beehives', label: 'Ruches', icon: '🐝', price_eur: 200, ease: 3, power: false, river: false, effect: '+1 ration par nuit (miel) et écologie +0,2 par nuit.' },
   { id: 'greenhouse', label: 'Serre', icon: '🪴', price_eur: 700, ease: 1.5, power: false, river: false, effect: '+4 rations par nuit en automne et en hiver (légumes d\'hiver), +1 le reste de l\'année.' },
   { id: 'village_bar', label: 'Bar du hameau', icon: '🍺', price_eur: 800, ease: 1.2, power: false, river: false, effect: 'Moral +1 par nuit (jusqu\'à 85 %), +12 € de recettes, consommation d\'alcool +0,3 %.' },
-  { id: 'shed', label: 'Hangar', icon: '🏚️', price_eur: 500, ease: 1.5, power: false, river: false, effect: 'Outils à l\'abri : usure des outils −1 par nuit.' },
+  { id: 'shed', label: 'Hangar', icon: '🏚️', price_eur: 500, ease: 1.5, power: false, river: false, effect: 'Capacités de stockage ×1,5 (×2, ×2,5 aux niveaux 2 et 3) ; outils à l\'abri : usure −1 par nuit.' },
 ];
 
 export interface ParcelDef {
@@ -740,3 +742,52 @@ export const UPGRADE_BEDS_PER_LEVEL = 2; // [GDD §5.7] logements et gîte
 /** Bois de chauffage brûlé selon le niveau (isolation) : niveau 1, 2, 3. */
 export const UPGRADE_HEATING_FACTOR: readonly number[] = [1, 0.75, 0.5]; // [GDD §5.7]
 export const UPGRADE_OUTPUT_BONUS = 0.5; // [GDD §5.7] +50 % de production par niveau (nouveaux bâtiments)
+
+// ---------------------------------------------------------------------------
+// Filières, péremption & stockage (V5.6) [GDD §5.8]
+// ---------------------------------------------------------------------------
+/** Produits de garde des filières, stockés dans `village_state.life.pantry`. */
+export type PantryGood = 'cheese_kg' | 'ratafia_bottles' | 'plums_kg';
+/** Réserves soumises à une capacité de stockage (au-delà, le surplus se perd la nuit). */
+export type StorageKey = 'food_rations' | 'tomatoes_stock' | 'wood_stock' | 'stone_stock' | 'iron_stock' | PantryGood;
+export const STORAGE_BASE: Record<StorageKey, number> = {
+  food_rations: 300,
+  tomatoes_stock: 200,
+  wood_stock: 300,
+  stone_stock: 200,
+  iron_stock: 120,
+  cheese_kg: 40,
+  ratafia_bottles: 40,
+  plums_kg: 60,
+}; // [GDD §5.8]
+export const STORAGE_LABEL: Record<StorageKey, { label: string; unit: string; icon: string }> = {
+  food_rations: { label: 'Rations', unit: 'rations', icon: '🥫' },
+  tomatoes_stock: { label: 'Tomates', unit: 'kg', icon: '🍅' },
+  wood_stock: { label: 'Bois', unit: 'stères', icon: '🪵' },
+  stone_stock: { label: 'Pierre', unit: 't', icon: '🪨' },
+  iron_stock: { label: 'Fer', unit: 'barres', icon: '⛓️' },
+  cheese_kg: { label: 'Fromage', unit: 'kg', icon: '🧀' },
+  ratafia_bottles: { label: 'Ratafia', unit: 'bouteilles', icon: '🍶' },
+  plums_kg: { label: 'Prunes', unit: 'kg', icon: '🫐' },
+};
+/** Le hangar multiplie toutes les capacités : niveau 1, 2, 3 (V5.5). */
+export const SHED_STORAGE_FACTOR: readonly number[] = [1.5, 2, 2.5]; // [GDD §5.8]
+
+/** Péremption : chaque nuit d'été (ou de chaleur), sans chambre froide, une part des vivres frais se gâte. */
+export const SPOIL_HOT_C = 28; // [GDD §5.8] chaleur hors été : température réelle du jour
+export const SPOIL_RATE: Partial<Record<StorageKey, number>> = { food_rations: 0.03, tomatoes_stock: 0.08, plums_kg: 0.1 }; // [GDD §5.8]
+/** En dessous de ce stock, rien ne se perd (on mange le frais d'abord). */
+export const SPOIL_MIN_STOCK = 20; // [GDD §5.8]
+
+/** Fromage : la fromagerie affine du fromage chaque nuit (≥ 2 bêtes), et l'on peut en faire à la main. */
+export const CHEESE_DAIRY_KG = 2; // [GDD §5.8] kg par nuit (× niveau de la fromagerie)
+export const CHEESE_MAKE_KG = 3; // [GDD §5.8] kg par séance (× métier) ; +3 avec la fromagerie
+export const CHEESE_MAKE_DAIRY_BONUS = 3; // [GDD §5.8]
+export const CHEESE_MAKE_RATIONS = 4; // [GDD §5.8] rations de lait utilisées par séance
+
+/** Prunes du verger du hameau, cueillies chaque nuit d'été et d'automne. */
+export const PLUMS_PER_NIGHT: Record<CalendarSeason, number> = { spring: 0, summer: 5, autumn: 2, winter: 0 }; // [GDD §5.8]
+/** Ratafia légal : prunes + eau-de-vie + droits d'accise déclarés. */
+export const RATAFIA_PLUMS_KG = 10; // [GDD §5.8]
+export const RATAFIA_BOTTLES = 6; // [GDD §5.8] (× métier, plafonné à ×1,5)
+export const RATAFIA_COST_EUR = 15; // [GDD §5.8] eau-de-vie, sucre et droits d'accise
