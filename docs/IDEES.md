@@ -23,15 +23,16 @@ Liste demandée par l'utilisateur le 26/11/2026 : **toutes ces idées sont à r�
 | V5.4 | **Nouveaux bâtiments** : four à pain, fromagerie, chambre froide, scierie, moulin sur la rivière, lavoir (moins d'épidémies), infirmerie, poulailler, ruches, serre (légumes d'hiver), bar du hameau, hangar ; **choix d'une parcelle libre** sur la carte | ✅ `1cf7a91` |
 | V5.5 | **Améliorations par niveaux** (ex. Casa Gran niveau 2 : +2 lits, isolation → moins de bois) et **usure** des bâtiments (entretien régulier, plus rapide l'hiver) | ✅ `163030e` |
 | V5.6 | **Filières** (lait → fromage, prunes → ratafia légal) avec **fromage vendu au marché d'Organyà**, **péremption** des vivres frais l'été sans chambre froide, **limites de stockage** (le hangar les relève) | ✅ `74f4a26` |
-| V5.7 | **Calendrier catalan réel** : Sant Joan, Diada (11 septembre), Castanyada, Nadal et Caga Tió, Carnaval — chaque fête devient un événement avec une décision collective | À faire |
-| V5.8 | **Résidents avec une personnalité** : prénom, humeur, relations, petites histoires dans la Gazette | À faire |
-| V5.9 | **Relations avec les voisins** : jauges Organyà, mairie (Ayuntamiento), Mossos ; petites missions (« le maire d'Organyà demande de déneiger la route ») | À faire |
-| V6.0 | **Visiteurs imprévus** à qui répondre vite : randonneur perdu, journaliste, inspecteur, vendeur ambulant | À faire |
-| V6.1 | **Bilan de la semaine** dans la Gazette du dimanche (qui a fait quoi, records, « habitant de la semaine ») et **frise datée** des grandes étapes du hameau | À faire |
+| V5.7 | **Résidents avec une personnalité** : prénom, humeur, relations, petites histoires dans la Gazette | À faire |
+| V5.8 | **Relations avec les voisins** : jauges Organyà, mairie (Ayuntamiento), Mossos ; petites missions (« le maire d'Organyà demande de déneiger la route ») | À faire |
+| V5.9 | **Visiteurs imprévus** à qui répondre vite : randonneur perdu, journaliste, inspecteur, vendeur ambulant | À faire |
+| V6.0 | **Bilan de la semaine** dans la Gazette du dimanche (qui a fait quoi, records, « habitant de la semaine ») et **frise datée** des grandes étapes du hameau | À faire |
 
 Les versions suivent le protocole de `CLAUDE.md` (+0,1 à chaque fois ; après V4.9 vient V5.0).
 
 > **27/11/2026 :** l'utilisateur a retiré les **ambitions secrètes** de la feuille de route ; les versions suivantes ont été renumérotées (la colonne `players.ambition`, déjà créée, reste inutilisée).
+>
+> **27/11/2026 (après la V5.6) :** l'utilisateur a aussi retiré le **calendrier catalan** (fêtes) ; les versions suivantes ont été renumérotées.
 
 ## Liste complète des idées (texte proposé le 26/11/2026, à conserver tel quel)
 
@@ -49,7 +50,7 @@ L'utilisateur a demandé de **bien noter toutes ces idées** : rien ne doit êtr
 - Objectifs d'Acte en liste à cocher : pour l'Acte I par exemple, électricité, 20 lits, 300 m² de potager, gîte ouvert. Chaque étape cochée donne une récompense, et c'est plus parlant qu'un pourcentage d'autonomie. [✅ V5.1]
 - Chantier collectif de la semaine, voté à l'Agora : chacun peut y mettre des PA, une barre de progression est commune à tous, et un bonus tombe s'il est fini avant dimanche. [✅ V5.0]
 - Niveaux de métier visibles : le moteur compte déjà l'expérience. Les niveaux 2, 3 ou 4 débloqueraient des bonus, par exemple +20 % sur les chantiers de Tiphaine ou une fournée double à la forge de Julio. [✅ V5.2]
-- Frise du hameau : l'historique daté des grandes étapes, comme « groupe électrogène installé le… ». [V6.1]
+- Frise du hameau : l'historique daté des grandes étapes, comme « groupe électrogène installé le… ». [V6.0]
 
 **Ressources et économie**
 - Marché du samedi à Organyà : vendre tomates, conserves, bois et fromage. L'argent viendrait alors du travail, pas seulement de la chance. [✅ V4.8 ; ✅ fromage et ratafia V5.6 `74f4a26`]
@@ -72,11 +73,11 @@ L'utilisateur a demandé de **bien noter toutes ces idées** : rien ne doit êtr
 - Choix d'une parcelle libre sur la carte pour un nouveau bâtiment. [✅ V5.4 `1cf7a91`]
 
 **Vie du village**
-- Calendrier catalan réel : Sant Joan, la Diada du 11 septembre, la Castanyada, Nadal et le Caga Tió, le Carnaval. Chaque fête devient un événement avec une décision collective. [V5.7]
-- Résidents avec une personnalité : prénom, humeur, relations, petites histoires dans la Gazette. [V5.8]
-- Relations avec les voisins : une jauge pour Organyà, une pour la mairie, une pour les Mossos, et de petites missions comme « le maire d'Organyà demande de déneiger la route ». [V5.9]
-- Visiteurs imprévus à qui répondre vite : randonneur perdu, journaliste, inspecteur, vendeur ambulant. [V6.0]
-- Bilan de la semaine dans la Gazette du dimanche : qui a fait quoi, les records, l'« habitant de la semaine ». [V6.1]
+- Calendrier catalan réel : Sant Joan, la Diada du 11 septembre, la Castanyada, Nadal et le Caga Tió, le Carnaval. Chaque fête devient un événement avec une décision collective. [❌ retirée le 27/11/2026 à la demande de l’utilisateur]
+- Résidents avec une personnalité : prénom, humeur, relations, petites histoires dans la Gazette. [V5.7]
+- Relations avec les voisins : une jauge pour Organyà, une pour la mairie, une pour les Mossos, et de petites missions comme « le maire d'Organyà demande de déneiger la route ». [V5.8]
+- Visiteurs imprévus à qui répondre vite : randonneur perdu, journaliste, inspecteur, vendeur ambulant. [V5.9]
+- Bilan de la semaine dans la Gazette du dimanche : qui a fait quoi, les records, l'« habitant de la semaine ». [V6.0]
 
 **Top 5 retenu en premier** (meilleur plaisir pour un effort raisonnable) : 1. marché du samedi avec de vrais usages pour les tomates et le bois [✅ V4.8] ; 2. travail des résidents [✅ V4.9] ; 3. chantier collectif de la semaine [✅ V5.0] ; 4. objectifs d'Acte à cocher avec récompenses [✅ V5.1] ; 5. ambitions secrètes [❌ retirée le 27/11/2026]. Le chauffage au bois en hiver, plus petit, a accompagné le premier [✅ V4.8].
 
