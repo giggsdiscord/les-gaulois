@@ -191,6 +191,8 @@ export interface VillageLife {
   parcels?: Record<string, string>;
   /** Ce que les nouveaux bâtiments ont donné la nuit dernière (V5.4). */
   buildings_last?: BuildingsNight | null;
+  /** Usure fractionnaire en attente par ouvrage (V5.5 : `condition_pct` est entier). */
+  wear_acc?: Record<string, number>;
 }
 
 /** Bilan nocturne des nouveaux bâtiments (V5.4). */

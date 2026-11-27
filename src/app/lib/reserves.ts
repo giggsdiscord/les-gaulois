@@ -17,6 +17,9 @@ import {
   dayKey,
   forestBan,
   heatingNeed,
+  structureLevel,
+  UPGRADABLE_KINDS,
+  wornStructures,
   lifeOf,
   marketQuote,
   planBuildingsNight,
@@ -204,6 +207,8 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
     return `${n} ${what}${n > 1 ? 's' : ''}`;
   };
   const heat = heatingNeed(s);
+  const insulated = s.structures.filter((st) => st.status === 'operational' && UPGRADABLE_KINDS.includes(st.kind) && structureLevel(st) > 1).length;
+  const worn = wornStructures(s);
   const cuts = lifeOf(v).wood_cuts ?? 0;
   const woodNet = round1(work.wood - heat.wood - builds.wood);
   const woodDays = woodNet < 0 ? Math.floor(v.wood_stock / -woodNet) : null;
@@ -215,7 +220,7 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
     low: v.wood_stock < 5 || (woodDays !== null && woodDays < 5),
     daily: [
       heat.wood > 0
-        ? `Chauffage : ${heat.buildings} ${heat.buildings > 1 ? 'bâtisses habitées' : 'bâtisse habitée'} × ${heat.perBuilding} = −${heat.wood} stères par nuit (minimale réelle ${Math.round(heat.tempMin)} °C${v.energy_tier >= 4 ? ', moitié moins grâce au palier 4' : ''}). ${woodDays !== null ? `Au rythme actuel${work.wood > 0 ? ' (bûcherons compris)' : ''}, la réserve tient environ ${woodDays} nuit${woodDays === 1 ? '' : 's'}.` : 'Les bûcherons résidents couvrent le chauffage.'}`
+        ? `Chauffage : ${heat.buildings} ${heat.buildings > 1 ? 'bâtisses habitées' : 'bâtisse habitée'} × ${heat.perBuilding} = −${heat.wood} stères par nuit (minimale réelle ${Math.round(heat.tempMin)} °C${v.energy_tier >= 4 ? ', moitié moins grâce au palier 4' : ''}${insulated > 0 ? `, isolation de ${insulated} ${insulated > 1 ? 'bâtisses améliorées' : 'bâtisse améliorée'} comprise` : ''}). ${woodDays !== null ? `Au rythme actuel${work.wood > 0 ? ' (bûcherons compris)' : ''}, la réserve tient environ ${woodDays} nuit${woodDays === 1 ? '' : 's'}.` : 'Les bûcherons résidents couvrent le chauffage.'}`
         : `Pas de chauffage cette nuit (minimale réelle ${Math.round(heat.tempMin)} °C) : on chauffe sous 10 °C (1 stère par bâtisse habitée), sous 5 °C (2) et sous 0 °C (3).`,
       ...(builds.wood > 0 ? [`Four à pain : −${builds.wood} stère par nuit de cuisson.`] : []),
       `Sans bois une nuit de froid : moral −${C.HEATING_COLD_MORALE} % et santé −${C.HEATING_COLD_HEALTH} pour chaque fondateur.`,
@@ -226,6 +231,7 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
     uses: [
       'Chauffer les bâtisses habitées les nuits froides.',
       'Rénover une bâtisse : 5 par séance.',
+      `Améliorer une bâtisse : ${C.UPGRADE_STEPS.map((u) => `${u.wood} (niveau ${u.level})`).join(', ')} ; une bâtisse améliorée brûle moins de bois.`,
       'Construire l\'enclos : 8.',
       'Poser un mirador ou une herse : 6.',
       `Vendre au marché d'Organyà : ${sale('wood')}.`,
@@ -247,9 +253,10 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
     daily: [
       work.stone_used > 0
         ? `Résidents au chantier : −${work.stone_used} pierre${work.stone_used > 1 ? 's' : ''} par nuit (${C.RESIDENT_BUILD_STONE} par maçon). Sans pierre, ils s'arrêtent.`
-        : 'Rien ne la consomme toute seule : elle part uniquement dans les chantiers.',
+        : 'Rien ne la consomme toute seule : elle part dans les chantiers et l\'entretien.',
+      ...(worn.length > 0 ? [`À entretenir : ${worn.map((st) => `${st.name} (${st.condition_pct} %)`).join(', ')}. Sous ${C.WEAR_DAMAGED_AT} %, une bâtisse est endommagée.`] : []),
     ],
-    uses: ['Rénover une bâtisse : 5 par séance.', `Résident au chantier : ${C.RESIDENT_BUILD_STONE} par nuit.`, 'Empierrer la piste : 5.', 'Micro-barrage : 10 par séance.'],
+    uses: ['Rénover une bâtisse : 5 par séance.', `Entretenir une bâtisse : ${C.MAINTAIN_STONE} par séance.`, `Améliorer une bâtisse : ${C.UPGRADE_STEPS.map((u) => `${u.stone} (niveau ${u.level})`).join(', ')}.`, `Résident au chantier : ${C.RESIDENT_BUILD_STONE} par nuit.`, 'Empierrer la piste : 5.', 'Micro-barrage : 10 par séance.'],
     sources: sources(
       act('clear_rubble', 'Déblayer les gravats d\'une ruine', 'Environ 6 pierres, gratuit.'),
       act('demolish_building', 'Démolir une bâtisse', '+10 pierres (accord PLU).'),
@@ -260,10 +267,10 @@ export function reserveReport(data: ReserveData, now: Date): ReserveLine[] {
     key: 'iron', emoji: '⛓️', label: 'Fer', amount: v.iron_stock, display: num(v.iron_stock),
     perDay: null, rate: sessions(v.iron_stock, C.IRON_PER_TOOL, 'fournée'), daysLeft: null, low: v.iron_stock < C.IRON_PER_TOOL,
     daily: [
-      'Rien ne le consomme tout seul : il part à la forge et dans les gros ouvrages.',
+      'Rien ne le consomme tout seul : il part à la forge, dans l\'entretien des bâtisses et les gros ouvrages.',
       ...(work.iron > 0 ? [`Résidents à la forge : +${work.iron} fer par nuit (ferraille recyclée).`] : []),
     ],
-    uses: [`Forger des outils : ${C.IRON_PER_TOOL} par fournée.`, 'Herses & équipements de garde : 5.', 'Micro-barrage : 5 par séance.'],
+    uses: [`Forger des outils : ${C.IRON_PER_TOOL} par fournée.`, `Entretenir une bâtisse : ${C.MAINTAIN_IRON} par séance.`, `Améliorer une bâtisse : ${C.UPGRADE_STEPS.map((u) => `${u.iron} (niveau ${u.level})`).join(', ')}.`, 'Herses & équipements de garde : 5.', 'Micro-barrage : 5 par séance.'],
     sources: sources(act('recycle_scrap', 'Recycler la ferraille', '4 ferrailles → 2 fers (les outils cassés deviennent de la ferraille).'), buy('gedimat_quincaillerie')),
   });
 

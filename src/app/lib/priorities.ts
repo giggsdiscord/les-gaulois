@@ -18,6 +18,7 @@ import {
   missionDone,
   dailyFoodConsumption,
   dayKey,
+  wornStructures,
   getAction,
   forestBan,
   heatingNeed,
@@ -282,6 +283,27 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
       actionCode: target ? 'renovate_building' : null, preset: target ? { target_structure_id: target.id } : undefined,
       steps: target ? [...P.locks(P.action('renovate_building'), 300, target), ...stockSteps(v)] : [],
       gain: target ? `+${target.beds_capacity} lits` : null,
+    });
+  }
+
+  // Usure des bâtisses (V5.5) : la plus abîmée sous le seuil conseillé
+  const worn = wornStructures(data);
+  if (worn.length > 0) {
+    const st = worn[0]!;
+    const critical = st.condition_pct < C.WEAR_DAMAGED_AT + 10;
+    const def = P.action('maintain_building');
+    P.add({
+      key: `maintain:${st.id}`, emoji: '🧰', title: `Entretenir « ${st.name} »`, urgent: critical, score: critical ? 80 : 50,
+      short: `État ${st.condition_pct} % : sous ${C.WEAR_DAMAGED_AT} %, elle est endommagée.`,
+      why: `Les bâtisses s'usent chaque nuit (bien plus l'hiver et les nuits de gel). Sous ${C.WEAR_DAMAGED_AT} % d'état, une bâtisse est endommagée : ${st.beds_capacity > 0 ? `ses ${st.beds_capacity} lits` : 'son effet'} disparaissent jusqu'à une réparation coûteuse.${worn.length > 1 ? ` Aussi à entretenir : ${worn.slice(1).map((x) => `${x.name} (${x.condition_pct} %)`).join(', ')}.` : ''}`,
+      actionCode: 'maintain_building', preset: { target_structure_id: st.id },
+      steps: [
+        `1 PA, ${C.MAINTAIN_STONE} pierres et ${C.MAINTAIN_IRON} fer : +${C.MAINTAIN_POINTS} % d'état (plus pour Tiphaine).`,
+        ...(v.stone_stock < C.MAINTAIN_STONE || v.iron_stock < C.MAINTAIN_IRON ? [`Réserve : ${Math.floor(v.stone_stock)} pierres, ${Math.floor(v.iron_stock)} fer — déblayer une ruine (pierre) ou recycler la ferraille (fer).`] : []),
+        `Un résident au poste « chantier » entretient aussi les bâtisses sous ${C.RESIDENT_MAINTAIN_BELOW} %.`,
+        ...P.locks(def, 0, st),
+      ],
+      gain: 'Garde ses lits et son effet',
     });
   }
 

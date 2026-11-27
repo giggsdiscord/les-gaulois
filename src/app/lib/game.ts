@@ -56,6 +56,8 @@ export function playerName(players: PublicPlayer[], id: string | null | undefine
 /** Types d'ouvrages pertinents pour une action ciblant la carte (confort de saisie). */
 export const STRUCTURE_ACTION_KINDS: Record<string, string[]> = {
   renovate_building: ['building', 'gite', 'school', 'jail', 'lab', 'church', 'forge', 'border_post'],
+  maintain_building: ['building', 'gite', 'school', 'jail', 'lab', 'church', 'forge', 'border_post'],
+  upgrade_building: ['building', 'gite'],
   improve_own_housing: ['building'],
   clear_rubble: ['building', 'gite', 'school', 'jail', 'lab', 'church', 'forge', 'border_post'],
   demolish_building: ['building', 'gite', 'school', 'jail', 'lab', 'church', 'forge', 'border_post'],

@@ -14,6 +14,7 @@
 import * as C from './constants.ts';
 import { pushLedger } from './effects.ts';
 import { ensureLife, lifeOf } from './life.ts';
+import { outputFactor } from './upkeep.ts';
 import { gauge, money, round2, stock } from './math.ts';
 import { activePlayers } from './population.ts';
 import type { Rng } from './rng.ts';
@@ -122,8 +123,10 @@ export function planBuildingsNight(s: Pick<GameSnapshot, 'structures' | 'village
   const v = s.village;
   const on = (variant: C.BuildingVariant) => hasBuilding(s, variant);
   const out = { rations: 0, wood: 0, eur: 0, active: [] as string[], health: 0, morale: 0, ecology: 0, toolsWear: 0, alcohol: 0 };
-  const add = (variant: string, rations: number) => {
-    out.rations += rations;
+  // Niveau du bâtiment (V5.5) : +50 % de production par niveau
+  const k = (variant: C.BuildingVariant) => outputFactor(existingBuilding(s, variant));
+  const add = (variant: C.BuildingVariant, rations: number) => {
+    out.rations += round2(rations * k(variant));
     out.active.push(variant);
   };
   if (on('bakery') && v.wood_stock >= C.BAKERY_WOOD) {
@@ -141,7 +144,7 @@ export function planBuildingsNight(s: Pick<GameSnapshot, 'structures' | 'village
   if (on('greenhouse')) add('greenhouse', season === 'autumn' || season === 'winter' ? C.GREENHOUSE_RATIONS_COLD : C.GREENHOUSE_RATIONS_WARM);
   if (on('village_bar')) {
     out.active.push('village_bar');
-    out.eur = C.BAR_INCOME_EUR;
+    out.eur = round2(C.BAR_INCOME_EUR * k('village_bar'));
     out.morale = v.morale_pct < C.BAR_MORALE_CAP ? C.BAR_MORALE : 0;
     out.alcohol = C.BAR_ALCOHOL;
   }
@@ -151,7 +154,7 @@ export function planBuildingsNight(s: Pick<GameSnapshot, 'structures' | 'village
   }
   if (on('infirmary')) {
     out.active.push('infirmary');
-    out.health = C.INFIRMARY_HEALTH;
+    out.health = Math.round(C.INFIRMARY_HEALTH * k('infirmary'));
   }
   return out;
 }

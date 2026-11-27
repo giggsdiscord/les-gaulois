@@ -3,7 +3,7 @@
  * 1000 × 700), icônes et calques des ouvrages, regroupement pour la liste, et « prochaine étape »
  * de chaque ouvrage (quoi faire, qui peut le faire). Testé dans tests/app/mapView.test.ts.
  */
-import { buildingTypeOf, getAction, needsPower, type ActionDef } from '../engine.ts';
+import { buildingTypeOf, constants as C, getAction, needsPower, nextUpgrade, structureLevel, upgradeGains, type ActionDef } from '../engine.ts';
 import type { GameData, Structure } from '../api/types.ts';
 import { STRUCTURE_ACTION_KINDS } from './game.ts';
 import { actorsOf } from './priorities.ts';
@@ -210,14 +210,25 @@ export function nextStepFor(s: Structure, data: StepData): NextStep {
       const power = type && needsPower(s) ? ' Il faudra ensuite le raccorder au courant.' : '';
       return step(`${start} : environ ${n} séance${n > 1 ? 's' : ''} de 300 €, 5 pierres et 5 bois chacune${s.plu_approved ? '' : ', avec l\'accord PLU de Tiphaine'}.${power}`, 'renovate_building');
     }
-    if (type) return step(`En service : ${type.effect}`, type.id === 'sawmill' ? 'cut_wood' : type.id === 'cheese_dairy' && v.livestock_count < 2 ? 'buy_livestock' : null);
     if (s.kind === 'gite' && !v.gite_open) return step('Le gîte est prêt : l\'ouvrir rapporte 800 à 2 500 € par semaine.', 'open_gite');
+    // Usure (V5.5) : entretien conseillé sous WEAR_WARN_AT
+    if (s.status === 'operational' && s.condition_pct < C.WEAR_WARN_AT) {
+      return step(`Usée (état ${s.condition_pct} %) : l'entretenir (${C.MAINTAIN_STONE} pierres et ${C.MAINTAIN_IRON} fer par séance) avant qu'elle ne s'abîme sous ${C.WEAR_DAMAGED_AT} %.`, 'maintain_building');
+    }
+    if (type) return step(`En service : ${type.effect}`, type.id === 'sawmill' ? 'cut_wood' : type.id === 'cheese_dairy' && v.livestock_count < 2 ? 'buy_livestock' : null);
     if (s.kind === 'church') return step('Messe du dimanche : moral du village +12 %.', 'sunday_mass');
     if (s.kind === 'forge') return step('Forger des outils : un par travailleur évite −35 % de rendement.', 'forge_tools');
     if (s.kind === 'lab') return step('Préparer remèdes et décoctions, ou faire avancer la R&D.', 'brew_remedies');
     if (s.kind === 'school') return step('Former les apprentis (enfants de 12 ans et plus).', 'train_apprentice');
     if (s.kind === 'jail') return step('Cachot prêt : isolement de 24 h sur décision du ministre de l\'Intérieur.', 'detain_cachot');
     if (s.kind === 'border_post') return step('Tenir le poste-frontière : contrôle des passeports.', 'border_control');
+    const up = nextUpgrade(s);
+    if (s.kind === 'building' && s.beds_capacity > 0 && up && s.condition_pct < C.UPGRADE_MIN_CONDITION) {
+      return step(`Habitable : ${s.beds_capacity} lits. Pour passer au niveau ${up.level} (${upgradeGains(s).slice(0, 2).join(', ')}), l'entretenir d'abord jusqu'à ${C.UPGRADE_MIN_CONDITION} % d'état.`, 'maintain_building');
+    }
+    if (s.kind === 'building' && s.beds_capacity > 0 && up) {
+      return step(`Habitable : ${s.beds_capacity} lits (niveau ${structureLevel(s)}). Niveau ${up.level} : ${upgradeGains(s).join(', ')} — ${up.price_eur} €, ${up.stone} pierres, ${up.iron} fer, ${up.wood} bois.`, 'upgrade_building');
+    }
     return step(s.beds_capacity > 0 ? `Habitable : ${s.beds_capacity} lits.` : 'En service.', s.kind === 'building' ? 'improve_own_housing' : null);
   }
 

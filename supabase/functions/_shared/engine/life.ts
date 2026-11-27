@@ -9,7 +9,7 @@ import * as C from './constants.ts';
 import { pushEvent } from './effects.ts';
 import { gauge, money, stock } from './math.ts';
 import { activePlayers } from './population.ts';
-import type { EngineEffects, GameSnapshot, VillageLife, VillageState } from './types.ts';
+import type { EngineEffects, GameSnapshot, MapStructure, VillageLife, VillageState } from './types.ts';
 
 /** État « vie du village » en lecture (objet vide si la colonne n'existe pas encore). */
 export function lifeOf(v: Pick<VillageState, 'life'>): VillageLife {
@@ -91,16 +91,28 @@ export interface HeatingNeed {
   tempMin: number;
 }
 
-/** Bois à brûler cette nuit selon la température minimale réelle (moitié moins au palier 4 et plus). */
+/** Niveau d'amélioration d'un ouvrage (1 à UPGRADE_MAX_LEVEL ; 1 si la colonne manque) (V5.5). */
+export function structureLevel(st: Pick<MapStructure, 'upgrade_level'>): number {
+  const lvl = Math.floor(Number(st.upgrade_level ?? 1));
+  return Number.isFinite(lvl) ? Math.min(C.UPGRADE_MAX_LEVEL, Math.max(1, lvl)) : 1;
+}
+
+/** Part du bois de chauffage brûlée par cette bâtisse selon son isolation (V5.5). */
+export function insulationFactor(st: Pick<MapStructure, 'upgrade_level'>): number {
+  return C.UPGRADE_HEATING_FACTOR[structureLevel(st) - 1] ?? 1;
+}
+
+/** Bois à brûler cette nuit selon la température minimale réelle (moitié moins au palier 4 et plus ; isolation V5.5). */
 export function heatingNeed(s: Pick<GameSnapshot, 'village' | 'structures'>): HeatingNeed {
   const v = s.village;
   const tempMin = Number.isFinite(v.real_temp_min_c) ? v.real_temp_min_c : 10;
   const band = [...C.HEATING_BANDS].sort((a, b) => a.below_c - b.below_c).find((b) => tempMin < b.below_c);
-  const buildings = s.structures.filter(
+  const heated = s.structures.filter(
     (st) => st.status === 'operational' && ((st.kind === 'building' && st.beds_capacity > 0) || (st.kind === 'gite' && v.gite_open)),
-  ).length;
+  );
+  const buildings = heated.length;
   const perBuilding = band?.wood_per_building ?? 0;
-  const raw = perBuilding * buildings;
+  const raw = Math.max(0, Math.ceil(perBuilding * heated.reduce((a, st) => a + insulationFactor(st), 0) - 1e-9));
   return { buildings, perBuilding, wood: v.energy_tier >= 4 ? Math.ceil(raw / 2) : raw, tempMin };
 }
 

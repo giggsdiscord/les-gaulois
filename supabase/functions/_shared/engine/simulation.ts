@@ -23,6 +23,7 @@ import {
 } from './calendar.ts';
 import { processBirths, processChildrenSeason, processDemographicSeason } from './demography.ts';
 import { emptyEffects, pushEvent, pushLedger, pushTrigger } from './effects.ts';
+import { processWear } from './upkeep.ts';
 import {
   actForAutonomy,
   computeAutonomy,
@@ -70,6 +71,7 @@ function closeDay(s: GameSnapshot, fx: EngineEffects, endedKey: string, midnight
   updateFood(s, fx, rng, season);
   processHeating(s, fx);
   processBuildings(s, fx, season);
+  processWear(s, fx, season);
   updateToolsAndTrack(s, rng);
   updateIdeologyAndFriction(s, fx, rng.fork('society'), midnight);
   updateSubstancesAndBlackMarket(s, fx, rng.fork('substances'));

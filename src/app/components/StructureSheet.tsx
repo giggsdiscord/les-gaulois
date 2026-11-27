@@ -11,6 +11,7 @@ import { availableActions, STRUCTURE_ACTION_KINDS } from '../lib/game.ts';
 import { STRUCTURE_STATUS } from '../lib/labels.ts';
 import { buildingTypeOf, needsPower } from '../engine.ts';
 import { nextStepFor, structureIcon, structureLabel } from '../lib/mapView.ts';
+import { upkeepView, wearText } from '../lib/upkeep.ts';
 import { useData, useNow } from '../state/GameContext.tsx';
 import { ActionRow } from './ActionSheet.tsx';
 import { Badge, Button, Card, Sheet } from './ui.tsx';
@@ -55,6 +56,7 @@ export function StructureSheet({ structure: s, onClose, onAct }: { structure: St
     return kinds ? kinds.includes(s.kind) : !['forest', 'river', 'square'].includes(s.kind);
   });
   const isBuilding = BUILDING_KINDS.includes(s.kind);
+  const upkeep = upkeepView(s, v, now);
   const condition = s.kind === 'track' ? v.track_condition_pct : s.kind === 'pipe' ? v.water_network_condition_pct : s.condition_pct;
 
   return (
@@ -93,6 +95,29 @@ export function StructureSheet({ structure: s, onClose, onAct }: { structure: St
           {!['forest', 'river', 'square'].includes(s.kind) && <Bar label="État" value={condition} color={condition >= 60 ? '#4d7c0f' : condition >= 40 ? '#c8962e' : '#b3452c'} />}
           {s.status !== 'operational' && s.status !== 'awaiting_power' && !LANDSCAPE.includes(s.kind) && s.kind !== 'pipe' && <Bar label="Avancement du chantier" value={s.progress_pct} color="#c8962e" />}
         </div>
+
+        {upkeep && s.status === 'operational' && (
+          <Card tone={upkeep.worn ? 'warning' : 'default'} className="space-y-1.5 p-3!">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-bold uppercase tracking-wide text-ink-soft">Entretien & niveau</p>
+              {upkeep.upgradable && (
+                <span className="text-sm font-semibold text-ink" aria-label={`Niveau ${upkeep.level} sur ${upkeep.maxLevel}`}>
+                  {'★'.repeat(upkeep.level)}
+                  <span className="text-parchment-300">{'★'.repeat(Math.max(0, upkeep.maxLevel - upkeep.level))}</span>
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-ink">{wearText(upkeep)}</p>
+            {upkeep.next ? (
+              <p className="text-sm text-ink-soft">
+                <span className="font-semibold text-ink">Niveau {upkeep.next.level} :</span> {upkeep.gains.join(', ')}. Coût : {upkeep.next.price_eur} €, {upkeep.next.stone} pierres, {upkeep.next.iron} fer, {upkeep.next.wood} bois.
+                {upkeep.upgradeBlocked && <span className="block text-xs text-ember-700">{upkeep.upgradeBlocked}</span>}
+              </p>
+            ) : upkeep.upgradable ? (
+              <p className="text-sm text-moss-700">Niveau maximal atteint.</p>
+            ) : null}
+          </Card>
+        )}
 
         {s.notes && <p className="text-sm text-ink-soft">{s.notes}</p>}
 

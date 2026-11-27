@@ -1,5 +1,11 @@
 # Historique des versions du GDD
 
+### V5.5 — 27/11/2026 — Niveaux & usure des bâtisses
+- **Usure** (§5.7) : chaque nuit, les bâtisses en service perdent un peu d'état (0,25 à 0,7 point selon la saison, +0,2 les nuits de gel) ; sous 30 %, elles sont **endommagées** (lits et effet perdus jusqu'à la réparation).
+- **Entretien** : nouvelle action « Entretenir une bâtisse » (1 PA, 2 pierres et 1 fer, +20 % d'état, sans dépense) ; les résidents du chantier entretiennent aussi les bâtisses sous 70 %. La pierre et le fer retrouvent un usage régulier.
+- **Améliorations par niveaux** : nouvelle action « Améliorer une bâtisse (niveau) » pour les logements, le gîte et les nouveaux bâtiments, jusqu'au niveau 3 (800 € puis 1 500 €, avec pierre, fer et bois) : +2 lits, isolation (−25 % puis −50 % de bois de chauffage), +50 % de production par niveau pour un nouveau bâtiment, usure plus lente.
+- Fiche d'une bâtisse : carte « Entretien & niveau » (étoiles, usure par nuit, coût du niveau suivant) ; priorité « Entretenir » ; Réserves de pierre, fer et bois à jour. Aucune migration (`upgrade_level`, `condition_pct`, `village_state.life.wear_acc`) ; 15 nouveaux tests Vitest (dont l'écriture réelle par `engine_commit`).
+
 ### V5.4 — 27/11/2026 — Nouveaux bâtiments & parcelles libres
 - **Douze nouveaux bâtiments** (§5.6) : four à pain, fromagerie, chambre froide, scierie, moulin sur la rivière, lavoir, infirmerie, poulailler, ruches, serre, bar du hameau, hangar ; chacun donne son effet chaque nuit une fois en service (rations, santé, moral et recettes, outils, bois à la coupe, épidémies divisées par deux).
 - **Choix d'une parcelle libre sur la carte** : 11 parcelles (3 en bord de rivière pour le moulin et le lavoir) ; on touche le « + », on choisit le bâtiment, la caisse paie le plan (1 PA) ; le chantier avance ensuite par la rénovation, plus vite pour les petits bâtiments. Deux projets à la fois, un bâtiment de chaque sorte.

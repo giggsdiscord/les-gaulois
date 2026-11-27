@@ -45,12 +45,13 @@ async function loadState(): Promise<GameState> {
   };
 }
 
-async function play(actionCode: string, playerId: string, now: Date, params?: Record<string, unknown>) {
+async function play(actionCode: string, playerId: string, now: Date, params?: Record<string, unknown>, structureCode?: string) {
   const state = await loadState();
   const session = new GameSession(state, { now, gm: createGm(null, { seed: 'roundtrip' }) });
   session.tick();
   await session.maintainAgora();
-  const result = await session.action(playerId, { action_code: actionCode, ...(params ? { params } : {}) });
+  const target = structureCode ? state.snapshot.structures.find((st) => st.code === structureCode)?.id : undefined;
+  const result = await session.action(playerId, { action_code: actionCode, ...(params ? { params } : {}), ...(target ? { target_structure_id: target } : {}) });
   const payload = session.commitPayload();
   const revision = (await db.query<{ r: number }>('SELECT engine_commit($1, $2::jsonb) AS r', [state.snapshot.village.revision, JSON.stringify(payload)])).rows[0].r;
   return { result, revision: Number(revision), before: state.snapshot.village.revision };
@@ -88,5 +89,17 @@ describe('engine_commit accepte ce que produit le moteur (base réelle)', () => 
     expect(Number(row!.width)).toBe(48);
     const [v] = await rows<{ life: { parcels?: Record<string, string> } }>('SELECT life FROM village_state LIMIT 1');
     expect(Object.keys(v!.life.parcels ?? {})).toEqual(['era_baixa']);
+  });
+
+  it('entretien puis amélioration (V5.5) : état, niveau et lits écrits', async () => {
+    const m = await play('maintain_building', TIPHAINE, new Date(Date.now() + 180_000), undefined, 'casa_gran');
+    expect(m.result.ok, m.result.error ?? '').toBe(true);
+    const u = await play('upgrade_building', GUILLEM, new Date(Date.now() + 240_000), undefined, 'casa_gran');
+    expect(u.result.ok, u.result.error ?? '').toBe(true);
+    const [row] = await rows<{ condition_pct: number; upgrade_level: number; beds_capacity: number }>(
+      `SELECT condition_pct, upgrade_level, beds_capacity FROM map_structures WHERE code = 'casa_gran'`,
+    );
+    expect(row).toMatchObject({ upgrade_level: 2, beds_capacity: 8 });
+    expect(row!.condition_pct).toBeGreaterThanOrEqual(60);
   });
 });

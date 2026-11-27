@@ -13,6 +13,7 @@ import { isDetained } from './health.ts';
 import { ensureLife, lifeOf } from './life.ts';
 import { clamp, gauge, money, round2, stock } from './math.ts';
 import { residents, structureByCode } from './population.ts';
+import { wornStructures } from './upkeep.ts';
 import type {
   CalendarSeason,
   EngineEffects,
@@ -148,6 +149,11 @@ export function planResidentWork(s: GameSnapshot, season: CalendarSeason, now: D
     .map((st) => ({ st, left: Math.max(1, REPAIRED_AT - st.condition_pct) }))
     .sort(byLeft);
 
+  // Entretien (V5.5) : bâtisses en service sous RESIDENT_MAINTAIN_BELOW, les plus abîmées d'abord
+  const worn = wornStructures(s, C.RESIDENT_MAINTAIN_BELOW)
+    .filter((st) => !st.eco_veto_active)
+    .map((st) => ({ st, left: C.RESIDENT_MAINTAIN_BELOW - st.condition_pct }));
+
   const pool = workforce
     .map((m) => {
       const post = findWorkPost(m.work_post);
@@ -221,9 +227,9 @@ export function planResidentWork(s: GameSnapshot, season: CalendarSeason, now: D
         break;
       }
       case 'construction': {
-        const site = sites.find((x) => x.left > 0) ?? damaged.find((x) => x.left > 0);
+        const site = sites.find((x) => x.left > 0) ?? damaged.find((x) => x.left > 0) ?? worn.find((x) => x.left > 0);
         if (!site) {
-          idle('Aucun chantier en cours ni bâtisse à réparer');
+          idle('Aucun chantier, aucune bâtisse à réparer ni à entretenir');
           break;
         }
         if (stoneLeft < C.RESIDENT_BUILD_STONE) {
@@ -232,7 +238,8 @@ export function planResidentWork(s: GameSnapshot, season: CalendarSeason, now: D
         }
         stoneLeft -= C.RESIDENT_BUILD_STONE;
         totals.stone_used += C.RESIDENT_BUILD_STONE;
-        const isRepair = site.st.status === 'damaged';
+        const isUpkeep = site.st.status === 'operational';
+        const isRepair = site.st.status === 'damaged' || isUpkeep;
         const base = isRepair ? C.RESIDENT_REPAIR_POINTS : C.RESIDENT_BUILD_POINTS;
         const pts = Math.min(site.left, Math.max(1, Math.round(base * factor)));
         site.left -= pts;
@@ -240,7 +247,7 @@ export function planResidentWork(s: GameSnapshot, season: CalendarSeason, now: D
         bucket[site.st.id] = (bucket[site.st.id] ?? 0) + pts;
         if (isRepair) totals.repair += pts;
         else totals.build += pts;
-        work(isRepair ? `Répare « ${site.st.name} » (+${pts} % d'état)` : `Chantier « ${site.st.name} » +${pts} %`);
+        work(isUpkeep ? `Entretient « ${site.st.name} » (+${pts} % d'état)` : isRepair ? `Répare « ${site.st.name} » (+${pts} % d'état)` : `Chantier « ${site.st.name} » +${pts} %`);
         break;
       }
       case 'forge': {

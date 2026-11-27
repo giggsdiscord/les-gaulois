@@ -27,6 +27,7 @@ export * from './temptations.ts';
 export * from './life.ts';
 export * from './work.ts';
 export * from './buildings.ts';
+export * from './upkeep.ts';
 export * from './collective.ts';
 export * from './goals.ts';
 export * from './skills.ts';

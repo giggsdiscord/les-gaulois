@@ -14,6 +14,7 @@ import { applyMarketSale, ensureLife, marketQuote } from './life.ts';
 import { advanceStructure, BUILDING_KINDS, findWorkPost, forestBan, residentSkill } from './work.ts';
 import { contributeToCollective, currentCollective, findCollectiveProject } from './collective.ts';
 import { buildingTypeOf, findBuildingType, findParcel, hasBuilding, planBlocker, planBuilding } from './buildings.ts';
+import { applyUpgrade, maintainBlocker, nextUpgrade, UPGRADABLE_KINDS, upgradeBlocker, upgradeGains, WEARING_KINDS } from './upkeep.ts';
 import { castElectionVote, speakAtDebate, standForElection } from './elections.ts';
 import { checkLocks, markGroupExecuted } from './locks.ts';
 import { clamp, deepClone, gauge, money, round2, stock } from './math.ts';
@@ -536,6 +537,47 @@ export const ACTIONS: readonly ActionDef[] = [
       const bonus = (ctx.holder.role_code === 'civil_eng' ? 1.2 : 1) * (buildingTypeOf(st)?.ease ?? 1);
       const gain = progressStructure(ctx, st, C.BUILDING_BASE_PROGRESS * bonus);
       return `Chantier ${st.name} : +${gain} % (avancement ${st.progress_pct} %).${physicalRisk(ctx)}`;
+    },
+  },
+  {
+    code: 'maintain_building', label: 'Entretenir une bâtisse', description: `Toiture, joints, ferrures : +${C.MAINTAIN_POINTS} % d'état pour ${C.MAINTAIN_STONE} pierres et ${C.MAINTAIN_IRON} fer, sans dépense.`, anyone: true, apCost: 1, physical: true, pole: 'civil_eng', target: 'structure',
+    precheck: (s, req) => maintainBlocker(s.structures.find((x) => x.id === req.target_structure_id), s.village),
+    run: (ctx) => {
+      const st = targetStructure(ctx, WEARING_KINDS);
+      const blocker = maintainBlocker(st, ctx.v);
+      ensure(!blocker, blocker ?? '');
+      useStock(ctx, 'stone_stock', C.MAINTAIN_STONE, 'pierre');
+      useStock(ctx, 'iron_stock', C.MAINTAIN_IRON, 'fer');
+      const gain = Math.max(1, Math.round(C.MAINTAIN_POINTS * factor(ctx, 'civil_eng')));
+      st.condition_pct = Math.min(100, st.condition_pct + gain);
+      return `Entretien de ${st.name} : état ${st.condition_pct} % (+${gain}).${physicalRisk(ctx)}`;
+    },
+  },
+  {
+    code: 'upgrade_building', label: 'Améliorer une bâtisse (niveau)', description: 'Logement, gîte ou nouveau bâtiment : +2 lits ou +50 % de production, meilleure isolation, usure plus lente ; accord PLU requis.', anyone: true, apCost: 1, physical: true, requiresPlu: true, ecoSensitive: true, pole: 'civil_eng', target: 'structure',
+    cost: (s, req) => {
+      const st = s.structures.find((x) => x.id === req.target_structure_id);
+      return (st && nextUpgrade(st)?.price_eur) ?? 0;
+    },
+    precheck: (s, req) => upgradeBlocker(s.structures.find((x) => x.id === req.target_structure_id), s.village),
+    run: (ctx) => {
+      const st = targetStructure(ctx, UPGRADABLE_KINDS);
+      const blocker = upgradeBlocker(st, ctx.v);
+      ensure(!blocker, blocker ?? '');
+      const next = nextUpgrade(st)!;
+      const gains = upgradeGains(st);
+      useStock(ctx, 'stone_stock', next.stone, 'pierre');
+      useStock(ctx, 'iron_stock', next.iron, 'fer');
+      useStock(ctx, 'wood_stock', next.wood, 'bois');
+      spendTreasury(ctx, next.price_eur, `Amélioration niveau ${next.level} — ${st.name}`, 'construction', 'BigMat');
+      const level = asAction(() => applyUpgrade(st));
+      pushEvent(ctx.fx, ctx.s, {
+        event_type: 'building_upgraded',
+        title: 'Bâtisse améliorée',
+        body: `${ctx.actor.display_name} fait passer « ${st.name} » au niveau ${level} : ${gains.join(', ')}.`,
+        data: { structure_id: st.id, level },
+      });
+      return `${st.name} passe au niveau ${level} : ${gains.join(', ')}.${physicalRisk(ctx)}`;
     },
   },
   {

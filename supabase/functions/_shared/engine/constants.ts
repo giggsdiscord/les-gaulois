@@ -708,3 +708,36 @@ export const BAR_MORALE_CAP = 85; // [GDD §5.6]
 export const BAR_INCOME_EUR = 12; // [GDD §5.6]
 export const BAR_ALCOHOL = 0.3; // [GDD §5.6]
 export const SHED_TOOLS_WEAR = 1; // [GDD §5.6]
+
+// ---------------------------------------------------------------------------
+// Niveaux & usure des bâtisses (V5.5) [GDD §5.7]
+// ---------------------------------------------------------------------------
+/** Points d'état perdus chaque nuit par une bâtisse en service, selon la saison. */
+export const WEAR_PER_NIGHT: Record<CalendarSeason, number> = { spring: 0.3, summer: 0.25, autumn: 0.4, winter: 0.7 }; // [GDD §5.7]
+export const WEAR_FROST_EXTRA = 0.2; // [GDD §5.7] de plus par nuit de gel (minimale < 0 °C)
+export const WEAR_LEVEL_REDUCTION = 0.2; // [GDD §5.7] −20 % d'usure par niveau au-delà du premier
+export const WEAR_DAMAGED_AT = 30; // [GDD §5.7] sous ce seuil, la bâtisse est « endommagée » (lits et effet perdus)
+export const WEAR_WARN_AT = 50; // [GDD §5.7] seuil de l'entretien conseillé
+export const MAINTAIN_POINTS = 20; // [GDD §5.7] points d'état d'une séance d'entretien (× métier)
+export const MAINTAIN_STONE = 2; // [GDD §5.7]
+export const MAINTAIN_IRON = 1; // [GDD §5.7]
+export const RESIDENT_MAINTAIN_BELOW = 70; // [GDD §5.7] les résidents du chantier entretiennent sous ce seuil
+/** Niveau maximal d'une bâtisse améliorable (colonne `upgrade_level`, 1 à 5). */
+export const UPGRADE_MAX_LEVEL = 3; // [GDD §5.7]
+export const UPGRADE_MIN_CONDITION = 60; // [GDD §5.7] état minimal pour améliorer
+export interface UpgradeStep {
+  level: number;
+  price_eur: number;
+  stone: number;
+  iron: number;
+  wood: number;
+}
+/** Coût du passage à chaque niveau (une séance de chantier). */
+export const UPGRADE_STEPS: readonly UpgradeStep[] = [
+  { level: 2, price_eur: 800, stone: 10, iron: 3, wood: 5 },
+  { level: 3, price_eur: 1500, stone: 15, iron: 5, wood: 8 },
+]; // [GDD §5.7]
+export const UPGRADE_BEDS_PER_LEVEL = 2; // [GDD §5.7] logements et gîte
+/** Bois de chauffage brûlé selon le niveau (isolation) : niveau 1, 2, 3. */
+export const UPGRADE_HEATING_FACTOR: readonly number[] = [1, 0.75, 0.5]; // [GDD §5.7]
+export const UPGRADE_OUTPUT_BONUS = 0.5; // [GDD §5.7] +50 % de production par niveau (nouveaux bâtiments)
