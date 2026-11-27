@@ -3,6 +3,7 @@
  * météo Open-Meteo (sans clé) et gros titres RSS Espagne / Catalogne / France [GDD §6.3].
  */
 import type { WeatherSnapshot } from './types.ts';
+import { constants, type IncomingQuote } from '../engine/index.ts';
 
 /** Hameau des Pyrénées de Lleida (Alt Urgell, ~18 km d'Andorre) — modifiable par variables d'environnement. */
 export const DEFAULT_LOCATION = { latitude: 42.33, longitude: 1.33, label: 'Alt Urgell, Lleida' } as const;
@@ -110,4 +111,49 @@ export function interleaveHeadlines(lists: readonly string[][], max = 8): string
     if (!added) break;
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Cours des ETF du fonds souverain (V6.2) [GDD §5.13] — API « chart » publique de Yahoo Finance,
+// gratuite et sans clé (aucune donnée de joueur envoyée : seulement le symbole coté).
+// ---------------------------------------------------------------------------
+export const QUOTE_HOSTS: readonly string[] = ['https://query1.finance.yahoo.com', 'https://query2.finance.yahoo.com'];
+
+export function yahooChartUrl(symbol: string, host: string = QUOTE_HOSTS[0]!): string {
+  return `${host}/v8/finance/chart/${encodeURIComponent(symbol)}?range=3mo&interval=1d`;
+}
+
+const isoDay = (seconds: number) => new Date(seconds * 1000).toISOString().slice(0, 10);
+const okPrice = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0;
+
+/**
+ * Analyse la réponse JSON de Yahoo Finance (clôtures quotidiennes sur 3 mois) : dernier cours, clôture
+ * précédente, date de séance et historique. `null` si la réponse est inutilisable ou pas en euros.
+ */
+export function parseYahooChart(json: unknown): IncomingQuote | null {
+  const result = (json as { chart?: { result?: unknown[] } } | null)?.chart?.result?.[0] as
+    | { meta?: Record<string, unknown>; timestamp?: unknown[]; indicators?: { quote?: { close?: unknown[] }[] } }
+    | undefined;
+  if (!result?.meta) return null;
+  if (result.meta.currency !== 'EUR') return null;
+  const stamps = Array.isArray(result.timestamp) ? result.timestamp : [];
+  const closes = result.indicators?.quote?.[0]?.close ?? [];
+  const byDay = new Map<string, number>();
+  stamps.forEach((t, i) => {
+    const c = closes[i];
+    if (typeof t === 'number' && okPrice(c)) byDay.set(isoDay(t), c);
+  });
+  const live = result.meta.regularMarketPrice;
+  const liveTime = result.meta.regularMarketTime;
+  if (okPrice(live) && typeof liveTime === 'number') byDay.set(isoDay(liveTime), live);
+  const days = [...byDay.keys()].sort();
+  if (days.length === 0) return null;
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const history = days.map((d) => round2(byDay.get(d)!)).slice(-constants.ETF_HISTORY_POINTS);
+  return {
+    price: history[history.length - 1]!,
+    prev: history.length >= 2 ? history[history.length - 2]! : null,
+    date: days[days.length - 1]!,
+    history,
+  };
 }

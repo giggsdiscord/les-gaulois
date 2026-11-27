@@ -228,6 +228,43 @@ export interface VillageLife {
   services_week?: Record<string, number>;
   /** Bilan de la nuit dernière : installations et commandes (V6.1). */
   income_last?: IncomeNight | null;
+  /** Derniers cours des ETF (V6.2) : id d'ETF → cours relevé la nuit (réel) ou simulé (démo). */
+  market_quotes?: Record<string, EtfQuote>;
+  /** Positions du fonds souverain sur les ETF (V6.2) : id d'ETF → parts + prix de revient. */
+  etf_positions?: Record<string, EtfPosition>;
+  /** Valeur des ETF du fonds, un point par nuit (V6.2), du plus ancien au plus récent. */
+  etf_value_history?: EtfValuePoint[];
+  /** Plus-values (ou moins-values) réalisées depuis le début, frais déduits (V6.2). */
+  etf_realized_eur?: number;
+}
+
+/** Cours d'un ETF (V6.2) : relevé par l'Edge Function de nuit, jamais par le moteur. */
+export interface EtfQuote {
+  /** Dernier cours de clôture connu, en euros. */
+  price: number;
+  /** Clôture de la séance précédente (variation du jour). */
+  prev: number | null;
+  /** Date de la séance (AAAA-MM-JJ). */
+  date: string;
+  /** Dernières clôtures, de la plus ancienne à la plus récente. */
+  history: number[];
+  /** Jour local où le cours a été écrit dans la partie. */
+  updated_day: string;
+  /** Cours simulé (mode démo, sans réseau). */
+  demo?: boolean;
+}
+
+/** Position du fonds souverain sur un ETF (V6.2). */
+export interface EtfPosition {
+  shares: number;
+  /** Prix de revient total (montants investis, frais compris, moins la part vendue). */
+  cost_eur: number;
+  since: string;
+}
+
+export interface EtfValuePoint {
+  day: string;
+  value: number;
 }
 
 /** Installation automatique (V6.1). */

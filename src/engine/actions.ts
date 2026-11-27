@@ -14,6 +14,7 @@ import { advanceStructure, BUILDING_KINDS, findWorkPost, forestBan, residentSkil
 import { cheerBlocker, cheerResident, firstName, temperOf } from './personality.ts';
 import { adjustNeighbor, helpNeighbors, missionCostText, neighborHelpBlocker } from './neighbors.ts';
 import { answerVisitor, visitorBlocker } from './visitors.ts';
+import { buyBlocker, buyEtf, sellBlocker, sellEtf } from './funds.ts';
 import { findInstall, orderBlocker, renderService, serviceBlocker, setupBlocker, setupCost, setupInstall, signOrder, stopBlocker, stopInstall, unitText } from './income.ts';
 import { recordWeekAction } from './chronicle.ts';
 import { contributeToCollective, currentCollective, findCollectiveProject } from './collective.ts';
@@ -893,6 +894,22 @@ export const ACTIONS: readonly ActionDef[] = [
       }
       pushLedger(ctx.fx, ctx.s, { account: 'sovereign_fund', amount_eur: amount, label: 'Mouvement du fonds souverain', category: 'sovereign_fund', created_by: ctx.actor.id });
       return `Fonds souverain : ${ctx.v.sovereign_fund_eur.toFixed(2)} €.`;
+    },
+  },
+  {
+    code: 'buy_etf', label: 'Placer le fonds sur un ETF', description: `Achète des parts d’un ETF (Monde, S&P 500, Nasdaq 100, CAC 40, émergents, Europe) avec les liquidités du fonds souverain, au dernier cours relevé la nuit. Frais : ${C.ETF_FEE_PCT} % (min. ${C.ETF_FEE_MIN_EUR} €). Les cours suivent les vrais marchés : la valeur peut baisser.`, roles: ['treasurer_physio'], apCost: 0, delegable: false, target: 'none',
+    precheck: (s, req) => buyBlocker(s, req.params?.etf, req.amount_eur),
+    run: (ctx) => {
+      const r = asAction(() => buyEtf(ctx.s, ctx.fx, ctx.actor, ctx.req.params?.etf, ctx.req.amount_eur, dayKeyOf(ctx.now)));
+      return `${r.def.icon} ${r.shares} parts ${r.def.label} achetées à ${r.price.toFixed(2)} € (frais ${r.fee.toFixed(2)} €). Liquidités du fonds : ${ctx.v.sovereign_fund_eur.toFixed(2)} €.`;
+    },
+  },
+  {
+    code: 'sell_etf', label: 'Vendre des parts d’ETF', description: `Revend des parts d’un ETF du fonds souverain au dernier cours (montant vide = tout vendre) ; le produit revient aux liquidités du fonds. Frais : ${C.ETF_FEE_PCT} % (min. ${C.ETF_FEE_MIN_EUR} €).`, roles: ['treasurer_physio'], apCost: 0, delegable: false, target: 'none',
+    precheck: (s, req) => sellBlocker(s, req.params?.etf, req.amount_eur),
+    run: (ctx) => {
+      const r = asAction(() => sellEtf(ctx.s, ctx.fx, ctx.actor, ctx.req.params?.etf, ctx.req.amount_eur, dayKeyOf(ctx.now)));
+      return `${r.def.icon} Vente ${r.def.label} : ${r.proceeds.toFixed(2)} € au fonds (${r.gain >= 0 ? 'plus' : 'moins'}-value ${r.gain.toFixed(2)} €).`;
     },
   },
   {

@@ -47,7 +47,7 @@ export const ACTION_CATEGORIES: readonly ActionCategory[] = [
     id: 'argent',
     emoji: '💰',
     label: 'Argent & commerce',
-    codes: ['private_work', 'market_sale', 'buy_supplies', 'hire_resident', 'fire_resident', 'financial_audit', 'pay_land_debt', 'transfer_sovereign_fund', 'set_carlage_fee', 'open_gite', 'close_gite', 'family_allowance', 'andorra_fiscal_scheme', 'smuggling_run', 'setup_install', 'stop_install', 'sign_order', 'paid_service'],
+    codes: ['private_work', 'market_sale', 'buy_supplies', 'hire_resident', 'fire_resident', 'financial_audit', 'pay_land_debt', 'transfer_sovereign_fund', 'set_carlage_fee', 'open_gite', 'close_gite', 'family_allowance', 'andorra_fiscal_scheme', 'smuggling_run', 'setup_install', 'stop_install', 'sign_order', 'paid_service', 'buy_etf', 'sell_etf'],
   },
   {
     id: 'village',

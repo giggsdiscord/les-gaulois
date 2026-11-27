@@ -30,7 +30,7 @@ export interface ActionSituation {
   /** Visiteurs (V5.9) : pourquoi on ne peut pas répondre (null = possible). */
   visitor?: string | null;
   /** Revenus (V6.1) : pourquoi aucune option n'est possible, par action (null = au moins une possible). */
-  income?: Partial<Record<'setup_install' | 'stop_install' | 'sign_order' | 'paid_service', string | null>>;
+  income?: Partial<Record<'setup_install' | 'stop_install' | 'sign_order' | 'paid_service' | 'buy_etf' | 'sell_etf', string | null>>;
   /** Élection vivante (V5.3) : gestes possibles maintenant. */
   election?: { open: boolean; canStand: boolean; canSpeak: boolean; canVote: boolean; phase: string | null };
 }
@@ -162,9 +162,9 @@ function electionSituation(data: Pick<GameData, 'me' | 'players' | 'village'>, s
 /** Revenus (V6.1) : une action dont toutes les options sont refusées est grisée avec la première raison. */
 function incomeBlockers(data: Parameters<typeof incomeChoices>[1]): NonNullable<ActionSituation['income']> {
   const out: NonNullable<ActionSituation['income']> = {};
-  for (const code of ['setup_install', 'stop_install', 'sign_order', 'paid_service'] as const) {
+  for (const code of ['setup_install', 'stop_install', 'sign_order', 'paid_service', 'buy_etf', 'sell_etf'] as const) {
     const ch = incomeChoices(code, data);
-    if (!ch || ch.options.length === 0) out[code] = code === 'stop_install' ? 'Aucune installation en place.' : 'Rien de possible pour l’instant.';
+    if (!ch || ch.options.length === 0) out[code] = code === 'stop_install' ? 'Aucune installation en place.' : code === 'sell_etf' ? 'Le fonds ne détient aucun ETF.' : 'Rien de possible pour l’instant.';
     else out[code] = ch.options.every((o) => o.blocked) ? ch.options[0]!.blocked : null;
   }
   return out;

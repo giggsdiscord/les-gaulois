@@ -2,11 +2,13 @@
 import { useMemo, useState } from 'react';
 import { CATALOG, constants, getAction, purchaseCost, type CatalogItem, type VillageState } from '../engine.ts';
 import { ActionSheet } from '../components/ActionSheet.tsx';
+import { FundCard } from '../components/FundCard.tsx';
 import { IncomeCard } from '../components/IncomeCard.tsx';
 import { Badge, Button, Card, Empty, Gauge, SectionTitle, Sheet, Stat, Tabs, cx } from '../components/ui.tsx';
 import { eur, num, dateTime } from '../lib/format.ts';
 import { ACCOUNT_LABEL, ACT_LABEL, ENERGY_LABEL } from '../lib/labels.ts';
 import { playerName } from '../lib/game.ts';
+import { fundView } from '../lib/funds.ts';
 import { reserveReport, type ReserveLine, type ReserveSource } from '../lib/reserves.ts';
 import { useData, useNow } from '../state/GameContext.tsx';
 
@@ -127,18 +129,21 @@ function ReservesCard() {
 function Finances() {
   const data = useData();
   const v = data.village;
+  const now = useNow(60_000);
+  const fund = fundView(v, now);
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="Caisse commune" value={eur(v.treasury_eur)} tone={v.treasury_eur < 0 ? 'ember' : 'moss'} />
         <Stat label="Dette foncière" value={eur(v.land_debt_eur)} sub={v.missed_loan_payments > 0 ? `${v.missed_loan_payments} échéance(s) manquée(s)` : 'échéances à jour'} tone={v.missed_loan_payments > 0 ? 'ember' : undefined} />
-        <Stat label="Fonds souverain" value={eur(v.sovereign_fund_eur)} />
+        <Stat label="Fonds souverain" value={eur(fund.total)} sub={fund.invested > 0 ? `dont ${eur(fund.invested)} en ETF` : undefined} />
         <Stat label="Réserves crypto" value={eur(v.crypto_reserves_eur)} sub={v.crypto_mining_active ? 'minage actif' : 'minage à l\'arrêt'} />
       </div>
       {v.collectivization_active && <Card tone="danger">Collectivisation en vigueur : les comptes privés sont réquisitionnés au profit de la caisse commune.</Card>}
       <AutonomyCard />
       <ReservesCard />
       <IncomeCard />
+      <FundCard />
       <Card title="Indicateurs économiques">
         <div className="grid gap-3 sm:grid-cols-2">
           <Gauge label="Productivité" value={Math.round(v.productivity_modifier_pct)} good="neutral" max={150} />

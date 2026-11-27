@@ -38,6 +38,7 @@ import { collectiveView } from './collective.ts';
 import { neighborPriorityScore, neighborsView } from './neighbors.ts';
 import { visitorPriorityScore, visitorsView } from './visitors.ts';
 import { incomeView } from './income.ts';
+import { fundView } from './funds.ts';
 import { electionView } from './election.ts';
 import { MISSION_REWARD_TEXT } from './jobLevel.ts';
 import { residentPersona, sulkingResidents } from './residentLife.ts';
@@ -446,6 +447,18 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
         gain: 'des recettes chaque nuit',
       });
     }
+  }
+  // Fonds souverain (V6.2) : des liquidités dorment alors que les cours sont connus
+  const fund = fundView(v, now);
+  if (!fund.noQuotes && fund.invested === 0 && fund.cash >= C.ETF_IDLE_CASH_EUR) {
+    P.add({
+      key: 'etf:invest', emoji: '📈', title: 'Placer le fonds souverain en Bourse', urgent: false, score: 18,
+      short: `${Math.floor(fund.cash)} € dorment dans le fonds : un ETF suit les marchés.`.slice(0, 70),
+      why: 'Les ETF du fonds suivent les vrais cours (Monde, S&P 500, CAC 40…) : la valeur peut monter ou baisser.',
+      actionCode: 'buy_etf', preset: { params: { etf: 'world' } },
+      steps: [`Ordre minimal ${C.ETF_MIN_ORDER_EUR} €, frais ${C.ETF_FEE_PCT} %.`, 'Cours, courbes et ventes : Trésor → Finances.'],
+      gain: 'un fonds qui travaille',
+    });
   }
   // Relations avec les voisins (V5.8) : une demande ouverte à remplir avant l'échéance
   const nb = neighborsView(data, now);

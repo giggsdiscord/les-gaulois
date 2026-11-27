@@ -1134,3 +1134,41 @@ export const SERVICE_TOOLS_WEAR = 1; // [GDD §5.12]
 export const SERVICE_WALK_GITE_BONUS = 10; // [GDD §5.12]
 export const SERVICE_WALK_NOTORIETY = 0.2; // [GDD §5.12]
 export const SERVICE_LESSONS_GAUGE = 1; // [GDD §5.12]
+
+// ---------------------------------------------------------------------------
+// V6.2 — Fonds souverain placé sur les marchés réels [GDD §5.13]
+// ---------------------------------------------------------------------------
+export type EtfId = 'world' | 'sp500' | 'nasdaq100' | 'cac40' | 'emerging' | 'europe600';
+export interface EtfDef {
+  id: EtfId;
+  label: string;
+  icon: string;
+  /** Symbole de cotation (Yahoo Finance, cotation en euros sur Xetra / Euronext). */
+  symbol: string;
+  /** Nom du fonds réel suivi (pour l'aide). */
+  fund: string;
+  /** Cours de départ du mode démo (cours simulés, pas réels). */
+  demo_price: number;
+  /** Volatilité quotidienne du mode démo (écart type, en %). */
+  demo_vol_pct: number;
+  summary: string;
+}
+export const ETFS: readonly EtfDef[] = [
+  { id: 'world', label: 'Monde (MSCI World)', icon: '🌍', symbol: 'IWDA.AS', fund: 'iShares Core MSCI World', demo_price: 127, demo_vol_pct: 0.8, summary: '1 400 grandes entreprises de 23 pays développés.' }, // [GDD §5.13]
+  { id: 'sp500', label: 'États-Unis (S&P 500)', icon: '🇺🇸', symbol: 'SXR8.DE', fund: 'iShares Core S&P 500', demo_price: 719, demo_vol_pct: 0.9, summary: 'Les 500 plus grandes entreprises américaines.' }, // [GDD §5.13]
+  { id: 'nasdaq100', label: 'Tech américaine (Nasdaq 100)', icon: '💻', symbol: 'SXRV.DE', fund: 'iShares Nasdaq 100', demo_price: 1397, demo_vol_pct: 1.3, summary: 'Les 100 géants de la technologie du Nasdaq : plus nerveux.' }, // [GDD §5.13]
+  { id: 'cac40', label: 'France (CAC 40)', icon: '🇫🇷', symbol: 'CAC.PA', fund: 'Amundi CAC 40', demo_price: 82.8, demo_vol_pct: 0.9, summary: 'Les 40 grandes valeurs de la Bourse de Paris.' }, // [GDD §5.13]
+  { id: 'emerging', label: 'Pays émergents (MSCI EM)', icon: '🌏', symbol: 'IS3N.DE', fund: 'iShares Core MSCI EM IMI', demo_price: 43.5, demo_vol_pct: 1.1, summary: 'Chine, Inde, Taïwan, Brésil… : plus de croissance, plus de secousses.' }, // [GDD §5.13]
+  { id: 'europe600', label: 'Europe (Stoxx 600)', icon: '🇪🇺', symbol: 'EXSA.DE', fund: 'iShares STOXX Europe 600', demo_price: 64, demo_vol_pct: 0.8, summary: '600 entreprises de 17 pays européens.' }, // [GDD §5.13]
+];
+/** Frais de courtage : pourcentage du montant, avec un minimum en euros (achat comme vente). */
+export const ETF_FEE_PCT = 0.2; // [GDD §5.13]
+export const ETF_FEE_MIN_EUR = 1; // [GDD §5.13]
+/** Ordre minimal (achat ou vente partielle). */
+export const ETF_MIN_ORDER_EUR = 50; // [GDD §5.13]
+/** Points d'historique gardés par ETF et pour la valeur du portefeuille (≈ 3 mois de Bourse). */
+export const ETF_HISTORY_POINTS = 60; // [GDD §5.13]
+/** Au-delà de ce nombre de jours sans nouveau cours, le cours est signalé « ancien ». */
+export const ETF_STALE_DAYS = 5; // [GDD §5.13]
+/** Conseil « À faire » : liquidités du fonds au-delà desquelles on propose de placer. */
+export const ETF_IDLE_CASH_EUR = 500; // [GDD §5.13]

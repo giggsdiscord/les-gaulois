@@ -77,6 +77,8 @@ export const STRUCTURE_ACTION_KINDS: Record<string, string[]> = {
 export const AMOUNT_ACTIONS: Record<string, { label: string; min: number; max: number; step: number; initial: number }> = {
   pay_land_debt: { label: 'Montant à rembourser (€)', min: 100, max: 100000, step: 100, initial: 1000 },
   transfer_sovereign_fund: { label: 'Montant (€) — négatif pour rapatrier', min: -100000, max: 100000, step: 100, initial: 1000 },
+  buy_etf: { label: 'Montant à placer (€), pris sur le fonds souverain', min: 50, max: 100000, step: 50, initial: 500 },
+  sell_etf: { label: 'Montant à vendre (€) — 0 pour tout vendre', min: 0, max: 100000, step: 50, initial: 0 },
   set_carlage_fee: { label: 'Franchise Carlage (€)', min: 0, max: 500, step: 10, initial: 50 },
   hire_resident: { label: 'Salaire hebdomadaire (€)', min: 50, max: 400, step: 10, initial: 120 },
 };

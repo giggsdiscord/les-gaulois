@@ -16,6 +16,7 @@ import {
   nextAgoraSession,
   portfolioUnlocked,
   sanitizeTaps,
+  simulateDemoQuotes,
   weekdayOfKey,
   type Player,
   type Portfolio,
@@ -274,6 +275,9 @@ export class DemoApi implements GameApi {
     const session = new GameSession(this.workingState(now), { now, gm: createGm(null, { seed: `demo:${now.toISOString()}` }) });
     session.tick();
     await session.maintainAgora();
+    // Fonds souverain (V6.2) : pas de réseau en démo → cours simulés (signalés « démo »), un pas par jour
+    const quotes = simulateDemoQuotes(session.snapshot.village, dayKey(now));
+    if (Object.keys(quotes).length > 0) session.applyWorld(null, [], quotes);
     const result = await operation(session);
     if (!((skipIfTrivial || !result.ok) && session.isTrivial())) this.commit(session, now);
     const playerId = this.token ? this.store.sessions[this.token] ?? null : null;

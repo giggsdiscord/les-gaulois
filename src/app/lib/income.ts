@@ -4,6 +4,7 @@
  * Pur (aucun DOM) : testé dans tests/app/income.test.ts.
  */
 import {
+  buyBlocker,
   calendarSeasonOfKey,
   constants as C,
   dayKey,
@@ -11,6 +12,9 @@ import {
   installsOf,
   lifeOf,
   orderBlocker,
+  positionOf,
+  quoteOf,
+  sellBlocker,
   ordersOf,
   planIncomeNight,
   serviceBlocker,
@@ -137,6 +141,24 @@ export function incomeChoices(code: string, data: IncomeData): { param: string; 
       param: 'service',
       label: 'Service',
       options: C.PAID_SERVICES.map((d) => ({ id: d.id, label: `${d.icon} ${d.label} — ${d.eur} €`, hint: `${servicesDone(v, d.id)}/${d.weekly_cap} cette semaine ; ${d.extra}.`, blocked: serviceBlocker(v, d.id) })),
+    };
+  }
+  // Fonds souverain (V6.2) : ETF choisi (le montant est vérifié à l'envoi)
+  if (code === 'buy_etf') {
+    return {
+      param: 'etf',
+      label: 'ETF',
+      options: C.ETFS.map((d) => {
+        const q = quoteOf(v, d.id);
+        return { id: d.id, label: `${d.icon} ${d.label}${q ? ` — ${q.price.toFixed(2)} €` : ''}`, hint: `${d.summary} Fonds suivi : ${d.fund}.`, blocked: buyBlocker(s, d.id, Math.max(C.ETF_MIN_ORDER_EUR, v.sovereign_fund_eur)) };
+      }),
+    };
+  }
+  if (code === 'sell_etf') {
+    return {
+      param: 'etf',
+      label: 'ETF',
+      options: C.ETFS.filter((d) => positionOf(v, d.id)).map((d) => ({ id: d.id, label: `${d.icon} ${d.label} — ${positionOf(v, d.id)!.shares} parts`, hint: d.summary, blocked: sellBlocker(s, d.id, 0) })),
     };
   }
   return null;

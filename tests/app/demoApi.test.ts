@@ -50,6 +50,25 @@ describe('DemoApi', () => {
     expect(data.structures.length).toBeGreaterThan(25);
   });
 
+  it('fonds souverain (V6.2) : cours simulés « démo », achat et vente d’ETF par le trésorier', async () => {
+    const api = new DemoApi();
+    await as(api, GUILLEM);
+    await api.action({ action_code: 'transfer_sovereign_fund', amount_eur: 1000 });
+    let v = (await api.loadAll()).village;
+    expect(v.life?.market_quotes?.world?.demo).toBe(true);
+    expect(v.life?.market_quotes?.world?.history.length).toBe(60);
+    const fund = v.sovereign_fund_eur;
+    await api.action({ action_code: 'buy_etf', params: { etf: 'sp500' }, amount_eur: 600 });
+    v = (await api.loadAll()).village;
+    expect(v.sovereign_fund_eur).toBeCloseTo(fund - 600, 2);
+    expect(v.life?.etf_positions?.sp500?.shares).toBeGreaterThan(0);
+    await api.action({ action_code: 'sell_etf', params: { etf: 'sp500' }, amount_eur: null });
+    v = (await api.loadAll()).village;
+    expect(v.life?.etf_positions?.sp500).toBeUndefined();
+    await as(api, JULIO);
+    await expect(api.action({ action_code: 'buy_etf', params: { etf: 'world' }, amount_eur: 100 })).rejects.toThrow();
+  });
+
   it('initiative hebdomadaire unique et vote nominatif', async () => {
     const api = new DemoApi();
     await as(api, GUILLEM);

@@ -208,6 +208,10 @@ describe('Nuit : monde réel, Gazette, migrants, tentations', () => {
     const gs = session(state(), '2026-11-27T23:10:00Z');
     gs.applyWorld({ summary: 'Neige, 1°C / -4°C (Alt Urgell)', temp_max_c: 1, temp_min_c: -4, precip_mm: 3, snow_cm: 5 }, ['Titre réel du jour']);
     expect(gs.snapshot.village.real_snow_cm).toBe(5);
+    expect(gs.snapshot.village.life?.market_quotes).toBeUndefined();
+    gs.applyWorld(null, [], { world: { price: 127.23, prev: 125.82, date: '2026-11-27', history: [125.82, 127.23] } });
+    expect(gs.snapshot.village.life?.market_quotes?.world?.updated_day).toBe('2026-11-28');
+    expect(gs.snapshot.village.real_snow_cm).toBe(5);
     const gazette = await gs.writeGazette('2026-11-28', []);
     expect(gazette.generated_by).toBe('fallback');
     const migrants = await gs.generateMigrants(2);

@@ -7,6 +7,8 @@
 import {
   addHours,
   applyAiDeltas,
+  applyMarketQuotes,
+  dayKey,
   applyDuelConsequences,
   applyElapsedTime,
   applyIncident,
@@ -623,8 +625,10 @@ export class GameSession {
   // -------------------------------------------------------------------------
   // Monde réel, Gazette, migrants, tentations (daily-world-sync)
   // -------------------------------------------------------------------------
-  applyWorld(weather: WeatherSnapshot | null, headlines: string[]): void {
+  /** Monde réel de la nuit ; `quotes` = cours des ETF du fonds souverain (V6.2), absent = derniers cours gardés. */
+  applyWorld(weather: WeatherSnapshot | null, headlines: string[], quotes: unknown = null): void {
     const v = this.snapshot.village;
+    if (quotes) applyMarketQuotes(this.snapshot, quotes, dayKey(this.now));
     if (weather) {
       v.real_weather_summary = weather.summary;
       v.real_temp_c = weather.temp_max_c;

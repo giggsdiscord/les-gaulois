@@ -1,5 +1,10 @@
 # Historique des versions du GDD
 
+### V6.2 — 27/11/2026 — Fonds souverain placé sur les marchés réels
+- **Six ETF** (Monde, S&P 500, Nasdaq 100, CAC 40, émergents, Stoxx 600) achetés et vendus par le trésorier avec les liquidités du fonds souverain (§5.13) ; frais 0,2 % (min. 1 €), ordre minimal 50 €, plus-values latentes et réalisées.
+- **Cours réels** relevés chaque nuit par `daily-world-sync` (API publique de Yahoo Finance, sans clé ; dernier cours gardé si la source tombe) ; **cours simulés « démo »** sans réseau en mode démo.
+- Trésor : carte « Fonds souverain en Bourse » (cours, variation du jour, parts, valeur, plus-value, courbes 60 séances) ; tuile du fonds = liquidités + ETF ; priorité « placer le fonds ». Actions `buy_etf`, `sell_etf`. La valeur des ETF n’entre pas dans l’autonomie. Aucune migration (`village_state.life.market_quotes` / `etf_positions` / `etf_value_history` / `etf_realized_eur`) ; 17 nouveaux tests Vitest.
+
 ### V6.1 — 27/11/2026 — Plus d’argent & production automatique
 - **Installations qui produisent seules chaque nuit** (§5.12), par Acte : paysannes (étal, lait et laine, tournée du pain, bûcheron sous contrat), modernes (revente d’électricité aux villages, réservation du gîte, péage de la piste, location de l’atelier), micro-État (export d’électricité du micro-réacteur, protection armée des villages alentour, timbres de collection). Prix d’installation + **charge chaque lundi** ; impayée → suspendue jusqu’à relance.
 - **Commandes régulières** (2 à la fois, livrées chaque nuit jusqu’au lundi ; 2 livraisons manquées → rupture) et **services payants** (réparations, balade guidée, cours de français ; 3 fois par semaine).

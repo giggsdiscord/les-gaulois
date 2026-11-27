@@ -16,7 +16,7 @@ import { createHttpHandler, HttpError, optStr, safeEqual, str, type JsonBody } f
 import { createAnthropicLlm } from './llm.ts';
 import { dispatchPush } from './push.ts';
 import { runGame, type PipelineDeps } from './pipeline.ts';
-import { fetchHeadlines, fetchWeather } from './world.ts';
+import { fetchEtfQuotes, fetchHeadlines, fetchWeather } from './world.ts';
 
 export function createDeps(env: FunctionEnv, clock: () => Date = () => new Date()): PipelineDeps {
   const db = createDb(env);
@@ -183,9 +183,9 @@ export function dailyWorldSyncHandler(env: FunctionEnv): (req: Request) => Promi
     // Nuit : sauvegarde J-0 + purge 30 jours, monde réel, scandales, Gazette, migrants, tentations
     const snapshotId = await callRpc(deps.db, 'create_daily_snapshot', { p_trigger: 'auto_midnight', p_label: null });
     const pruned = await callRpc(deps.db, 'prune_daily_snapshots', { p_keep_days: 30 });
-    const [weather, headlines] = await Promise.all([fetchWeather(env), fetchHeadlines(env)]);
+    const [weather, headlines, quotes] = await Promise.all([fetchWeather(env), fetchHeadlines(env), fetchEtfQuotes()]);
     const out = await runGame(deps, async (s): Promise<OpResult> => {
-      s.applyWorld(weather, headlines);
+      s.applyWorld(weather, headlines, quotes);
       const scandals = s.publishScandals();
       const gazette = await s.writeGazette(today, scandals);
       // Dossiers migrants 2 à 3 fois par semaine (lundi, mercredi, vendredi), 1 à 3 candidats
@@ -199,6 +199,7 @@ export function dailyWorldSyncHandler(env: FunctionEnv): (req: Request) => Promi
         ok: true,
         weather: weather?.summary ?? null,
         headlines: headlines.length,
+        etf_quotes: Object.keys(quotes).length,
         scandals: scandals.length,
         gazette: gazette.headline,
         migrants: migrants.length,
