@@ -19,7 +19,7 @@ Liste demandée par l'utilisateur le 26/11/2026 : **toutes ces idées sont à r�
 | V5.0 | **Chantier collectif de la semaine** : un projet choisi à l'Agora (ou proposé), tout le monde peut y mettre des PA, barre de progression commune, bonus si fini avant dimanche | ✅ `10f4091` |
 | V5.1 | **Objectifs d'Acte en liste à cocher** (ex. Acte I : électricité, 20 lits, 300 m² de potager, gîte ouvert) avec une récompense à chaque étape | ✅ `954d9fa` |
 | V5.2 | **Niveaux de métier visibles** (l'expérience `skill_xp` existe déjà : niveaux 2, 3, 4 = bonus), **mission du jour par métier** (petite récompense), **bonus d'action à deux** (deux joueurs agissent ensemble le même jour) | ✅ `18e6f8f` |
-| V5.3 | **Élections vivantes** pour les places 8 à 10 à l'Acte II : candidats, programme, débat à la Taverne, vote | À faire |
+| V5.3 | **Élections vivantes** pour les places 8 à 10 à l'Acte II : candidats, programme, débat à la Taverne, vote | ✅ `209f0f6` |
 | V5.4 | **Nouveaux bâtiments** : four à pain, fromagerie, chambre froide, scierie, moulin sur la rivière, lavoir (moins d'épidémies), infirmerie, poulailler, ruches, serre (légumes d'hiver), bar du hameau, hangar ; **choix d'une parcelle libre** sur la carte | À faire |
 | V5.5 | **Améliorations par niveaux** (ex. Casa Gran niveau 2 : +2 lits, isolation → moins de bois) et **usure** des bâtiments (entretien régulier, plus rapide l'hiver) | À faire |
 | V5.6 | **Filières** (lait → fromage, prunes → ratafia légal) avec **fromage vendu au marché d'Organyà**, **péremption** des vivres frais l'été sans chambre froide, **limites de stockage** (le hangar les relève) | À faire |
@@ -63,7 +63,7 @@ L'utilisateur a demandé de **bien noter toutes ces idées** : rien ne doit êtr
 - Ambitions secrètes : chaque joueur reçoit un objectif caché (devenir le plus riche, faire voter 3 lois…), révélé en fin de saison. Ça colle bien aux chuchotements, aux tentations et aux putschs. [❌ retirée le 27/11/2026 à la demande de l'utilisateur]
 - Bonus d'action à deux : quand deux joueurs agissent ensemble le même jour (Tanguy et Brunel sur une cure, Ely et Julio en négociation), ils gagnent un bonus. [✅ V5.2]
 - Mission du jour par métier : une action conseillée chaque jour, avec une petite récompense si elle est faite. [✅ V5.2]
-- Élections vivantes pour les places 8 à 10 à l'Acte II : candidats, programme, débat à la Taverne. [V5.3]
+- Élections vivantes pour les places 8 à 10 à l'Acte II : candidats, programme, débat à la Taverne. [✅ V5.3]
 
 **Constructions**
 - Nouveaux bâtiments utiles : four à pain, fromagerie, chambre froide, scierie ; moulin sur la rivière, lavoir (moins d'épidémies), infirmerie ; poulailler et ruches, serre pour les légumes d'hiver, bar du hameau. [V5.4, avec le hangar]
