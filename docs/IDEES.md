@@ -23,7 +23,7 @@ Liste demandée par l'utilisateur le 26/11/2026 : **toutes ces idées sont à r�
 | V5.4 | **Nouveaux bâtiments** : four à pain, fromagerie, chambre froide, scierie, moulin sur la rivière, lavoir (moins d'épidémies), infirmerie, poulailler, ruches, serre (légumes d'hiver), bar du hameau, hangar ; **choix d'une parcelle libre** sur la carte | ✅ `1cf7a91` |
 | V5.5 | **Améliorations par niveaux** (ex. Casa Gran niveau 2 : +2 lits, isolation → moins de bois) et **usure** des bâtiments (entretien régulier, plus rapide l'hiver) | ✅ `163030e` |
 | V5.6 | **Filières** (lait → fromage, prunes → ratafia légal) avec **fromage vendu au marché d'Organyà**, **péremption** des vivres frais l'été sans chambre froide, **limites de stockage** (le hangar les relève) | ✅ `74f4a26` |
-| V5.7 | **Résidents avec une personnalité** : prénom, humeur, relations, petites histoires dans la Gazette | À faire |
+| V5.7 | **Résidents avec une personnalité** : prénom, humeur, relations, petites histoires dans la Gazette | ✅ `42a73ad` |
 | V5.8 | **Relations avec les voisins** : jauges Organyà, mairie (Ayuntamiento), Mossos ; petites missions (« le maire d'Organyà demande de déneiger la route ») | À faire |
 | V5.9 | **Visiteurs imprévus** à qui répondre vite : randonneur perdu, journaliste, inspecteur, vendeur ambulant | À faire |
 | V6.0 | **Bilan de la semaine** dans la Gazette du dimanche (qui a fait quoi, records, « habitant de la semaine ») et **frise datée** des grandes étapes du hameau | À faire |
@@ -74,7 +74,7 @@ L'utilisateur a demandé de **bien noter toutes ces idées** : rien ne doit êtr
 
 **Vie du village**
 - Calendrier catalan réel : Sant Joan, la Diada du 11 septembre, la Castanyada, Nadal et le Caga Tió, le Carnaval. Chaque fête devient un événement avec une décision collective. [❌ retirée le 27/11/2026 à la demande de l’utilisateur]
-- Résidents avec une personnalité : prénom, humeur, relations, petites histoires dans la Gazette. [V5.7]
+- Résidents avec une personnalité : prénom, humeur, relations, petites histoires dans la Gazette. [✅ V5.7 `42a73ad`]
 - Relations avec les voisins : une jauge pour Organyà, une pour la mairie, une pour les Mossos, et de petites missions comme « le maire d'Organyà demande de déneiger la route ». [V5.8]
 - Visiteurs imprévus à qui répondre vite : randonneur perdu, journaliste, inspecteur, vendeur ambulant. [V5.9]
 - Bilan de la semaine dans la Gazette du dimanche : qui a fait quoi, les records, l'« habitant de la semaine ». [V6.0]
