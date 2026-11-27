@@ -486,3 +486,56 @@ export const COLLECTIVE_EARLY_MORALE = 3; // [GDD §5.5]
 export const COLLECTIVE_FAIL_MORALE = 2; // [GDD §5.5]
 /** Projets proposés au vote pour la semaine suivante. */
 export const COLLECTIVE_CANDIDATES = 3;
+
+// ---------------------------------------------------------------------------
+// Objectifs d'Acte [GDD §1.3, V5.1] : une liste à cocher par Acte, une récompense par étape
+// ---------------------------------------------------------------------------
+export type ActGoalId =
+  | 'power_on' | 'beds_20' | 'garden_500' | 'track_70' | 'gite_open'
+  | 'green_power' | 'beds_30' | 'herd_10' | 'residents_5' | 'debt_25'
+  | 'constitution' | 'deterrence_3' | 'debt_50' | 'independence';
+export interface ActGoalReward {
+  /** Part de l'emprunt foncier effacée par le prêteur, rassuré par les progrès. */
+  debt_eur?: number;
+  treasury_eur?: number;
+  morale?: number;
+  wood?: number;
+  stone?: number;
+  iron?: number;
+}
+export interface ActGoalDef {
+  id: ActGoalId;
+  act: 1 | 2 | 3;
+  label: string;
+  icon: string;
+  /** Comment l'atteindre (texte d'aide). */
+  hint: string;
+  reward: ActGoalReward;
+}
+export const ACT_GOALS: readonly ActGoalDef[] = [
+  { id: 'power_on', act: 1, label: 'Électricité au hameau', icon: '⚡', hint: 'Installer le groupe électrogène (palier d\'énergie 2).', reward: { debt_eur: 5000, morale: 3 } },
+  { id: 'beds_20', act: 1, label: '20 lits livrés', icon: '🛏️', hint: 'Rénover des bâtisses jusqu\'à 20 lits en service.', reward: { debt_eur: 5000, stone: 20 } },
+  { id: 'garden_500', act: 1, label: '500 m² de potager', icon: '🥕', hint: 'Agrandir le potager d\'Ely (chantier collectif, actions du potager).', reward: { debt_eur: 3000, wood: 20 } },
+  { id: 'track_70', act: 1, label: 'Piste empierrée à 70 %', icon: '🛤️', hint: 'Empierrer la piste forestière (Alex, résidents à la piste).', reward: { debt_eur: 3000, iron: 10 } },
+  { id: 'gite_open', act: 1, label: 'Gîte ouvert', icon: '🏡', hint: 'Rénover le Mas de l\'Era puis ouvrir le gîte.', reward: { debt_eur: 6000, morale: 4 } },
+  { id: 'green_power', act: 2, label: 'Barrage ou champ solaire', icon: '🌞', hint: 'Atteindre le palier d\'énergie 4 (micro-barrage ou champ solaire).', reward: { debt_eur: 12000, morale: 4 } },
+  { id: 'beds_30', act: 2, label: '30 lits livrés', icon: '🛏️', hint: 'Continuer les rénovations jusqu\'à 30 lits en service.', reward: { debt_eur: 10000, stone: 30 } },
+  { id: 'herd_10', act: 2, label: 'Troupeau de 10 bêtes', icon: '🐑', hint: 'Construire la Cleda et acheter du bétail.', reward: { debt_eur: 8000, morale: 3 } },
+  { id: 'residents_5', act: 2, label: '5 résidents au travail', icon: '👷', hint: 'Accueillir des résidents à l\'Agora et leur donner un poste.', reward: { debt_eur: 8000, wood: 30 } },
+  { id: 'debt_25', act: 2, label: 'Un quart de l\'emprunt remboursé', icon: '💶', hint: 'Rembourser l\'emprunt foncier (échéances, remboursements anticipés).', reward: { treasury_eur: 3000, morale: 4 } },
+  { id: 'constitution', act: 3, label: 'Constitution adoptée', icon: '📜', hint: 'Rédiger et voter un article de Constitution à l\'Agora.', reward: { debt_eur: 15000, morale: 4 } },
+  { id: 'deterrence_3', act: 3, label: 'Dissuasion niveau 3', icon: '🛡️', hint: 'Mener la R&D de dissuasion (Tanguy).', reward: { debt_eur: 15000, iron: 20 } },
+  { id: 'debt_50', act: 3, label: 'La moitié de l\'emprunt remboursée', icon: '💶', hint: 'Continuer à rembourser l\'emprunt foncier.', reward: { treasury_eur: 5000, morale: 4 } },
+  { id: 'independence', act: 3, label: 'Indépendance proclamée', icon: '🏳️', hint: 'Proclamer l\'indépendance à l\'Agora (deux tiers des voix).', reward: { debt_eur: 20000, morale: 6 } },
+]; // [GDD §1.3]
+/** Récompense quand toute la liste d'un Acte est cochée. */
+export const ACT_GOALS_COMPLETE_BONUS: Record<1 | 2 | 3, ActGoalReward> = {
+  1: { debt_eur: 10000, morale: 5 },
+  2: { debt_eur: 20000, morale: 5 },
+  3: { debt_eur: 30000, morale: 8 },
+}; // [GDD §1.3]
+export const ACT_GOAL_GARDEN_M2 = 500; // [GDD §1.3]
+export const ACT_GOAL_TRACK_PCT = 70; // [GDD §1.3]
+export const ACT_GOAL_HERD = 10; // [GDD §1.3]
+export const ACT_GOAL_RESIDENTS = 5; // [GDD §1.3]
+export const ACT_GOAL_DETERRENCE = 3; // [GDD §1.3]

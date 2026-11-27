@@ -1,5 +1,11 @@
 # Historique des versions du GDD
 
+### V5.1 — 27/11/2026 — Objectifs d'Acte en liste à cocher
+- **Une liste à cocher par Acte** (§1.3) : Acte I électricité, 20 lits, 500 m² de potager, piste à 70 %, gîte ouvert ; Acte II barrage ou solaire, 30 lits, 10 bêtes, 5 résidents au travail, un quart de l'emprunt remboursé ; Acte III Constitution, dissuasion 3, moitié de l'emprunt, indépendance.
+- **Une récompense par étape**, versée une seule fois dès que l'étape est atteinte (action, nuit ou maintenance) : surtout des **remises sur l'emprunt foncier** (le pilier dette bouge enfin), plus moral ou matériaux ; **prime de fin de liste** (10 000 €, 20 000 €, 30 000 € d'emprunt effacés).
+- Accueil : pastilles des étapes et prochaine étape dans « À faire en priorité », fenêtre « Objectifs de l'Acte » ; les priorités qui cochent une étape portent le badge « 🎯 Objectif d'Acte ».
+- Aucune nouvelle migration (`village_state.life.act_goals`) ; 11 nouveaux tests Vitest.
+
 ### V5.0 — 27/11/2026 — Chantier collectif de la semaine
 - **Un projet commun par semaine** (§5.5) : corvée de bois, journée de la piste, curage des canaux, agrandissement du potager, coup de main au chantier le plus avancé ou fête du hameau.
 - Tout le monde y met des PA (1 point par PA, 2 pour le métier du projet ; objectif 2 points par fondateur actif) ; **barre de progression commune** sur l'accueil et à l'Agora.

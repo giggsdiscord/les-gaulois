@@ -1,12 +1,12 @@
 ---
-version: 5.0
+version: 5.1
 date: 2026-11-27
 title: Les Gaulois — Game Design Document & Architecture Technique
 ---
 
 # LES GAULOIS — Simulation Coopérative de Village & Micro-État
 
-**Game Design Document (GDD) & Spécification Technique Complète — Version 5.0**
+**Game Design Document (GDD) & Spécification Technique Complète — Version 5.1**
 
 Jeu de stratégie, de gestion démographique, économique et politique asynchrone persistant, ancré dans le monde réel (Pyrénées de Lleida), piloté par un moteur déterministe TypeScript et un Maître du Jeu IA.
 
@@ -15,7 +15,9 @@ Jeu de stratégie, de gestion démographique, économique et politique asynchron
 | **Cadre réel :** hameau abandonné des Pyrénées de Lleida (Catalogne, Espagne), domaine de 30 ha situé à 18 km de la frontière d'Andorre. | **Achat & travaux :** 295 000 € (PLU 2013 validé). Rénovation globale estimée entre 600 000 € et 900 000 €. |
 | **Effectif & rythme :** 7 joueurs fondateurs (10 joueurs max) + population résidente dynamique (migrants accueillis, naturalisés, lignées et apprentis). 1 jour réel = 1 jour de jeu (3 PA/jour). | **Enjeux :** autonomie totale puis Micro-État souverain, pérennité démographique, équilibre idéologique (Droite vs Gauche), propriété privée vs collectivisation, contrebande, justice publique et dissuasion. Hébergement 0 € + API IA < 1 $/mois (Claude Haiku 5.5). |
 
-> **Nouveautés V5.0 :** **un chantier collectif chaque semaine** (§5.5) : un projet commun (bois, piste, canaux, potager, chantier, fête) choisi par vote, auquel chacun met ses PA ; barre de progression commune, effet ×1,5 et moral en plus s'il est achevé avant dimanche.
+> **Nouveautés V5.1 :** **des objectifs d'Acte en liste à cocher** (§1.3) : pour chaque Acte, quelques étapes concrètes (électricité, 20 lits, 500 m² de potager, piste à 70 %, gîte ouvert pour l'Acte I) qui se cochent toutes seules et versent chacune une récompense — surtout des remises sur l'emprunt foncier, pour faire bouger le pilier dette — et une prime quand la liste est terminée.
+
+> **Rappel V5.0 :** **un chantier collectif chaque semaine** (§5.5) : un projet commun (bois, piste, canaux, potager, chantier, fête) choisi par vote, auquel chacun met ses PA ; barre de progression commune, effet ×1,5 et moral en plus s'il est achevé avant dimanche.
 
 > **Rappel V4.8 :** **les réserves prennent vie** (§5.4) : vente des tomates, du bois et des conserves au **marché d'Organyà** (prix plus hauts le samedi, marché qui sature dans la semaine), **coupe de bois** dans la forêt communale, **chauffage** des bâtisses habitées chaque nuit froide selon la température réelle (sans bois, moral et santé baissent), **conserves** de tomates pour l'hiver.
 
@@ -59,6 +61,8 @@ Le jeu prend pour point de départ l'acquisition collective d'un véritable hame
 | **Acte III — La Principauté des Gaulois** (85 % à 100 %) | Création d'une monnaie locale, ferme de minage de cryptomonnaie sur le surplus électrique, impression des passeports officiels, naturalisation des résidents loyaux, poste-frontière sur la piste forestière et prototypes de dissuasion R&D. | Rédaction et vote de la Constitution à l'Agora, proclamation d'indépendance, exercice plein de la justice souveraine, contrôle fiscal de Madrid, descentes des Mossos d'Esquadra et quête de reconnaissance internationale. |
 
 > **Précision V3.8 — calcul de l'autonomie.** `autonomy_pct` = énergie (palier 1 → 0, 2 → 5, 3 → 10, 4 → 20, 5 → 25) + eau (15 si capacité ≥ besoin et réseau ≥ 60 %, sinon crédit partiel) + alimentation (20 × ratio²) + dette remboursée (20 × part remboursée) + logement (10 × part des lits PLU livrés) + souveraineté (Constitution 3, indépendance 4, dissuasion 3). Les Actes ne régressent jamais.
+
+> **Précisions V5.1 — objectifs d'Acte en liste à cocher (demandé par les joueurs : plus parlant qu'un pourcentage d'autonomie).** *Données :* `village_state.life.act_goals` (identifiant → date où l'étape a été cochée) et `life.act_goals_complete` (Actes dont la prime de fin de liste est versée) — **aucune nouvelle migration**. *Listes* (`ACT_GOALS`, `constants.ts`) : **Acte I** électricité au hameau (palier d'énergie 2 : emprunt −5 000 €, moral +3 %), 20 lits livrés (−5 000 €, +20 pierres), 500 m² de potager (−3 000 €, +20 stères de bois ; le potager compte déjà 300 m² au départ), piste empierrée à 70 % (−3 000 €, +10 fer), gîte ouvert (−6 000 €, moral +4 %) ; **Acte II** barrage ou champ solaire (palier 4 : −12 000 €, moral +4 %), 30 lits livrés (−10 000 €, +30 pierres), troupeau de 10 bêtes (−8 000 €, moral +3 %), 5 résidents au travail (poste attribué, hors emploi privé : −8 000 €, +30 stères), un quart de l'emprunt remboursé (caisse +3 000 €, moral +4 %) ; **Acte III** Constitution adoptée (−15 000 €, moral +4 %), dissuasion niveau 3 (−15 000 €, +20 fer), la moitié de l'emprunt remboursée (caisse +5 000 €, moral +4 %), indépendance proclamée (−20 000 €, moral +6 %). *Prime de fin de liste :* Acte I emprunt −10 000 € et moral +5 % ; Acte II −20 000 € et +5 % ; Acte III −30 000 € et +8 % (au total 170 000 € d'emprunt effacés sur les trois Actes). *Règles (`src/engine/goals.ts`, `checkActGoals`) :* vérifiées à chaque recalcul des grandeurs dérivées (après chaque action, chaque nuit et chaque passage de maintenance), pour l'Acte en cours et les précédents seulement (une étape d'un Acte futur attend que l'Acte soit atteint, puis se coche aussitôt) ; une étape cochée le reste même si la condition retombe, et sa récompense n'est versée qu'une fois ; la remise d'emprunt (le prêteur, rassuré par les progrès, efface une part de l'emprunt) est plafonnée à la dette restante, le surplus va dans la caisse ; l'autonomie est recalculée aussitôt (pilier dette). Événements publics « Objectif d'Acte coché » et « Liste de l'Acte terminée ». *Interface :* carte « À faire en priorité » de l'accueil, sous la barre d'Acte — une pastille par étape (✅ quand elle est atteinte), le compte « 2 / 5 » et la prochaine étape (la plus avancée) avec sa récompense ; un appui ouvre « Objectifs de l'Acte » (progression chiffrée, comment l'atteindre, récompense, prime de fin de liste). Les priorités qui font avancer une étape restante portent le badge « 🎯 Objectif d'Acte », passent un peu devant (+6) et rappellent la récompense dans leur détail.
 
 ## 2. Les 7 Métiers Fondateurs & Système Évolutif à 10 Joueurs
 

@@ -24,6 +24,7 @@ import {
   type AutonomyBreakdown,
   type GameSnapshot,
 } from '../engine.ts';
+import { actGoalsView, goalForPriority, type ActGoalsView } from './actGoals.ts';
 import { collectiveView } from './collective.ts';
 import type { ActionInput, GameData, Structure } from '../api/types.ts';
 import { eur } from './format.ts';
@@ -65,6 +66,8 @@ export interface PriorityItem {
   mine: boolean;
   urgent: boolean;
   score: number;
+  /** Objectif d'Acte restant que cette priorité fait avancer (V5.1). */
+  goal?: string;
 }
 
 export interface PriorityPlan {
@@ -73,7 +76,12 @@ export interface PriorityPlan {
   nextAct: { act: 2 | 3; at: number } | null;
   pillars: Pillar[];
   items: PriorityItem[];
+  /** Liste à cocher de l'Acte en cours (V5.1). */
+  goals: ActGoalsView;
 }
+
+/** Une priorité qui fait avancer un objectif d'Acte restant passe un peu devant. */
+const GOAL_PRIORITY_BONUS = 6;
 
 export type PriorityData = Pick<GameData, 'me' | 'village' | 'players' | 'migrants' | 'children' | 'structures' | 'constitution'>;
 
@@ -560,9 +568,18 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
     });
   }
 
+  // Objectifs d'Acte (V5.1) : une priorité qui coche une étape restante le dit et passe un peu devant
+  const goals = actGoalsView(data);
+  for (const item of P.items) {
+    const g = goalForPriority(goals, item.key);
+    if (!g) continue;
+    item.goal = `${g.icon} ${g.label}`;
+    item.score += GOAL_PRIORITY_BONUS;
+    item.steps = [...item.steps, `Objectif de l'Acte : « ${g.label} » — récompense : ${g.reward}.`];
+  }
   const items = P.items.sort((a, b) => b.score - a.score);
   const nextAct = act === 1 ? { act: 2 as const, at: C.ACT_THRESHOLDS.act2 } : act === 2 ? { act: 3 as const, at: C.ACT_THRESHOLDS.act3 } : null;
-  return { act, autonomy: v.autonomy_pct, nextAct, pillars: pillarsOf(auto, data, foodPct), items };
+  return { act, autonomy: v.autonomy_pct, nextAct, pillars: pillarsOf(auto, data, foodPct), items, goals };
 }
 
 /** Prochaine bâtisse habitable à rénover : chantier entamé d'abord, puis la plus grande. */

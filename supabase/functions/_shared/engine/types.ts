@@ -173,6 +173,10 @@ export interface VillageLife {
   collective_votes?: Record<string, string>;
   /** Bilan du chantier de la semaine précédente. */
   collective_last?: CollectiveProject | null;
+  /** Objectifs d'Acte cochés (V5.1) : identifiant → date ; une étape cochée le reste. */
+  act_goals?: Record<string, ISODate>;
+  /** Actes dont toute la liste est cochée (récompense de fin de liste versée). */
+  act_goals_complete?: number[];
 }
 
 /** Chantier collectif de la semaine (V5.0) : tout le monde y met des PA. */

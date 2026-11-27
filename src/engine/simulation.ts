@@ -35,6 +35,7 @@ import {
   septicSaturationPct,
 } from './formulas.ts';
 import { addictionDrift, applyInjury, computeDailyAp, isInWithdrawal } from './health.ts';
+import { checkActGoals } from './goals.ts';
 import { closeCollectiveWeek, startWeeklyProject } from './collective.ts';
 import { lifeOf, processHeating, resetSeasonLife } from './life.ts';
 import { clamp, deepClone, gauge, money, stepToward, stock } from './math.ts';
@@ -263,6 +264,13 @@ export function refreshDerived(s: GameSnapshot, now: Date, season: CalendarSeaso
   v.housing_capacity = computeHousingCapacity(s);
   v.productivity_modifier_pct = computeProductivity(s).total;
   v.insecurity_pct = computeInsecurity(s, now).total;
+  updateAutonomyAndAct(s, now, season, fx);
+  // Objectifs d'Acte (V5.1) : une étape cochée verse sa récompense (dette, moral) -> autonomie recalculée
+  if (checkActGoals(s, fx, now).length > 0) updateAutonomyAndAct(s, now, season, fx);
+}
+
+function updateAutonomyAndAct(s: GameSnapshot, _now: Date, season: CalendarSeason, fx: EngineEffects): void {
+  const v = s.village;
   v.autonomy_pct = computeAutonomy(s, season).total;
   const newAct = actForAutonomy(v.act_number, v.autonomy_pct);
   if (newAct !== v.act_number) {
