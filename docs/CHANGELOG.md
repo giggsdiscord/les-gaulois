@@ -1,5 +1,12 @@
 # Historique des versions du GDD
 
+### V5.9 — 27/11/2026 — Visiteurs imprévus
+- **Un visiteur certaines nuits** (§5.10, 35 % après une nuit de pause) : randonneur perdu, journaliste, inspecteur de la mairie ou vendeur ambulant.
+- **Répondre avant 21 h** : action « Répondre au visiteur » (1 PA, parfois des ressources), deux choix par visiteur ; effets sur la caisse, le moral, la notoriété, la pression administrative et les jauges des voisins (V5.8).
+- **Sans réponse**, la nuit applique une conséquence (Mossos fâchés, article méfiant, rapport salé…).
+- Carte du visiteur (accueil et Agora), priorité urgente, section « Visiteurs de passage » de la Gazette. Correction : « 5 rations de rations » dans les coûts des demandes des voisins. Aucune migration (`village_state.life.visitor`) ; 10 nouveaux tests Vitest.
+- Feuille de route : idée **V6.1 « plus d’argent et production automatique »** ajoutée à la demande de l’utilisateur.
+
 ### V5.8 — 27/11/2026 — Relations avec les voisins
 - **Trois jauges** (§5.9) : Organyà, la mairie (Ayuntamiento) et les Mossos, de 0 à 100, qui reviennent doucement vers 50 ; ventes au marché et négociations à l’Ayuntamiento les font monter.
 - **Petites demandes de voisinage**, une à la fois, avec échéance : déneiger la route, du bois pour les anciens, registre des habitants, patrouille… Nouvelle action « Rendre service aux voisins » (1 PA, parfois des ressources).

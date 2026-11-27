@@ -190,4 +190,10 @@ describe('Maître du Jeu IA', () => {
     const r = fallbackResponse({ kind: 'gazette', date: '2026-11-28', events: [{ title: 'Chantier achevé', body: '« Four » est livré.' }, ask], scandals: [] }, CTX, 's');
     expect(r.narrative_text).toContain('Chez les voisins : ❄️ Le maire d’Organyà');
   });
+
+  it('Gazette de secours : le visiteur (V5.9) paraît sans IA', () => {
+    const visit = { title: 'Visiteur : un inspecteur de la mairie, sans réponse', body: '🧐 Un inspecteur de l’Ayuntamiento a trouvé porte close.' };
+    const r = fallbackResponse({ kind: 'gazette', date: '2026-11-28', events: [{ title: 'Chantier achevé', body: '« Four » est livré.' }, visit], scandals: [] }, CTX, 's');
+    expect(r.narrative_text).toContain('De passage : 🧐 Un inspecteur');
+  });
 });

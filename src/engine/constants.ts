@@ -569,6 +569,74 @@ export const NEIGHBOR_MISSIONS: readonly NeighborMissionDef[] = [
 ]; // [GDD §5.9]
 
 // ---------------------------------------------------------------------------
+// Visiteurs imprévus [GDD §5.10, V5.9]
+// ---------------------------------------------------------------------------
+/** Grandeurs qu'une réponse à un visiteur peut faire bouger (jauges en %, stocks, caisse). */
+export type VisitorStat = 'treasury_eur' | 'morale_pct' | 'admin_pressure_pct' | 'customs_alert_pct' | 'international_notoriety_pct' | 'food_rations' | 'iron_stock' | 'tools_stock';
+export interface VisitorOutcomeDef {
+  icon: string;
+  label: string;
+  /** Coût en plus du PA (mêmes clés que les coups de main aux voisins). */
+  cost?: Partial<Record<NeighborCostKey, number>>;
+  effects?: Partial<Record<VisitorStat, number>>;
+  neighbors?: Partial<Record<NeighborId, number>>;
+  /** Ce qui s'est passé (Gazette). */
+  result: string;
+}
+export interface VisitorChoiceDef extends VisitorOutcomeDef {
+  id: string;
+}
+export interface VisitorDef {
+  id: string;
+  icon: string;
+  title: string;
+  arrival: string;
+  choices: readonly VisitorChoiceDef[];
+  /** Conséquence si personne ne répond avant l'échéance. */
+  ignored: VisitorOutcomeDef;
+}
+export const VISITORS: readonly VisitorDef[] = [
+  {
+    id: 'hiker', icon: '🥾', title: 'Un randonneur perdu', arrival: 'Un randonneur égaré, trempé et sans réseau, frappe à la porte du hameau.',
+    choices: [
+      { id: 'guide', icon: '🧭', label: 'Le raccompagner jusqu’au col', effects: { morale_pct: 2 }, neighbors: { mossos: 6 }, result: 'Il a retrouvé sa voiture au col ; les Mossos, prévenus, saluent le geste.' },
+      { id: 'shelter', icon: '🛏️', label: 'L’héberger pour la nuit', cost: { food_rations: 4 }, effects: { treasury_eur: 20, morale_pct: 3 }, neighbors: { mossos: 3 }, result: 'Il a dormi au chaud et laissé 20 € dans la boîte du hameau.' },
+    ],
+    ignored: { icon: '🚪', label: 'Personne ne lui a ouvert', neighbors: { mossos: -6 }, result: 'Les Mossos ont dû le chercher une partie de la nuit, et ils n’ont pas apprécié.' },
+  },
+  {
+    id: 'journalist', icon: '📰', title: 'Une journaliste', arrival: 'Une journaliste de La Seu d’Urgell veut un reportage sur « ce drôle de hameau ».',
+    choices: [
+      { id: 'interview', icon: '🎤', label: 'Accorder une interview', effects: { international_notoriety_pct: 4, admin_pressure_pct: 2 }, neighbors: { organya: 3 }, result: 'Bel article : on parle du hameau jusqu’à Barcelone… et la mairie l’a lu aussi.' },
+      { id: 'tour', icon: '🍷', label: 'Une visite discrète et un verre', cost: { food_rations: 3 }, effects: { international_notoriety_pct: 2, morale_pct: 2 }, result: 'Un portrait chaleureux, sans détail gênant.' },
+    ],
+    ignored: { icon: '🚪', label: 'Porte close', effects: { admin_pressure_pct: 4 }, neighbors: { organya: -3 }, result: '« Le hameau qui se cache » : article méfiant, la mairie s’interroge.' },
+  },
+  {
+    id: 'inspector', icon: '🧐', title: 'Un inspecteur de la mairie', arrival: 'Un inspecteur de l’Ayuntamiento vient vérifier l’eau, la fosse et les bâtiments.',
+    choices: [
+      { id: 'tour', icon: '📋', label: 'Faire la visite en règle', effects: { admin_pressure_pct: -5 }, neighbors: { ayuntamiento: 8 }, result: 'Visite en règle, dossier propre : l’inspecteur repart rassuré.' },
+      { id: 'snack', icon: '🥖', label: 'Café et charcuterie d’abord', cost: { food_rations: 5 }, effects: { admin_pressure_pct: -2 }, neighbors: { ayuntamiento: 4 }, result: 'Après le casse-croûte, l’inspection a été… rapide.' },
+    ],
+    ignored: { icon: '🚪', label: 'Personne pour le recevoir', effects: { admin_pressure_pct: 5 }, neighbors: { ayuntamiento: -8 }, result: 'L’inspecteur a trouvé porte close et rédigé un rapport salé.' },
+  },
+  {
+    id: 'peddler', icon: '🛒', title: 'Un vendeur ambulant', arrival: 'Un vendeur ambulant gare sa camionnette : outils, fer de récupération, et il rachète les produits du coin.',
+    choices: [
+      { id: 'buy', icon: '🔧', label: 'Acheter outils et fer', cost: { treasury_eur: 40 }, effects: { tools_stock: 2, iron_stock: 5 }, result: 'Deux outils et du fer à bon prix sont venus garnir l’atelier.' },
+      { id: 'sell', icon: '🍅', label: 'Lui vendre des tomates', cost: { tomatoes_stock: 10 }, effects: { treasury_eur: 35 }, neighbors: { organya: 1 }, result: 'Dix kilos de tomates vendus 35 € : elles finiront sur les marchés de la vallée.' },
+    ],
+    ignored: { icon: '🚚', label: 'Il est reparti', result: 'La camionnette est repartie vers Organyà sans s’arrêter.' },
+  },
+]; // [GDD §5.10]
+/** Chance qu'un visiteur se présente une nuit donnée (après la pause). */
+export const VISITOR_CHANCE_PCT = 35; // [GDD §5.10]
+/** Heure locale limite pour répondre, le jour de l'arrivée. */
+export const VISITOR_DUE_HOUR = 21; // [GDD §5.10]
+/** Nuits sans visiteur après une visite. */
+export const VISITOR_GAP = 1; // [GDD §5.10]
+
+// ---------------------------------------------------------------------------
 // Chantier collectif de la semaine [GDD §5.5, V5.0]
 // ---------------------------------------------------------------------------
 export type CollectiveProjectId = 'woodpile' | 'track_day' | 'water_works' | 'garden_extension' | 'site_rush' | 'village_feast';

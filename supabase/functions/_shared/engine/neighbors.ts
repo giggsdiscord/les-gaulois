@@ -80,7 +80,8 @@ export function missionCostText(def: C.NeighborMissionDef): string {
     if (key === 'treasury_eur') parts.push(`${n} € de la caisse`);
     else {
       const meta = C.STORAGE_LABEL[key];
-      parts.push(`${n} ${meta?.unit ?? ''} de ${meta?.label.toLowerCase() ?? key}`.replace(/\s+/g, ' '));
+      if (meta && meta.unit.toLowerCase() === meta.label.toLowerCase()) parts.push(`${n} ${meta.unit}`);
+      else parts.push(`${n} ${meta?.unit ?? ''} de ${meta?.label.toLowerCase() ?? key}`.replace(/\s+/g, ' '));
     }
   }
   return parts.join(' + ');

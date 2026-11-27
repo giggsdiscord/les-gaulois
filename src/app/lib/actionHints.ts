@@ -3,7 +3,7 @@
  * recherche et actions récentes. Pur (aucun DOM) : testé dans tests/app/actionHints.test.ts.
  * La validation qui fait foi reste celle du moteur (performAction).
  */
-import { constants as C, currentCollective, forestBan, neighborHelpBlocker, permitBlocker, freeParcels, openBuildingProjects, getAction, isAfter, isSunday, lifeOf, pantryAmount, type ActionDef } from '../engine.ts';
+import { constants as C, currentCollective, forestBan, neighborHelpBlocker, permitBlocker, visitorBlocker, freeParcels, openBuildingProjects, getAction, isAfter, isSunday, lifeOf, pantryAmount, type ActionDef } from '../engine.ts';
 import type { GameData, PublicPlayer } from '../api/types.ts';
 import { electionView } from './election.ts';
 
@@ -26,6 +26,8 @@ export interface ActionSituation {
   supply?: { livestock: number; rations: number; plums: number };
   /** Voisins (V5.8) : pourquoi aucun coup de main n'est possible (null = possible). */
   neighborHelp?: string | null;
+  /** Visiteurs (V5.9) : pourquoi on ne peut pas répondre (null = possible). */
+  visitor?: string | null;
   /** Élection vivante (V5.3) : gestes possibles maintenant. */
   election?: { open: boolean; canStand: boolean; canSpeak: boolean; canVote: boolean; phase: string | null };
 }
@@ -56,6 +58,7 @@ export function situationFor(data: Pick<GameData, 'me' | 'players' | 'village'> 
           ? 'Deux nouveaux bâtiments déjà en projet : finissez-en un.'
           : permitBlocker(data.village),
     neighborHelp: neighborHelpBlocker(data.village),
+    visitor: visitorBlocker(data.village, now),
     election: electionSituation(data, holder.id === me.id, now),
     supply: { livestock: data.village.livestock_count, rations: data.village.food_rations, plums: pantryAmount(data.village, 'plums_kg') },
   };
@@ -78,6 +81,7 @@ export function actionBlockReason(def: ActionDef, s: ActionSituation): string | 
   if (def.code === 'vote_collective_project' && s.collectiveVotable === false) return "Aucun projet à voter pour l'instant.";
   if (def.code === 'plan_building' && s.buildBlocked) return s.buildBlocked;
   if (def.code === 'help_neighbors' && s.neighborHelp) return s.neighborHelp;
+  if (def.code === 'answer_visitor' && s.visitor) return s.visitor;
   // Filières (V5.6)
   if (s.supply && def.code === 'make_cheese' && s.supply.livestock < C.CHEESE_MIN_LIVESTOCK) return `Il faut au moins ${C.CHEESE_MIN_LIVESTOCK} bêtes à l’enclos.`;
   if (s.supply && def.code === 'make_cheese' && s.supply.rations < C.CHEESE_MAKE_RATIONS) return `Il faut ${C.CHEESE_MAKE_RATIONS} rations de lait.`;

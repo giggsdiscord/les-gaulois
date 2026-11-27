@@ -11,6 +11,7 @@ import { TEMPTATION_REOPEN_EVENT } from '../components/Modals.tsx';
 import { CollectiveCard } from '../components/CollectiveCard.tsx';
 import { ElectionCard } from '../components/ElectionCard.tsx';
 import { NeighborsCard } from '../components/NeighborsCard.tsx';
+import { VisitorCard } from '../components/VisitorCard.tsx';
 import { PriorityCard } from '../components/PriorityCard.tsx';
 import { ParcelSheet } from '../components/ParcelSheet.tsx';
 import { StructureSheet } from '../components/StructureSheet.tsx';
@@ -90,6 +91,7 @@ export function MapScreen() {
       <PriorityCard />
       <CollectiveCard />
       <ElectionCard />
+      <VisitorCard />
       <NeighborsCard />
       <div className="grid grid-cols-2 gap-2">
         <Stat label="Habitants" value={pop.total} sub={`${v.housing_capacity} lits PLU`} tone={pop.total > v.housing_capacity ? 'ember' : undefined} />

@@ -207,6 +207,28 @@ export interface VillageLife {
   neighbor_last?: NeighborMissionResult | null;
   /** Pas de nouvelle demande avant ce jour local (AAAA-MM-JJ). */
   neighbor_next_day?: string | null;
+  /** Visiteur imprévu en attente de réponse (V5.9) ; null = aucun. */
+  visitor?: VisitorVisit | null;
+  /** Dernière visite close (réponse donnée ou ignorée). */
+  visitor_last?: VisitorResult | null;
+  /** Pas de nouveau visiteur avant ce jour local (AAAA-MM-JJ). */
+  visitor_next_day?: string | null;
+}
+
+/** Visiteur imprévu (V5.9). */
+export interface VisitorVisit {
+  id: string;
+  /** Jour local d'arrivée (AAAA-MM-JJ) et heure limite de réponse (ISO). */
+  day: string;
+  due_at: string;
+}
+
+export interface VisitorResult {
+  id: string;
+  /** Choix retenu ; 'ignored' si personne n'a répondu. */
+  choice: string;
+  day: string;
+  by: string | null;
 }
 
 /** Demande d'un voisin (V5.8). */

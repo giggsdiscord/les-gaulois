@@ -36,6 +36,7 @@ import { actGoalsView, goalForPriority, type ActGoalsView } from './actGoals.ts'
 import { buildingsOverview } from './buildings.ts';
 import { collectiveView } from './collective.ts';
 import { neighborPriorityScore, neighborsView } from './neighbors.ts';
+import { visitorPriorityScore, visitorsView } from './visitors.ts';
 import { electionView } from './election.ts';
 import { MISSION_REWARD_TEXT } from './jobLevel.ts';
 import { residentPersona, sulkingResidents } from './residentLife.ts';
@@ -385,6 +386,20 @@ export function priorityPlan(data: PriorityData, now: Date): PriorityPlan {
         'Votez aussi pour le chantier de la semaine prochaine (accueil ou Agora).',
       ],
       gain: col.def.summary,
+    });
+  }
+  // Visiteurs imprévus (V5.9) : quelqu'un attend une réponse avant 21 h
+  const vis = visitorsView(data, now);
+  const visScore = visitorPriorityScore(vis);
+  if (vis.visit && visScore !== null) {
+    const m = vis.visit;
+    P.add({
+      key: 'visitor', emoji: m.def.icon, title: `Visiteur : ${m.def.title.toLowerCase()}`, urgent: m.urgent, score: visScore,
+      short: `Répondre avant ${C.VISITOR_DUE_HOUR} h (${m.deadline}).`.slice(0, 70),
+      why: `${m.def.arrival} Sans réponse ce soir : ${m.ignored.label.toLowerCase()}${m.ignored.effects ? ` (${m.ignored.effects})` : ''}.`,
+      actionCode: 'answer_visitor',
+      steps: m.choices.map((c) => `${c.def.icon} ${c.def.label} : 1 PA${c.cost ? ` + ${c.cost}` : ''}${c.effects ? ` → ${c.effects}` : ''}.`),
+      gain: m.choices.map((c) => c.effects).filter(Boolean).join(' ou ') || 'éviter un impair',
     });
   }
   // Relations avec les voisins (V5.8) : une demande ouverte à remplir avant l'échéance

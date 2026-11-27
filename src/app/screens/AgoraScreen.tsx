@@ -6,6 +6,7 @@ import { ActionSheet } from '../components/ActionSheet.tsx';
 import { CollectiveCard } from '../components/CollectiveCard.tsx';
 import { ElectionCard } from '../components/ElectionCard.tsx';
 import { NeighborsCard } from '../components/NeighborsCard.tsx';
+import { VisitorCard } from '../components/VisitorCard.tsx';
 import { ProposalCard } from '../components/ProposalCard.tsx';
 import { Badge, Button, Card, Empty, Field, Gauge, Input, ListRow, SectionTitle, Select, Sheet, Tabs, TextArea, cx } from '../components/ui.tsx';
 import { postChoices, residentWorkView, skillLabel, totalsParts } from '../lib/residentWork.ts';
@@ -178,6 +179,7 @@ function Initiatives() {
       </Card>
       <ElectionCard mode="full" />
       <CollectiveCard full />
+      <VisitorCard full />
       <NeighborsCard full />
       <InitiativeForm />
       {list.length === 0 ? <Empty>Aucun scrutin pour le moment.</Empty> : list.map((p) => <ProposalCard key={p.id} p={p} />)}

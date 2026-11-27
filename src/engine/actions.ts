@@ -13,6 +13,7 @@ import { applyMarketSale, ensureLife, marketQuote } from './life.ts';
 import { advanceStructure, BUILDING_KINDS, findWorkPost, forestBan, residentSkill } from './work.ts';
 import { cheerBlocker, cheerResident, firstName, temperOf } from './personality.ts';
 import { adjustNeighbor, helpNeighbors, missionCostText, neighborHelpBlocker } from './neighbors.ts';
+import { answerVisitor, visitorBlocker } from './visitors.ts';
 import { contributeToCollective, currentCollective, findCollectiveProject } from './collective.ts';
 import { buildingTypeOf, findBuildingType, findParcel, hasBuilding, planBlocker, planBuilding } from './buildings.ts';
 import { applyUpgrade, maintainBlocker, nextUpgrade, UPGRADABLE_KINDS, upgradeBlocker, upgradeGains, WEARING_KINDS } from './upkeep.ts';
@@ -424,6 +425,14 @@ export const ACTIONS: readonly ActionDef[] = [
       ensure(!blocked, blocked ?? '');
       const mood = cheerResident(m, day);
       return `${firstName(m)} (${temperOf(m).label.toLowerCase()}) a le cœur plus léger : humeur ${mood}/100.`;
+    },
+  },
+  {
+    code: 'answer_visitor', label: 'Répondre au visiteur', description: 'Un visiteur imprévu (randonneur, journaliste, inspecteur, vendeur) attend une réponse avant 21 h : le premier qui répond choisit (1 PA, parfois des ressources). Sans réponse, la nuit tranche, souvent mal.', anyone: true, apCost: 1, delegable: false, target: 'none',
+    precheck: (s, req) => visitorBlocker(s.village, null, typeof req.params?.choice === 'string' ? req.params.choice : null),
+    run: (ctx) => {
+      const a = asAction(() => answerVisitor(ctx.s, ctx.fx, ctx.actor, ctx.req.params?.choice, ctx.now));
+      return `${a.choice.icon} ${a.choice.result}${a.effects ? ` (${a.effects})` : ''}`;
     },
   },
   {

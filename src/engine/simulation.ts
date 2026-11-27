@@ -48,6 +48,7 @@ import { activePlayers, computeHousingCapacity, countPopulation, residents, stru
 import { createRng, type Rng } from './rng.ts';
 import { processResidentWork } from './work.ts';
 import { processNeighbors } from './neighbors.ts';
+import { processVisitors } from './visitors.ts';
 import { pickPutschLeader, putschConditions, updateIdeologyAndFriction, updateSubstancesAndBlackMarket } from './society.ts';
 import type { CalendarSeason, EngineEffects, GameSnapshot } from './types.ts';
 
@@ -83,6 +84,8 @@ function closeDay(s: GameSnapshot, fx: EngineEffects, endedKey: string, midnight
   updateMoraleAndDiplomacy(s, midnight);
   // Relations avec les voisins (V5.8) : jauges, effets, échéance et nouvelle demande
   processNeighbors(s, fx, endedKey, season, createRng(`${v.id}:neighbors:${endedKey}`));
+  // Visiteurs imprévus (V5.9) : visite sans réponse, puis peut-être un nouveau visiteur
+  processVisitors(s, fx, endedKey, createRng(`${v.id}:visitors:${endedKey}`));
   refreshDerived(s, midnight, season, fx);
   // Premier chantier collectif (V5.0) : ouvert dès la première nuit, sauf le lundi (closeSeason s'en charge)
   if (!lifeOf(v).collective && localParts(midnight).weekday !== 1) startWeeklyProject(s, fx, rng.fork('collective'), midnight);

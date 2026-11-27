@@ -351,6 +351,7 @@ function gazetteFallback(task: Extract<GmTask, { kind: 'gazette' }>, ctx: GmCont
   });
   const story = task.events.filter((e) => e.title.startsWith('Petite histoire : ')).at(-1);
   const neighbor = task.events.filter((e) => e.title.startsWith('Voisins : ')).at(-1);
+  const visitor = task.events.filter((e) => e.title.startsWith('Visiteur : ')).at(-1);
   const main = ranked.find((e) => e !== story) ?? story;
   const headline = main ? main.title : `Journée calme au hameau : ${ctx.weather.split(',')[0] ?? 'météo de saison'}`;
   const lines = [
@@ -358,6 +359,7 @@ function gazetteFallback(task: Extract<GmTask, { kind: 'gazette' }>, ctx: GmCont
     task.events.length > 1 ? `Autres nouvelles : ${task.events.slice(1, 4).map((e) => e.title.charAt(0).toLowerCase() + e.title.slice(1)).join(', ')}.` : null,
     story && story !== main ? `Au coin du feu : ${story.body}` : null,
     neighbor && neighbor !== main ? `Chez les voisins : ${neighbor.body}` : null,
+    visitor && visitor !== main ? `De passage : ${visitor.body}` : null,
     task.scandals.length > 0 ? `Côté confessionnal, Brunel n'a manifestement pas eu de visite : ${task.scandals.join(' ; ')}.` : null,
     `Météo : ${ctx.weather}.`,
     ctx.news[0] ? `Pendant ce temps, dans le monde réel : ${ctx.news[0]}.` : null,

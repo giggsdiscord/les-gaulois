@@ -99,6 +99,8 @@ export interface OpResult {
 const STORY_PREFIX = 'Petite histoire : ';
 /** Titre des événements de voisinage (V5.8, `NEIGHBOR_EVENT_PREFIX` du moteur). */
 const NEIGHBOR_PREFIX = 'Voisins : ';
+/** Titre des événements de visite (V5.9, `VISITOR_EVENT_PREFIX` du moteur). */
+const VISITOR_PREFIX = 'Visiteur : ';
 const fail = (error: string): OpResult => ({ ok: false, error });
 
 const ACTION_INPUT_KEYS = [
@@ -669,6 +671,8 @@ export class GameSession {
         { title: 'Petite histoire du hameau', items: events.filter((e) => e.title.startsWith(STORY_PREFIX)).slice(-1).map((e) => `${e.title.slice(STORY_PREFIX.length)} — ${e.body}`) },
         // Relations avec les voisins (V5.8) : demandes ouvertes, remplies ou manquées
         { title: 'Chez les voisins', items: events.filter((e) => e.title.startsWith(NEIGHBOR_PREFIX)).slice(-2).map((e) => `${e.title.slice(NEIGHBOR_PREFIX.length).replace(/^./, (c) => c.toUpperCase())} — ${e.body}`) },
+        // Visiteurs imprévus (V5.9) : arrivées, réponses, visites ignorées
+        { title: 'Visiteurs de passage', items: events.filter((e) => e.title.startsWith(VISITOR_PREFIX)).slice(-2).map((e) => `${e.title.slice(VISITOR_PREFIX.length).replace(/^./, (c) => c.toUpperCase())} — ${e.body}`) },
         { title: 'Météo réelle', items: [v.real_weather_summary] },
         { title: 'Actualité réelle', items: this.news.slice(0, 5) },
         { title: 'Scandales', items: scandals },

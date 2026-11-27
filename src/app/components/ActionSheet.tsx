@@ -4,7 +4,7 @@
  * bouton collé en bas et résultat affiché dans la fenêtre (avec « Refaire »).
  */
 import { useMemo, useState } from 'react';
-import { buildingTypeOf, CATALOG, constants, findCollectiveProject, freeParcels, lifeOf, planBlocker, marketQuote, marketStock, purchaseCost, type ActionDef, type VillageState } from '../engine.ts';
+import { buildingTypeOf, CATALOG, constants, currentVisitor, findCollectiveProject, freeParcels, lifeOf, planBlocker, marketQuote, marketStock, purchaseCost, type ActionDef, type VillageState } from '../engine.ts';
 import type { ActionInput, OpResponse } from '../api/types.ts';
 import { actionBlockReason, lockNotes, situationFor } from '../lib/actionHints.ts';
 import { AMOUNT_ACTIONS, QUANTITY_ACTIONS, STRUCTURE_ACTION_KINDS } from '../lib/game.ts';
@@ -98,6 +98,8 @@ export function ActionSheet({
   const [buildVariant, setBuildVariant] = useState(typeof preset?.params?.variant === 'string' ? preset.params.variant : '');
   const [buildParcel, setBuildParcel] = useState(typeof preset?.params?.parcel === 'string' ? preset.params.parcel : '');
   const voteChoices = (lifeOf(data.village).collective_candidates ?? []).map((id) => findCollectiveProject(id)).filter((p) => p !== undefined);
+  const visitorChoices = currentVisitor(data.village)?.def.choices ?? [];
+  const [visitorChoice, setVisitorChoice] = useState(typeof preset?.params?.choice === 'string' ? preset.params.choice : '');
   const [freeText, setFreeText] = useState('');
   const [partnerA, setPartnerA] = useState('');
   const [partnerB, setPartnerB] = useState('');
@@ -166,6 +168,11 @@ export function ActionSheet({
       const choice = voteProject || voteChoices[0]?.id;
       if (!choice) return 'Aucun projet à voter pour l\'instant.';
       input.params = { project: choice };
+    }
+    if (def.code === 'answer_visitor') {
+      const choice = visitorChoice || visitorChoices[0]?.id;
+      if (!choice) return 'Aucun visiteur n’attend au hameau.';
+      input.params = { choice };
     }
     if (def.code === 'plan_building') {
       const why = planBlocker(data, buildVariant, buildParcel);
@@ -341,6 +348,17 @@ export function ActionSheet({
               {voteChoices.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.icon} {p.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+        {def.code === 'answer_visitor' && visitorChoices.length > 0 && (
+          <Field label="Votre réponse" hint={visitorChoices.find((c) => c.id === (visitorChoice || visitorChoices[0]!.id))?.result}>
+            <Select value={visitorChoice || visitorChoices[0]!.id} onChange={(e) => setVisitorChoice(e.target.value)}>
+              {visitorChoices.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.icon} {c.label}
                 </option>
               ))}
             </Select>
